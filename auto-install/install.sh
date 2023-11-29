@@ -2,11 +2,11 @@
 
 # Automatic Installation Script
 # Many thanks to the PiVPN project (pivpn.io) for much of the inspiration for this script
-# Run from https://raw.githubusercontent.com/dogtreatfairy/pifire/master/auto-install/install.sh
+# Run from https://raw.githubusercontent.com/dogtreatfairy/pifire/main/auto-install/install.sh
 #
 # Install with this command (from your Pi):
 #
-# curl https://raw.githubusercontent.com/dogtreatfairy/pifire/master/auto-install/install.sh | bash
+# curl https://raw.githubusercontent.com/dogtreatfairy/pifire/main/auto-install/install.sh | bash
 #
 # NOTE: Pre-Requisites to run Raspi-Config first.  See README.md.
 
@@ -82,7 +82,7 @@ echo "**                                                                     **"
 echo "*************************************************************************"
 cd /usr/local/bin
 # Use a shallow clone to reduce download size
-$SUDO git clone --depth 1 https://github.com/dogtreatfairy/pifire
+$SUDO git clone --depth 1 --branch main https://github.com/dogtreatfairy/pifire
 # Replace the below command to fetch development branch
 #$SUDO git clone --depth 1 --branch development https://github.com/dogtreatfairy/pifire
 
@@ -144,15 +144,6 @@ echo "dtparam=i2c_arm=on" | $SUDO tee -a /boot/config.txt > /dev/null
 echo "i2c-dev" | $SUDO tee -a /etc/modules > /dev/null
 # Enable Hardware PWM - Needed for hardware PWM support 
 echo "dtoverlay=pwm,pin=13,func=4" | $SUDO tee -a /boot/config.txt > /dev/null
-
-# Setup backlight / power permissions if a DSI screen is installed  
-clear
-echo "*************************************************************************"
-echo "**                                                                     **"
-echo "**      Configuring Backlight UDEV Rules                               **"
-echo "**                                                                     **"
-echo "*************************************************************************"
-echo 'SUBSYSTEM=="backlight",RUN+="/bin/chmod 666 /sys/class/backlight/%k/brightness /sys/class/backlight/%k/bl_power"' | $SUDO tee -a /etc/udev/rules.d/backlight-permissions.rules > /dev/null
 
 ### Setup nginx to proxy to gunicorn
 clear
