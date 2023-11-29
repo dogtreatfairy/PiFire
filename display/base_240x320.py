@@ -95,47 +95,62 @@ class DisplayBase:
 			# List of options for the 'inactive' menu.  This is the initial menu when smoker is not running.
 			'Startup': {
 				'displaytext': 'Startup',
-				'icon': '\uf04b'  # FontAwesome Play Icon
+				'icon': '\uf04b', # FontAwesome Play Icon
+				'iconcolor': (9,235,62)  
 			},
 			'Prime': {
 				'displaytext': 'Prime',
-				'icon': '\uf101'  # FontAwesome Double Arrow Right Icon
+				'icon': '\uf101',  # FontAwesome Double Arrow Right Icon
+				'iconcolor': (255,255,255)  
 			},
 			'Monitor': {
 				'displaytext': 'Monitor',
-				'icon': '\uf530'  # FontAwesome Glasses Icon
+				'icon': '\uf530',  # FontAwesome Glasses Icon
+				'iconcolor': (49,114,235)
 			},
 			'Stop': {
 				'displaytext': 'Stop',
-				'icon': '\uf04d'  # FontAwesome Stop Icon
+				'icon': '\uf04d',  # FontAwesome Stop Icon
+				'iconcolor': (235,64,52)
 			},
 			'Network': {
 				'displaytext': 'IP QR Code',
-				'icon': '\uf1eb'  # FontAwesome Wifi Icon
+				'icon': '\uf1eb', # FontAwesome Wifi Icon
+				'iconcolor': (255,255,255)
+			},
+			'Power':{
+				'displaytext': 'Power Menu',
+				'icon': '\uf0e7', #FontAwesome Power Icon
+				'iconcolor' : (255,255,255)
 			}
 		}
 
 		self.menu['active'] = {
 			# List of options for the 'active' menu.  This is the second level menu of options while running.
-			'Shutdown': {
-				'displaytext': 'Shutdown',
-				'icon': '\uf11e'  # FontAwesome Finish Icon
-			},
 			'Hold': {
 				'displaytext': 'Hold',
-				'icon': '\uf76b'  # FontAwesome Temperature Low Icon
+				'icon': '\uf76b',  # FontAwesome Temperature Low Icon
+				'iconcolor': (9,235,62)  
+			},
+			'Shutdown': {
+				'displaytext': 'Shutdown',
+				'icon': '\uf11e',  # FontAwesome Finish Icon
+				'iconcolor' : (255,255,255) # White Orange
 			},
 			'Smoke': {
 				'displaytext': 'Smoke',
-				'icon': '\uf0c2'  # FontAwesome Cloud Icon
-			},
-			'Stop': {
-				'displaytext': 'Stop',
-				'icon': '\uf04d'  # FontAwesome Stop Icon
+				'icon': '\uf0c2',  # FontAwesome Cloud Icon
+				'iconcolor': (179,49,235)
 			},
 			'SmokePlus': {
-				'displaytext': 'Toggle Smoke+',
-				'icon': '\uf0c2'  # FontAwesome Cloud Icon
+				'displaytext': 'Smoke+',
+				'icon': '\uf0c2',  # FontAwesome Cloud Icon
+				'iconcolor': (179,49,235)
+			},	
+			'Stop': {
+				'displaytext': 'Stop',
+				'icon': '\uf04d',  # FontAwesome Stop Icon
+				'iconcolor': (235,64,52)
 			},
 			'Network': {
 				'displaytext': 'IP QR Code',
@@ -151,15 +166,18 @@ class DisplayBase:
 			},
 			'Shutdown': {
 				'displaytext': 'Shutdown',
-				'icon': '\uf11e'  # FontAwesome Finish Icon
+				'icon': '\uf11e',  # FontAwesome Finish Icon
+				'iconcolor' : (255,255,255) # White Orange
 			},
 			'Stop': {
 				'displaytext': 'Stop',
-				'icon': '\uf04d'  # FontAwesome Stop Icon
+				'icon': '\uf04d',  # FontAwesome Stop Icon
+				'iconcolor': (235,64,52)
 			},
 			'SmokePlus': {
-				'displaytext': 'Toggle Smoke+',
-				'icon': '\uf0c2'  # FontAwesome Cloud Icon
+				'displaytext': 'Smoke+',
+				'icon': '\uf0c2',  # FontAwesome Cloud Icon
+				'iconcolor': (179,49,235)
 			},
 			'Network': {
 				'displaytext': 'IP QR Code',
@@ -191,7 +209,29 @@ class DisplayBase:
 			'Prime_50_Start' : {
 				'displaytext': '\u00BB50g & Start',
 				'icon': '50'
+			},
+			'Menu_Back' : {
+				'displaytext' : 'Back',
+				'icon' : '\uf060' # FontAwesome Back Arrow
 			}
+		}
+
+		self.menu['power_menu'] = {
+			'Power_Off' : {
+				'displaytext' : 'Shutdown',
+				'icon': '\uf011', # FontAwesome Power Button
+				'iconcolor': (235,64,52)
+			},
+			'Power_Restart' : {
+				'displaytext': 'Restart',
+				'icon': '\uf2f9', # FontAwesome Circle Arrow
+				'iconcolor': (235,167,49) # Burnt Orange
+			},
+			'Menu_Back' : {
+				'displaytext' : 'Back',
+				'icon' : '\uf060' # FontAwesome Back Arrow
+			}
+
 		}
 		self.menu['current'] = {}
 		self.menu['current']['mode'] = 'none'  # Current Menu Mode (inactive, active)
@@ -295,8 +335,8 @@ class DisplayBase:
 	def _init_splash(self):
 		self.splash = Image.open('static/img/display/color-boot-splash.png')
 		(self.splash_width, self.splash_height) = self.splash.size
-		self.splash_width *= 2
-		self.splash_height *= 2
+		self.splash_width *= 1
+		self.splash_height *= 1
 		self.splash = self.splash.resize((self.splash_width, self.splash_height))
 
 	def _rounded_rectangle(self, draw, xy, rad, fill=None):
@@ -1217,8 +1257,9 @@ class DisplayBase:
 					break
 				index += 1
 			font_point_size = 80 if self.WIDTH == 240 else 120 
+			icon_color = self.menu[self.menu['current']['mode']][selected].get('iconcolor', (255,255,255))  # Get color from menu item, default to white if not defined
 			text = self.menu[self.menu['current']['mode']][selected]['icon']
-			label_canvas = self._draw_text(text, 'static/font/FA-Free-Solid.otf', font_point_size, (255,255,255))
+			label_canvas = self._draw_text(text, 'static/font/FA-Free-Solid.otf', font_point_size, icon_color)
 			label_origin = (int(self.WIDTH // 2 - label_canvas.width // 2), int(self.HEIGHT // 2.5 - label_canvas.height // 2))
 			img.paste(label_canvas, label_origin, label_canvas)
 
@@ -1231,13 +1272,13 @@ class DisplayBase:
 				img.paste(label_canvas, label_origin, label_canvas)
 
 			# Current Mode (Bottom Center)
-			# Draw Black Rectangle
-			draw.rectangle([(0, (self.HEIGHT // 8) * 6), (self.WIDTH, self.HEIGHT)], fill=(0, 0, 0))
-			# Draw White Line/Rectangle
+			# Draw White Rectangle
+			draw.rectangle([(0, (self.HEIGHT // 8) * 6), (self.WIDTH, self.HEIGHT)], fill=(255, 255, 255))
+			# Draw Gray Line/Rectangle
 			draw.rectangle([(0, (self.HEIGHT // 8) * 6), (self.WIDTH, ((self.HEIGHT // 8) * 6) + 2)],
-						   fill=(255, 255, 255))
+						   fill=(130, 130, 130))
 			# Draw Text
-			font_point_size = 36
+			font_point_size = 45
 			text = self.menu[self.menu['current']['mode']][selected]['displaytext']
 			label_canvas = self._draw_text(text, self.primary_font, font_point_size, (255,255,255))
 			label_origin = (int(self.WIDTH // 2 - label_canvas.width // 2), int((self.HEIGHT // 8) * 6.25))
