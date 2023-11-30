@@ -1297,7 +1297,7 @@ class DisplayBase:
 			font_point_size = 45
 			text = self.menu[self.menu['current']['mode']][selected]['displaytext']
 			label_canvas = self._draw_text(text, self.primary_font, font_point_size, (0,0,0))
-			label_origin = (int(self.WIDTH // 2 - label_canvas.width // 2), int((self.HEIGHT // 8) * 6.25))
+			label_origin = (int(self.WIDTH // 2 - label_canvas.width // 2), int((self.HEIGHT // 8) * 7.25))
 			img.paste(label_canvas, label_origin, label_canvas)
 
 		# Change color of Arrow for Up / Down when adjusting temperature
