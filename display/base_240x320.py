@@ -1128,6 +1128,18 @@ class DisplayBase:
 					control['updated'] = True
 					control['mode'] = 'Stop'
 					write_control(control, origin='display')
+				elif 'Power_' in selected:
+					control = read_control()
+					if 'Off' in selected:
+						os.system('sudo shutdown -h now')
+					elif 'Restart' in selected:
+						os.system('sudo reboot')
+				
+				# Master Menu Back Function
+				elif 'Menu_Back' in selected:
+					self.menu['current']['mode'] = 'none'
+					self.menu['current']['option'] = 1
+				
 				# Active Mode
 				elif selected == 'Shutdown':
 					self.display_active = True
@@ -1229,20 +1241,20 @@ class DisplayBase:
 		if self.menu['current']['mode'] == 'grill_hold_value':
 			# Grill Temperature (Large Centered)
 			font_point_size = 80 if self.WIDTH == 240 else 120 
-			label_canvas = self._draw_text(str(self.menu['current']['option']), self.primary_font, font_point_size, (255,255,255))
+			label_canvas = self._draw_text(str(self.menu['current']['option']), self.primary_font, font_point_size, (9,235,62))
 			label_origin = (int(self.WIDTH // 2 - label_canvas.width // 2), int(self.HEIGHT // 3 - label_canvas.height // 2)) if self.WIDTH == 240 else (int(self.WIDTH // 2 - label_canvas.width // 2 - 20), int(self.HEIGHT // 2.5 - label_canvas.height // 2))
 			img.paste(label_canvas, label_origin, label_canvas)
 
 			# Current Mode (Bottom Center)
-			font_point_size = 36
+			font_point_size = 40
 			text = "Grill Set Point"
-			label_canvas = self._draw_text(text, self.primary_font, font_point_size, (255,255,255))
+			label_canvas = self._draw_text(text, self.primary_font, font_point_size, (0,0,0))
 
-			# Draw Black Rectangle
-			draw.rectangle([(0, (self.HEIGHT // 8) * 6), (self.WIDTH, self.HEIGHT)], fill=(0, 0, 0))
+			# Draw White Rectangle
+			draw.rectangle([(0, (self.HEIGHT // 8) * 6), (self.WIDTH, self.HEIGHT)], fill=(255, 255, 255))
 			# Draw White Line/Rectangle
 			draw.rectangle([(0, (self.HEIGHT // 8) * 6), (self.WIDTH, ((self.HEIGHT // 8) * 6) + 2)],
-						   fill=(255, 255, 255))
+						   fill=(130, 130, 130))
 			# Draw Text
 			label_origin = (int(self.WIDTH // 2 - label_canvas.width // 2), int((self.HEIGHT // 8) * 6.25))
 			img.paste(label_canvas, label_origin, label_canvas)
@@ -1280,7 +1292,7 @@ class DisplayBase:
 			# Draw Text
 			font_point_size = 45
 			text = self.menu[self.menu['current']['mode']][selected]['displaytext']
-			label_canvas = self._draw_text(text, self.primary_font, font_point_size, (255,255,255))
+			label_canvas = self._draw_text(text, self.primary_font, font_point_size, (0,0,0))
 			label_origin = (int(self.WIDTH // 2 - label_canvas.width // 2), int((self.HEIGHT // 8) * 6.25))
 			img.paste(label_canvas, label_origin, label_canvas)
 
