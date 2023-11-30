@@ -41,7 +41,7 @@ class DisplayBase:
 		self.display_command = 'splash'
 		self.input_counter = 0
 		self.input_enabled = False
-		self.primary_font = 'Piboto-Bold.ttf'
+		self.primary_font = 'DejaVuSans.ttf'
 		#self.primary_font = 'DejaVuSans.ttf'  # May need to switch to a default font in Raspberry Pi OS Lite due to MSTCorefonts Package Deprecation 
 		# Attempt to set the log level of PIL so that it does not pollute the logs
 		logging.getLogger('PIL').setLevel(logging.CRITICAL + 1)
