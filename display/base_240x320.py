@@ -41,7 +41,7 @@ class DisplayBase:
 		self.display_command = 'splash'
 		self.input_counter = 0
 		self.input_enabled = False
-		self.primary_font = 'trebuc.ttf'
+		self.primary_font = 'Piboto-Bold.ttf'
 		#self.primary_font = 'DejaVuSans.ttf'  # May need to switch to a default font in Raspberry Pi OS Lite due to MSTCorefonts Package Deprecation 
 		# Attempt to set the log level of PIL so that it does not pollute the logs
 		logging.getLogger('PIL').setLevel(logging.CRITICAL + 1)
@@ -233,6 +233,7 @@ class DisplayBase:
 			}
 
 		}
+
 		self.menu['current'] = {}
 		self.menu['current']['mode'] = 'none'  # Current Menu Mode (inactive, active)
 		self.menu['current']['option'] = 0  # Current option in current mode
@@ -1128,6 +1129,9 @@ class DisplayBase:
 					control['updated'] = True
 					control['mode'] = 'Stop'
 					write_control(control, origin='display')
+				elif selected == 'Power':
+					self.menu['current']['mode'] = 'power_menu'
+					self.menu['current']['option'] = 0
 				elif 'Power_' in selected:
 					control = read_control()
 					if 'Off' in selected:
