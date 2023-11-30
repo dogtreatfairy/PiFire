@@ -1141,8 +1141,8 @@ class DisplayBase:
 				
 				# Master Menu Back Function
 				elif 'Menu_Back' in selected:
-					self.menu['current']['mode'] = 'none'
-					self.menu['current']['option'] = 1
+					self.menu['current']['mode'] = 'inactive'
+					self.menu['current']['option'] = 0
 				
 				# Active Mode
 				elif selected == 'Shutdown':
