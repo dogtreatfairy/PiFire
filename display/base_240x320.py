@@ -335,8 +335,8 @@ class DisplayBase:
 		self.background = self.background.resize((self.WIDTH, self.HEIGHT))
 	
 	def _init_splash(self):
-		settings = hack_read_settings()
-		version = settings['versions']['server']
+		#settings = hack_read_settings()
+		#version = settings['versions']['server']
 		self.splash = Image.open('static/img/display/color-boot-splash.png')
 		(self.splash_width, self.splash_height) = self.splash.size
 		self.splash_width *= 1
@@ -345,7 +345,7 @@ class DisplayBase:
 		draw = ImageDraw.Draw(self.splash)
 		text_position = (self.splash_width - 50, 10)
 		# Draw the version text onto the splash image
-		font = ImageFont.truetype(self.primary_font.path, 15)
+		font = ImageFont.truetype(self.primary_font, 15)
 		draw.text(text_position, f"v{version}", fill=(255, 255, 255), font=font)
 
 
