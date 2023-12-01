@@ -22,7 +22,6 @@ import qrcode
 import logging
 from PIL import Image, ImageDraw, ImageFont
 from common import read_control, write_control
-from common.hacks import hack_read_settings
 
 '''
 Display base class definition
@@ -335,19 +334,11 @@ class DisplayBase:
 		self.background = self.background.resize((self.WIDTH, self.HEIGHT))
 	
 	def _init_splash(self):
-		settings = hack_read_settings()
-		version = settings['versions']['server']
 		self.splash = Image.open('static/img/display/color-boot-splash.png')
 		(self.splash_width, self.splash_height) = self.splash.size
 		self.splash_width *= 1
 		self.splash_height *= 1
 		self.splash = self.splash.resize((self.splash_width, self.splash_height))
-		draw = ImageDraw.Draw(self.splash)
-		text_position = (self.splash_width - 50, 10)
-		# Draw the version text onto the splash image
-		font = ImageFont.truetype(self.primary_font, 15)
-		draw.text(text_position, f"v{version}", fill=(255, 255, 255), font=font)
-
 
 	def _rounded_rectangle(self, draw, xy, rad, fill=None):
 		x0, y0, x1, y1 = xy
