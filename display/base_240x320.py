@@ -335,13 +335,10 @@ class DisplayBase:
 	
 	def _init_splash(self):
 		self.splash = Image.open('static/img/display/color-boot-splash.png')
-		self.splash_width, self.splash_height = self.splash.size
+		(self.splash_width, self.splash_height) = self.splash.size
 		self.splash_width *= 1
 		self.splash_height *= 1
 		self.splash = self.splash.resize((self.splash_width, self.splash_height))
-		draw = ImageDraw.Draw(self.splash)
-		text_position = (self.splash_width - 50, 10)
-		draw.text(text_position, "v1.6.0b", fill="white", font=self.primary_font)
 
 	def _rounded_rectangle(self, draw, xy, rad, fill=None):
 		x0, y0, x1, y1 = xy
