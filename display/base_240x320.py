@@ -1260,7 +1260,7 @@ class DisplayBase:
 			draw.rectangle([(0, (self.HEIGHT // 8) * 6), (self.WIDTH, ((self.HEIGHT // 8) * 6) + 2)],
 						   fill=(130, 130, 130))
 			# Draw Text
-			label_origin = (int(self.WIDTH // 2 - label_canvas.width // 2), int((self.HEIGHT // 8) * 6.31))
+			label_origin = (int(self.WIDTH // 2 - label_canvas.width // 2), int((self.HEIGHT // 8) * 6.35))
 			img.paste(label_canvas, label_origin, label_canvas)
 
 		elif self.menu['current']['mode'] != 'none':
@@ -1297,7 +1297,7 @@ class DisplayBase:
 			font_point_size = 40
 			text = self.menu[self.menu['current']['mode']][selected]['displaytext']
 			label_canvas = self._draw_text(text, self.primary_font, font_point_size, (0,0,0))
-			label_origin = (int(self.WIDTH // 2 - label_canvas.width // 2), int((self.HEIGHT // 8) * 6.31))
+			label_origin = (int(self.WIDTH // 2 - label_canvas.width // 2), int((self.HEIGHT // 8) * 6.35))
 			img.paste(label_canvas, label_origin, label_canvas)
 
 		# Change color of Arrow for Up / Down when adjusting temperature
