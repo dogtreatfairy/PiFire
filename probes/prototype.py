@@ -15,7 +15,7 @@ Description:
 			'module' : 'prototype',  			# Must be populated for this module to load properly
 			'ports' : ['ADC0', 'ADC1', 'ADC2', 'ADC3'], # This should be defined by the user with the number of ports desired
 			'config' : {
-				'ADC0_rd': '10000',
+				'ADC0_rd': '1000',
             	'ADC1_rd': '10000',
             	'ADC2_rd': '10000',
             	'ADC3_rd': '10000',

@@ -15,7 +15,7 @@ Description:
 			'module' : 'ads1115',  			# Must be populated for this module to load properly
 			'ports' : ['ADC0', 'ADC1', 'ADC2', 'ADC3'], # This is defined in the module, so this does not need to be defined.
 			'config' : {
-				'ADC0_rd': '10000',
+				'ADC0_rd': '1000',
             	'ADC1_rd': '10000',
             	'ADC2_rd': '10000',
             	'ADC3_rd': '10000',
