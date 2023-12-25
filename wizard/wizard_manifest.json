@@ -454,7 +454,7 @@
 							"friendly_name" : "ADC0 Resistor Divider Value",
 							"description" : "Select the resistor divider value for this probe port.  Default is 10000 Ohm for temperature probes.",
 							"type" : "int", 
-							"default" : 10000,
+							"default" : 1000,
 							"min" : 1,
 							"max" : "",
 							"step" : 1,
