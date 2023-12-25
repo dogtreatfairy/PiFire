@@ -81,14 +81,15 @@ def dash():
 	errors = read_errors()
 	warnings = read_warnings()
 
-	current = settings['dashboard']['current']
-	dash_template = settings['dashboard']['dashboards'][current].get('html_name', 'dash_default.html')
-	dash_data = settings['dashboard']['dashboards'].get(current, {})
+	dash_template = 'dash_default.html'
+	for dash in settings['dashboard']['dashboards']:
+		if dash['name'] == settings['dashboard']['current']:
+			dash_template = dash['html_name']
+			break
 
 	return render_template(dash_template,
 						   settings=settings,
 						   control=control,
-						   dash_data=dash_data,
 						   errors=errors,
 						   warnings=warnings,
 						   page_theme=settings['globals']['page_theme'],
@@ -2359,12 +2360,9 @@ def api_page(action=None):
 		else:
 			request_json = request.json
 			if(action == 'settings'):
-				settings = deep_update(settings, request.json)
-				'''
 				for key in settings.keys():
 					if key in request_json.keys():
 						settings[key].update(request_json.get(key, {}))
-				'''
 				write_settings(settings)
 				return jsonify({'settings':'success'}), 201
 			elif(action == 'control'):
@@ -3359,6 +3357,14 @@ def _zip_files_logs(dir_name):
 			archive.write(file_path, arcname=file_path.relative_to(directory))
 	return file_name
 
+def _deep_dict_update(orig_dict, new_dict):
+	for key, value in new_dict.items():
+		if isinstance(value, Mapping):
+			orig_dict[key] = _deep_dict_update(orig_dict.get(key, {}), value)
+		else:
+			orig_dict[key] = value
+	return orig_dict
+
 '''
 ==============================================================================
  SocketIO Section
@@ -3589,8 +3595,8 @@ def post_app_data(action=None, type=None, json_data=None):
 		if type == 'settings':
 			for key in request.keys():
 				if key in settings.keys():
-					settings = deep_update(settings, request)
-					write_settings(settings)
+					settings = _deep_dict_update(settings, request)
+					hack_write_settings(settings)
 					return {'response': {'result':'success'}}
 				else:
 					return {'response': {'result':'error', 'message':'Error: Key not found in settings'}}
