@@ -30,7 +30,8 @@ from common import write_settings, write_control, create_logger
 ==============================================================================
 '''
 
-def check_notify(in_data, control, settings, pelletdb, grill_platform):
+
+def check_notify(settings, control, in_data=None, pelletdb=None, grill_platform=None, pid_data=None, update_eta=False):
 	"""
 	Check for any pending notifications
 
@@ -40,6 +41,15 @@ def check_notify(in_data, control, settings, pelletdb, grill_platform):
 	:param pelletdb: Pellet DB
 	:param grill_platform: Grill Platform
 	"""
+
+	# Forward to mqtt if enabled.
+	if settings['notify_services'].get('mqtt') != None and \
+	   settings['notify_services']['mqtt']['enabled'] == True:
+		_send_mqtt_notification(control, settings, pelletdb, in_data, grill_platform, pid_data)
+
+	if not pelletdb or not grill_platform:
+		return
+
 	if settings['notify_services']['influxdb']['url'] != '' and settings['notify_services']['influxdb']['enabled']:
 		_send_influxdb_notification('GRILL_STATE', control, settings, pelletdb, in_data, grill_platform)
 
@@ -188,7 +198,8 @@ def send_notifications(notify_event, control, settings, pelletdb, label='Probe',
 		_send_pushover_notification(settings, title_message, body_message)
 	if settings['notify_services']['onesignal']['app_id'] != '' and settings['notify_services']['onesignal']['enabled']:
 		_send_onesignal_notification(settings, title_message, body_message, channel)
-
+	if settings['notify_services']['mqtt']['broker'] != '' and settings['notify_services']['mqtt']['enabled']:
+		_send_mqtt_notification(control, settings, notify_event=title_message)
 
 def _send_apprise_notifications(settings, title_message, body_message):
 	"""
@@ -371,3 +382,127 @@ def _send_influxdb_notification(notify_event, control, settings, pelletdb, in_da
 		from notify.influxdb_handler import InfluxNotificationHandler
 		influx_handler = InfluxNotificationHandler(settings)
 	influx_handler.notify(notify_event, control, settings, pelletdb, in_data, grill_platform)
+
+def _estimate_eta(temperatures, target_temperature, interval_seconds=3, max_history_minutes=5, min_history_minutes=1):
+	"""
+	Estimates the ETA (Estimated Time of Arrival) for the food probe to reach a specific target temperature using 
+	Linear Interpolation from the SciPy library module.  
+
+	Args:
+		temperatures: A list of temperatures measured by the food probe over time.
+		target_temperature: The desired target temperature.  Value should be larger than the temperatures in the list.
+		interval: Time between temperature readings.  Value between 1 and 60. 
+		max_history_minutes:  Maximum minutes of history to use for calculating ETA 
+		min_history_minutes:  Minimum minutes of history to use for calculating ETA 
+
+	Returns:
+		The estimated time (in seconds) it will take for the food probe to reach the target temperature.
+		None if the target temperature is already reached or the probe data is insufficient.
+	"""
+	eventLogger = create_logger('events', filename='/tmp/events.log')
+
+	# Ensure target temperature is not already reached
+	if target_temperature <= max(temperatures):
+		#print('DEBUG: ETA: Target temperature already achieved.')
+		eventLogger.debug(f'ETA: Target temperature already achieved.')
+		return None
+
+	# Ensure that interval is between 1 and 60 seconds 
+	if interval_seconds > 60 or interval_seconds < 1:
+		#print('DEBUG: ETA: History data interval not between 1 and 60 seconds.')
+		eventLogger.debug(f'ETA: History data interval not between 1 and 60 seconds.')
+		return None
+	
+	# If there is more data than needed, shorten the list 
+	readings_per_minute = (60 // interval_seconds)
+	minutes_of_data = len(temperatures) // readings_per_minute
+	if minutes_of_data > max_history_minutes:
+		while len(temperatures) // readings_per_minute > max_history_minutes:
+			temperatures.pop(0)
+	# If there is less data than needed, return None
+	elif minutes_of_data < min_history_minutes:
+		#print('DEBUG: Not enough history data to make estimate.')
+		eventLogger.debug(f'ETA: Not enough history data to make estimate.')
+		return None
+
+	# Build times list
+	times = []
+	for index in range(0, len(temperatures) * interval_seconds, interval_seconds):
+		times.append(index)
+
+	#print(f'===========================================')
+	#print(f'DEBUG: ETA: times = {times}')
+	#print(f'DEBUG: ETA: temps = {temperatures}')
+	#print(f'===========================================')
+
+	try:
+		# Create an interpolation function from the temperature data
+		interpolator = interp1d(times, temperatures, kind="linear", fill_value="extrapolate")
+
+		# Estimate the time to reach the target temperature
+		estimated_time = interpolator(target_temperature)
+		# If estimated time is over 24 hours or less than 0, it's likely to be a bad guess
+		if estimated_time > 86400 or estimated_time <= 0:
+			#print(f'DEBUG: ETA: Estimated time outside of bounds. [{estimated_time}]')
+			eventLogger.debug(f'ETA: Estimated time outside of bounds. [{estimated_time}]')
+			return None
+		eta = math.ceil(int(estimated_time) - times[-1])
+		if eta <= 0:
+			# Additional bounds testing
+			#print(f'DEBUG: ETA: Estimated time outside of bounds. [{eta}]')
+			eventLogger.debug(f'ETA: Estimated time outside of bounds. [{eta}]')
+			return None
+		#print(f'===========================================')
+		#print(f'DEBUG: ETA: {eta}s')
+		#print(f'===========================================')
+		eventLogger.debug(f'Calculated ETA: {eta}s')
+	
+	except:
+		# Something failed, return None
+		#print('DEBUG: ETA: An exception occurred.')
+		eventLogger.debug(f'ETA: An exception occurred.')
+		#raise
+		return None 
+
+	return eta
+=======
+mqtt_handler = None
+def _send_mqtt_notification(control, settings, 
+			pelletdb=None, in_data=None, grill_platform=None, pid_data=None, notify_event=None):
+	"""
+	Send mqtt Notifications
+
+	:param notify_event: String Event
+	:param control: Control
+	:param settings: Settings
+	:param pelletdb: Pellet DB
+	:param in_data: In Data (Probe Temps)
+	:param grill_platform: Grill Platform
+	"""
+	global mqtt_toggle_time
+	global mqtt_handler
+	
+	if not mqtt_handler:
+		from notify.mqtt_handler import MqttNotificationHandler
+		mqtt_handler = MqttNotificationHandler(settings)
+		mqtt_toggle_time = 0
+
+	# Send a notify_event immidiately
+	if notify_event != None:
+		payload = {'msg': notify_event }
+		mqtt_handler.notify("notify_event", payload)
+
+	mode_changed = (control['mode'] != mqtt_handler.last_mode)
+
+	# Write MQTT data only after x seconds has passed or we just changed mode
+	if (time.time() - mqtt_toggle_time) > float(settings['notify_services']['mqtt']['update_sec']) or \
+		(mode_changed):
+				
+		mqtt_toggle_time = 0 if mode_changed else time.time()
+
+		mqtt_handler.notify("control", control)
+		mqtt_handler.notify("system", control)
+		if grill_platform: mqtt_handler.notify("devices", grill_platform.current)
+		if in_data: mqtt_handler.notify("probe_data", in_data['probe_history'])
+		if pelletdb: mqtt_handler.notify("pellet", pelletdb['current'])
+		if pid_data: mqtt_handler.notify("pid", pid_data)
