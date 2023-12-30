@@ -375,7 +375,6 @@ def default_notify_services():
 	
 	services['mqtt'] = {
       "broker": "homeassistant.local",
-      #"control": False,
       "enabled": False,
       "homeassistant_autodiscovery_topic": "homeassistant",
       "id": "PiFire",

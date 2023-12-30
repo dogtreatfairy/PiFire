@@ -80,6 +80,25 @@
           "command_list" : []
         }
       }
+    },
+    {
+      "version" : "1.6.4",
+      "build" : 0,
+      "reboot_required" : true,
+      "dependencies" : {
+        "app": {
+          "py_dependencies": [],
+          "apt_dependencies": [],
+          "command_list" : []
+        },
+        "control": {
+          "py_dependencies": ["paho-mqtt"],
+          "apt_dependencies": [],
+          "command_list" : [
+            ["sudo", "bash", "updater/bl_udev_170.sh"]
+          ]
+        }
+      }
     }
   ]
 }

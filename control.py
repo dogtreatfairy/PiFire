@@ -628,7 +628,7 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 			write_tr(in_data['probe_history']['tr'])
 
 		# Check to see if there are any pending notifications (i.e. Timer / Temperature Settings)
-		control = check_notify(in_data, control, settings, pelletdb, grill_platform)
+		control = check_notify(settings, control, in_data=in_data, pelletdb=pelletdb, grill_platform=grill_platform, update_eta=update_eta)
 
 		# Send Current Status / Temperature Data to Display Device every 0.5 second (Display Refresh)
 		if (now - display_toggle_time) > 0.5:
