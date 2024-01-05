@@ -1,11 +1,11 @@
-<!-- Post Update Message for v1.7.0 -->
+<!-- Post Update Message for v1.6.3 -->
 <H1>
     <img src="{{ url_for('static', filename='img/launcher-icon-1x.png') }}" width="50" height="50" class="d-inline-block align-top" alt="">
-    PiFire 1.7.0 Release - Month/Year TBD
+    PiFire 1.6.3-dtf Release - January 2024
 </H1>
 
 <p>
-    Description TBD.
+    First release of the year for the Dogtreatfairy Edition of PiFire!
 </p>
 
 <br>
@@ -16,13 +16,13 @@
 
 <ul>
     <li>
-        TBD
+        Merged Nebheads chnanges to fix Apprise for IFTTT, and verification of Python 3.11.x
     </li>
     <li>
-        ...
+        Added feature to Auto-Select Text when entering grill set temperature.
     </li>
     <li>
-        TBD
+        Added default values to PID Settings Page
     </li>
 </ul>
 
@@ -30,13 +30,10 @@
 
 <ul>
     <li>
-        TBD
+        Fixed a bug where the wrong eventlet gets installed for Python v3.9 (Bullseye OS) or for Python v3.11 (Bookworm OS).  Installer now checks for v3.11 or greater otherwise installs eventlet v0.30.2.  
     </li>
     <li>
-        ...
-    </li>
-    <li>
-        TBD
+        Fixed a bug where Apprise data structure was saved as an object and not as a list. 
     </li>
 </ul>
 
