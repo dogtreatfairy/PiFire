@@ -141,10 +141,12 @@
     <script>
         $(document).ready(function(){
             $('#setpointModal').on('shown.bs.modal', function () {
-                $('#tempOutputId').focus().select();
+                setTimeout(function(){
+                    $('#tempOutputId').focus().select();
+                }, 0);
             });
         });
-    </script>
+    </script>        
 <!-- Startup Modal -->
     <div class="modal" id="startupModal">
         <div class="modal-dialog">
