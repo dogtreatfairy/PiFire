@@ -138,38 +138,33 @@
             </div>
         </div>
     </div>
-
+    <script>
+        $(document).ready(function(){
+            $('#setpointModal').on('shown.bs.modal', function () {
+                $('#tempOutputId').focus().select();
+            });
+        });
+    </script>
 <!-- Startup Modal -->
-<div class="modal" id="startupModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <!-- Modal Header -->
-            <div class="modal-header">
-                <h4 class="modal-title"><i class="fa-solid fa-triangle-exclamation"></i> Startup Check</h4>
-                <button type="button" class="close" data-dismiss="modal">×</button>
-            </div>
-            <!-- Modal body -->
-            <div class="modal-body text-center">
-                Confirm Startup Grill?<br><br>
-                <button class="btn btn-primary" onclick="cpStartup()">Startup</button>
-            </div>
-            <!-- Modal footer -->
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+    <div class="modal" id="startupModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <!-- Modal Header -->
+                <div class="modal-header">
+                    <h4 class="modal-title"><i class="fa-solid fa-triangle-exclamation"></i> Startup Check</h4>
+                    <button type="button" class="close" data-dismiss="modal">×</button>
+                </div>
+                <!-- Modal body -->
+                <div class="modal-body text-center">
+                    Confirm Startup Grill?<br><br>
+                    <button class="btn btn-primary" onclick="cpStartup()">Startup</button>
+                </div>
+                <!-- Modal footer -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
-
-    
 </div> <!-- End of Container --> 
-<!-- Select Text when Modal Dialogue Opens-->
-<script>
-$(document).ready(function(){
-    $('#setpointModal').on('shown.bs.modal', function () {
-        $('#tempOutputId').focus().select();
-    });
-});
-</script>
-
 {% endmacro %}
