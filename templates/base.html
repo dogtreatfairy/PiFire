@@ -180,7 +180,16 @@
 			{% endif %}
 		{% endblock %}
 
-		{% block scripts %} {% endblock %}
+		{% block scripts %} 
+		<!--Select input text in modal dialogue-->
+		<script>
+			document.getElementById('setpointModal').addEventListener('shown.bs.modal', function () {
+				var input = document.getElementById('tempOutputId');
+				input.focus();
+				input.select();
+			});
+		</script>
+		{% endblock %}		
 
     </body>
 </html>
