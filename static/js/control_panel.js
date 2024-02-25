@@ -284,20 +284,36 @@ function cpRecipeUnpause() {
     update_recipe_pause();
 };
 
+function cpStartupCheck(enable) {
+    // Check if user has bypassed startup_enable
+    if (enable == 'False') {
+        cpStartup();
+    } else {
+        $('#startupModal').modal('show');
+    };
+};
+
+function cpStartup() {
+    $('#startupModal').modal('hide');
+    var postdata = { 
+        'updated' : true,
+        'mode' : 'Startup'	
+    };
+    console.log('Requesting Startup.');
+    api_post(postdata);
+};
+
 // Main Loop
 
 $(document).ready(function(){
     check_current();
     
     // Setup Button Listeners
-    $("#startup_btn").click(function(){
-        var postdata = { 
-            'updated' : true,
-            'mode' : 'Startup'	
-        };
-        console.log('Requesting Startup.');
-        api_post(postdata);
+
+    $('#startupModal').on('shown.bs.modal', function (event) {
+        $('#startupSlider').val(0);
     });
+
 
     $("#monitor_btn").click(function(){
         var postdata = { 
