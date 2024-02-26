@@ -64,6 +64,19 @@ echo "**                                                                     **"
 echo "*************************************************************************"
 $SUDO apt upgrade -y
 
+# Install AVAHI and Rename to pifiredevel.local
+clear
+echo "*************************************************************************"
+echo "**                                                                     **"
+echo "**      Installing AVAHI... (This could take several minutes)   **"
+echo "**                                                                     **"
+echo "*************************************************************************"
+$SUDO apt install avahi-daemon
+echo "pifiredevel" | $SUDO tee /etc/hostname
+$SUDO sed -i 's/127.0.1.1.*/127.0.1.1\t'pifiredevel'/g' /etc/hosts
+$SUDO /etc/init.d/hostname.sh
+$SUDO service avahi-daemon restart
+
 # Install APT dependencies
 clear
 echo "*************************************************************************"
