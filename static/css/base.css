@@ -9,6 +9,14 @@
 			padding-top: 0.3rem;
 			padding-bottom: 0.3rem;
 		}
+		.timer-bar-config {
+			top: 15px;
+		}
+		@media (max-width: 992px) { /* Small devices */
+			.timer-offset .timer-bar-config {
+				top: 50px;
+			}
+		}
 		@media (max-width: 992px) { /* Large devices (landscape tablets, less than 1200px) */
 			.fas.fa-bars{
 				padding: 0.1em 0;
