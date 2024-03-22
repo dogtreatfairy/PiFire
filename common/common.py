@@ -558,6 +558,16 @@ def default_notify(settings):
 	}
 	notify_data.append(notify_info)
 
+	''' Add TEST notification data to list '''
+	notify_info = {
+		'label' : 'Test',
+		'type' : 'test', 
+		'req' : False,
+		'shutdown' : False,
+		'keep_warm' : False,  
+	}
+	notify_data.append(notify_info)
+
 	return notify_data
 
 def get_probe_list(settings):
