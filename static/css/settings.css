@@ -10,6 +10,7 @@
     top: 50px;
     bottom: 0;
     width: 20%; /* Adjust this value as needed */
+    min-width: 300px; /* Minimum width of 300px */
     overflow: auto;
 }
 
@@ -18,7 +19,11 @@
     margin-bottom: 110px;
     margin-left: 20%; /* This should match the width of the nav-settings-fixed div */
 }
-@media (max-width: 768px) { /* Adjust this value as needed */
+.power-modal{
+    margin-top:35px;
+    z-index:9999;
+}
+@media (max-width: 992px) { /* Adjust this value as needed */
     .nav-settings-fixed {
         position: relative; /* Changed from fixed to relative */
         left: 0;
@@ -36,6 +41,9 @@
         margin-left: 0; /* Changed from 20% to 0 */
         width:100%;
     }
+    .power-modal{
+        margin-top:90px;
+    }
     .settings-button {
         width: 100%; /* Make the button full width */
         position: fixed; /* Fix the position of the button */
@@ -51,3 +59,5 @@
         width: auto; /* Changed from 100% to auto */
         z-index: 3;
     }
+
+}
