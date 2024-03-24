@@ -21,6 +21,7 @@
 }
 .power-modal{
     margin-top:35px;
+    margin-bottom:35px;
     z-index:9999;
 }
 @media (max-width: 992px) { /* Adjust this value as needed */
@@ -41,8 +42,15 @@
         margin-left: 0; /* Changed from 20% to 0 */
         width:100%;
     }
-    .power-modal{
-        margin-top:90px;
+    .power-modal {
+        margin-top: 90px;
+        margin-bottom: 90px;
+        z-index: 9999;
+    }
+
+    .power-modal .modal-content {
+        max-height: calc(100vh - 180px);
+        overflow-y: auto;
     }
     .settings-button {
         width: 100%; /* Make the button full width */
