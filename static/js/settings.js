@@ -118,7 +118,7 @@ function onEdit(rowSelected) {
 	if (rowSelected == profiles.length - 1) {
 		$('#edit_RangeText').html('No minimum temperature for the last profile.');
 	} else {
-		$('#edit_RangeText').html('Enter a value in the range <span id="editRangeMin">0</span>-<span id="editRangeMax">200</span>' + units);
+		$('#edit_RangeText').html('Enter a Temp Range Value of <b class="text-white">&nbsp;<span id="editRangeMin">0</span> - <span id="editRangeMax">200</span> &deg;' + units + '</b>');
 		$('#editRangeMin').html(minTemp);
 		$('#editRangeMax').html(maxTemp);
 	};
@@ -449,7 +449,7 @@ function onEditPWM(rowSelected) {
 	if (rowSelected == dc_profiles.length - 1) {
 		$('#dc_edit_range_text').html('Temperature cannot be changed for the last profile.');
 	} else {
-		$('#dc_edit_range_text').html('Enter a value in the range <span id="dc_edit_range_min">0</span>-<span id="dc_edit_range_max">100</span>' + units);
+		$('#dc_edit_range_text').html('Enter a Temp Range Value of <b class="text-white">&nbsp;<span id="dc_edit_range_min">0</span> - <span id="dc_edit_range_max">100</span> &deg;' + units + '</b>');
 		$('#dc_edit_range_min').html(minTemp);
 		$('#dc_edit_range_max').html(maxTemp);
 	};
@@ -774,14 +774,14 @@ $(document).ready(function() {
 		});
 	};
 
-    $('button[name=addAppriseLocation]').click(function(e) {
+    $('button[name=appriseAddLocation]').click(function(e) {
         e.preventDefault();
         $('.appriselocation').last().clone(true) //set withDataAndEvents to true in .clone to include event handlers
             .find("input:text").val("").end()
             .insertAfter($('.appriselocation').last());
     });
 
-    $('button[name=appriseDeleteRow]').click(function(e) {
+    $('button[name=appriseDeleteLocation]').click(function(e) {
         e.preventDefault();
         if($(this).parent().parent().find("input:text").val().length > 0) {
             if(confirm('Row is not empty, are you sure?')) { //input has text in it, verify
@@ -837,5 +837,39 @@ $(document).ready(function() {
 			$('#prime_on_startup').val(0); // Zero disables this feature 
 		};
 	});
-
-}); // End of document ready function
+	// Enable / Disable the Smart Start feature 
+	$('#smartstart_enable').change(function() {
+		if(document.getElementById("smartstart_enable").checked) {
+			$('#smartstart_settings').slideDown(100);
+			$('#exit_at_temp').slideUp(100);
+			$('#startup_duration').slideUp(100);
+		} else {
+			$('#smartstart_settings').slideUp(100);
+			$('#exit_at_temp').slideDown(100);
+			$('#startup_duration').slideDown(100);
+		};
+	});
+	// Enable / Disable the Fan Ramping Feature 
+	var sp_fan_ramp = document.getElementById('sp_fan_ramp').value;
+	if (sp_fan_ramp == 0) {
+		sp_fan_ramp = 20; // Set to default of 20% if not already set
+	}
+	$('#sp_fan_ramp').change(function() {
+		if(document.getElementById("sp_fan_ramp").checked) {
+			$('#sp_duty_cycle').val(sp_fan_ramp); // Default value for duty cycle
+			$('#sp_fan_ramp_input').slideDown(100);
+		} else {
+			$('#sp_fan_ramp_input').slideUp(100);
+			$('#sp_duty_cycle').val(0); // Zero disables this feature 
+		};
+	});
+	// Enable / Disable the Smoke Plus feature 
+	$('#default_smoke_plus').change(function() {
+		if(document.getElementById("default_smoke_plus").checked) {
+			$('#smoke_plus_settings').slideDown(100);
+		} else {
+			$('#smoke_plus_settings').slideUp(100);
+		};
+	});
+		
+}); 

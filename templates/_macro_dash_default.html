@@ -1,13 +1,13 @@
 {% macro render_probe_card(probe_data, settings, control) %}
 
 <!-- Probe Card -->
-<div class="card shadow"> 
+<div class="card shadow" style="min-height: 375px; max-height:563px;">  
 	<div class="card-header bg-primary text-white text-center">
 		<strong>
 			{% if probe_data['type'] == 'Primary' %}
-			<i class="fas fa-tachometer-alt"></i>&nbsp;
+			<i class="fas fa-tachometer-alt mr-2"></i>
 			{% else %}
-			<i class="fas fa-thermometer"></i>&nbsp;
+			<i class="fas fa-thermometer mr-2"></i>
 			{% endif %} 
 			{{ probe_data['name'] }}
 		</strong>
@@ -24,7 +24,7 @@
 	<div class="card-footer justify-content-center">
 		<div class="btn-toolbar justify-content-center" role="toolbar">
 			<div class="btn-group mr-2 shadow" role="group">
-				<button class="btn btn-sm btn-outline-primary" role="button" data-toggle="tooltip" title="Settings for this probe." onclick="window.location.href = '/settings';">
+				<button class="btn btn-sm btn-outline-primary" role="button" data-bs-toggle="tooltip" title="Settings for this probe." onclick="window.location.href = '/settings';">
 					<i class="fas fa-cog"></i>
 				</button>
 				{% if probe_data['type'] == 'Primary' %}
@@ -32,8 +32,8 @@
 					  onclick="launchSetpointModal()" style="display:none">
 						<i class="fas fa-crosshairs"></i>
 					</button>
-					<div id="pmode_group" class="btn-group dropup" role="group" data-toggle="tooltip" data-placement="top" title="Adjust the PMode" style="display:none">
-						<button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle" id="pmode_btn" data-toggle="dropdown" aria-expanded="false">
+					<div id="pmode_group" class="btn-group dropup" role="group" data-bs-toggle="tooltip" data-placement="top" title="Adjust the PMode" style="display:none">
+						<button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle" id="pmode_btn" data-bs-toggle="dropdown" aria-expanded="false">
 							<i class="fa-solid fa-p"></i>
 						</button>
 						<div class="dropdown-menu">
@@ -55,13 +55,13 @@
 					{% if notify_info['label'] == probe_data['label'] %} 
 						{% if notify_info['req'] %}
 							<button type="button" class="btn btn-sm btn-primary" id="{{ probe_data['label'] }}_notify_btn" 
-							  data-toggle="modal" data-target="#{{ probe_data['label'] }}_notifyModal">
+							  data-bs-toggle="modal" data-target="#{{ probe_data['label'] }}_notifyModal">
 							  	<i class="far fa-bell"></i>&nbsp;
 								{{ notify_info['target'] }}&deg;
 								{% if settings['globals']['units'] == 'F' %}F{% else %}C{% endif %}
 							</button>
 						{% else %}
-							<button type="button" class="btn btn-sm btn-outline-primary" id="{{ probe_data['label'] }}_notify_btn" data-toggle="modal" data-target="#{{ probe_data['label'] }}_notifyModal"><i class="far fa-bell-slash"></i></button>
+							<button type="button" class="btn btn-sm btn-outline-primary" id="{{ probe_data['label'] }}_notify_btn" data-bs-toggle="modal" data-target="#{{ probe_data['label'] }}_notifyModal"><i class="far fa-bell-slash"></i></button>
 						{% endif %}
 					{% endif %}
 				{% endfor %}
@@ -69,9 +69,9 @@
 			{% for notify_info in control['notify_data'] %}
 				{% if notify_info['label'] == probe_data['label'] %} 
 					{% if notify_info['req'] %}
-					<button type="button" class="btn btn-sm btn-primary shadow" id="{{ probe_data['label'] }}_eta_btn" data-toggle="tooltip" title="Estimated time to reach target temperature">
+					<button type="button" class="btn btn-sm btn-primary shadow" id="{{ probe_data['label'] }}_eta_btn" data-bs-toggle="tooltip" title="Estimated time to reach target temperature">
 					{% else %}
-					<button type="button" class="btn btn-sm btn-primary shadow" id="{{ probe_data['label'] }}_eta_btn" data-toggle="tooltip" title="Estimated time to reach target temperature" style="display:none">
+					<button type="button" class="btn btn-sm btn-primary shadow" id="{{ probe_data['label'] }}_eta_btn" data-bs-toggle="tooltip" title="Estimated time to reach target temperature" style="display:none">
 					{% endif %}
 				{% endif %}
 			{% endfor %}
@@ -89,7 +89,7 @@
 			<!-- Modal Header -->
 			<div class="modal-header">
 				<h4 class="modal-title"><i class="fas fa-temperature-high"></i>&nbsp; {{ probe_data['name'] }} Notification Target</h4>
-				<button type="button" class="close" data-dismiss="modal">&times;</button>
+				<button type="button" class="close" data-bs-dismiss="modal">&times;</button>
 			</div>
 			<!-- Modal body -->
 			<div class="modal-body text-center">
@@ -129,8 +129,8 @@
 			</div>
 			<!-- Modal footer -->
 			<div class="modal-footer">
-				<button type="button" class="btn btn-warning" id="{{ probe_data['label'] }}_notify_disable" data-dismiss="modal" onclick="cancelNotify('{{ probe_data['label'] }}')">Cancel</button>
-				<button type="button" class="btn btn-danger" id="{{ probe_data['label'] }}_notify_enable" data-dismiss="modal" onclick="setNotify('{{ probe_data['label'] }}', {{ probe_data['label'] }}_tempInputId.value)">Set</button>
+				<button type="button" class="btn btn-warning" id="{{ probe_data['label'] }}_notify_disable" data-bs-dismiss="modal" onclick="cancelNotify('{{ probe_data['label'] }}')">Cancel</button>
+				<button type="button" class="btn btn-danger" id="{{ probe_data['label'] }}_notify_enable" data-bs-dismiss="modal" onclick="setNotify('{{ probe_data['label'] }}', {{ probe_data['label'] }}_tempInputId.value)">Set</button>
 			</div>
 		</div>
 	</div>
@@ -157,25 +157,34 @@
 {% endmacro %}
 
 {% macro render_hopper_card() %}
-
-	<div class="card-body text-left">
-		<h5><b>Pellets:</b>  <span id="hopperPellets" class="text-truncate"></span></h5>
-		<!-- Hopper Level Indicator-->
-		<div class="progress shadow" style="height:30px">
-			<div id="hopperLevel" class="progress-bar progress-bar-striped bg-success" style="width:100%;height:30px">100%</div>
+<div {% if (settings['modules']['dist'] == 'none') %} style="display:none" {% endif %}>
+	<div class="card shadow">
+		<div class="card-header bg-primary text-white text-center">
+			<h5><i class="fas fa-tree mr-2"></i><b>Pellets:</b><span id="hopperPellets" class="ml-2"></span></h5>
+		</div>
+		<div class="card-body text-center text-large pl-3 pr-3">
+			<div class="row mb-3 bg-dark align-items-center justify-content-center">
+				<div class="col-12">
+					<div class="progress shadow" style="height:38px">
+						<div id="hopperLevel" class="progress-bar progress-bar-striped bg-success" style="width:100%;height:38px">100%</div>
+					</div>
+				</div>
+			</div>
+			<div class="row rounded-bottom align-items-center justify-content-end">
+				<div class="col-12 d-flex justify-content-center justify-content-lg-end align-items-center">
+					<a href="/pellets" type="button" class="btn btn-outline-success mr-2">Pellet Manager</a>
+					<button type="button" class="btn btn-outline-primary" onclick="refreshHopperStatus()"><i class="fas fa-sync"></i></button>
+				</div>
+			</div>
 		</div>
 	</div>
-	<div class="card-footer text-center">
-		<button type="button" class="btn btn-outline-primary" onclick="refreshHopperStatus()">Refresh Status</button>
-		<a href="/pellets" type="button" class="btn btn-outline-primary">Manager</a>
-	</div>
-
+</div>
 {% endmacro %}
 
 {% macro render_status_card(settings) %}
 <div class="card shadow">
 	<div class="card-header bg-primary text-white text-center">
-		<i class="fas fa-info-circle"></i>&nbsp; Status: <span id="mode_status" style="color:yellow"><b>Stop</b></span>
+		<i class="fas fa-info-circle mr-2"></i><strong>Status:<span id="mode_status" class="ml-2 p-0" style="color:yellow;">Stop</span></strong>
 	</div>
 	<div id="status_footer" class="text-center" style="display:none">
 		<br>
@@ -183,46 +192,53 @@
 		<b id="lid_open_label" style="color:green;display:none"></b>
 	</div>
 	<div class="card-body text-center text-large">
-		<table class="table table-sm table-borderless">
-			<tbody>
-				<tr>
-				<td>
-					<span id="fan_status"><i class="fas fa-fan fa-2x" data-toggle="tooltip" data-placement="top" title="Fan ON" style="color:rgb(150, 150, 150)"></i></span>&nbsp;
-				</td>
-				<td>
-					<span id="auger_status"><i class="fas fa-angle-double-right fa-2x" data-toggle="tooltip" data-placement="top" title="Auger ON" style="color:rgb(150, 150, 150)"></i></span>&nbsp;
-				</td>
-				<td>
-					<span id="igniter_status"><i class="fas fa-fire fa-2x" data-toggle="tooltip" data-placement="top" title="Igniter ON" style="color:rgb(150, 150, 150)"></i></span>&nbsp;
-				</td>
-				<td>
-					<span id="pmode_status" class="fa-stack" style="vertical-align: top;">
-						<i class="far fa-square fa-stack-2x" style="color:rgb(150, 150, 150)" data-toggle="tooltip" data-placement="top" title="P-Mode"></i>
-						<i class="fas fa-minus fa-stack-1x" style="color:rgb(150, 150, 150)"></i>
-					</span>
-				</td>
-				</tr>
-				<tr>
-				<td><span class="badge badge-secondary">Fan</span></td>
-				<td><span class="badge badge-secondary">Auger</span></td>
-				<td><span class="badge badge-secondary">Igniter</span></td>
-				<td><span class="badge badge-secondary">P-Mode</span></td>
-				</tr>
-			</tbody>
-		</table>
-		<div {% if (settings['modules']['dist'] == 'none') %}
-			style="display:none"
-		{% endif %}>
-			{{ render_hopper_card() }}
+		<div class="row d-flex flex-nowrap">
+			<div class="flex-grow-1 text-center">
+				<span id="fan_status"><i class="fas fa-fan fa-2x" data-bs-toggle="tooltip" data-placement="top" title="Fan ON" style="color:rgb(150, 150, 150)"></i></span>&nbsp;
+				<div><span class="badge badge-secondary mt-2">Fan</span></div>
+			</div>
+			<div class="flex-grow-1 text-center">
+				<span id="auger_status"><i class="fas fa-angle-double-right fa-2x" data-bs-toggle="tooltip" data-placement="top" title="Auger ON" style="color:rgb(150, 150, 150)"></i></span>&nbsp;
+				<div><span class="badge badge-secondary mt-2">Auger</span></div>
+			</div>
+			<div class="flex-grow-1 text-center">
+				<span id="igniter_status"><i class="fas fa-fire fa-2x" data-bs-toggle="tooltip" data-placement="top" title="Igniter ON" style="color:rgb(150, 150, 150)"></i></span>&nbsp;
+				<div><span class="badge badge-secondary mt-2">Igniter</span></div>
+			</div>
+			<div class="flex-grow-1 text-center">
+				<span id="pmode_status" class="fa-stack" style="vertical-align: top;">
+					<i class="far fa-square fa-stack-2x" style="color:rgb(150, 150, 150)" data-bs-toggle="tooltip" data-placement="top" title="P-Mode"></i>
+					<i class="fas fa-minus fa-stack-1x" style="color:rgb(150, 150, 150)"></i>
+				</span>
+				<div><span class="badge badge-secondary mt-2">P-Mode</span></div>
+			</div>
 		</div>
+		<div class="row d-flex flex-nowrap align-items-center justify-content-between mx-1 mt-4">
+			<div class="flex-grow-1 bg-secondary rounded p-2 text-left text-truncate">
+				<i class="fas fa-tree mr-2"></i><b>Pellets:</b><span id="hopperPellets" class="ml-2"></span>
+			</div>
+			<div class="d-flex align-items-center">
+				<a href="/pellets" type="button" class="btn btn-outline-success mr-1 ml-2"><i class="fas fa-edit"></i></a>
+				<button type="button" class="btn btn-outline-primary" onclick="refreshHopperStatus()"><i class="fas fa-sync"></i></button>
+			</div>
+		</div>
+		<div class="row d-flex flex-nowrap align-items-center justify-content-between mx-1 mt-2">
+			<div class="flex-grow-1 align-items-center">
+				<div class="progress shadow" style="height:2.25rem">
+					<div id="hopperLevel" class="progress-bar progress-bar-striped bg-success">100%</div>
+				</div>
+			</div>
+		</div>
+		
 	</div>
 </div>
+
 {% endmacro %}
 
 {% macro render_time_elapsed_card() %}
 <div class="card shadow">
 	<div class="card-header bg-primary text-white text-center">
-		<i class="fa-regular fa-clock"></i>&nbsp; Time Elapsed Since Start
+		<i class="fa-regular fa-clock mr-2"></i><strong>Time Elapsed Since Start</strong>
 	</div>
 	<div class="card-body text-center text-large">
 		<h1>

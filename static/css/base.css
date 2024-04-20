@@ -1,41 +1,66 @@
-		body {
-			padding-top: 35px;
-		}
-		.navbar {
-			padding-top: 0.3rem;
-			padding-bottom: 0.3rem;
-		}
-		.navbar-brand, .navbar-nav .nav-link {
-			padding-top: 0.3rem;
-			padding-bottom: 0.3rem;
-		}
-		.timer-bar-config {
-			top: 15px;
-		}
-		@media (max-width: 992px) { /* Small devices */
-			.timer-offset .timer-bar-config {
-				top: 50px;
-			}
-		}
-		@media (max-width: 992px) { /* Large devices (landscape tablets, less than 1200px) */
-			.fas.fa-bars{
-				padding: 0.1em 0;
-			}
-			.navbar-nav {
-				text-align: center;
-			}
-			.nav-item {
-				display: inline-block;
-				float: none;
-			}
-			.navbar-collapse {
-				width: 100%;
-				background-color: rgba(44, 44, 44); /* Semi-transparent black */
-			}
-		}
-		@media (min-width: 992px) { /* Large devices (landscape tablets, 1200px and up) */
-			.navbar-collapse {
-				display: flex;
-				justify-content: center;
-			}
-		}
+.badge-note {
+    color: var(--primary); /* Primary color */
+    border: 1px solid var(--primary); /* Primary color */
+    background-color: transparent;
+    border-radius: .25rem; /* Default border-radius for badges in Bootstrap 4 */
+}
+.navbar {
+	padding-top: 0.3rem;
+	padding-bottom: 0.3rem;
+}
+.navbar-brand, .navbar-nav .nav-link {
+	padding-top: 0.3rem;
+	padding-bottom: 0.3rem;
+}
+.open-toggler {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+/* Normal state */
+.subnav-link {
+	background-color: var(--secondary);
+	border: 1px solid var(--secondary);
+	border-radius: 5px;
+	color: white;
+}
+
+/* Active state */
+.subnav-link.active {
+	background-color: var(--primary);
+	border: 1px solid var(--primary);
+}
+
+/* Hover state */
+.subnav-link:hover {
+	background-color: lightgray;
+	border: 1px solid lightgray;
+	color: black;
+}
+
+@media (min-width: 992px) { /* Larger than Tablets */
+    .navbar-nav {
+        justify-content: flex-start;
+    }
+	
+	.vh-lg-100 {
+		height: 100vh;
+	}
+	.mt-subnav{
+		top:100px;
+	}
+}
+@media (max-width: 991.98px) { /* Smaller that Tablets */
+
+	.fas.fa-bars{
+		padding: 0.1em 0;
+	}
+	.navbar-collapse {
+		width:100%;
+		max-height:70vh;
+	}
+	
+	.timer-offset .timer-bar-config {
+		top: 50px;
+	}
+
+}

@@ -32,9 +32,9 @@
 <!-- Control Panel -->
 <div class="container" id="cp_container">
 	{% if settings['globals']['page_theme'] == 'dark' %}
-	<nav class="navbar fixed-bottom navbar-light justify-content-center navbar-bottom" style="background-color: #aaaaaa;">
+	<nav class="navbar fixed-bottom navbar-light justify-content-center navbar-bottom" style="z-index:1010; background-color: #aaaaaa;">
 	{% else %}
-	<nav class="navbar fixed-bottom navbar-light justify-content-center navbar-bottom" style="background-color: #dddddd;">
+	<nav class="navbar fixed-bottom navbar-light justify-content-center navbar-bottom" style="z-index:1010; background-color: #dddddd;">
 	{% endif %}
     <span class="navbar-text">
 
