@@ -144,27 +144,27 @@ function updateProbeCards() {
 					};
 					mode = current.status.mode;
 					if (['Prime', 'Shutdown'].includes(mode)) {
-						$('#status_footer').slideDown();
+						$('#status_footer').slideDown(400, recalculateMasonryLayout);
 						$('#mode_timer_label').show();
 						$('#lid_open_label').hide();
 						$('#pmode_group').hide();
 					} else if (['Startup', 'Reignite'].includes(mode)) {
-						$('#status_footer').slideDown();
+						$('#status_footer').slideDown(400, recalculateMasonryLayout);
 						$('#mode_timer_label').show();
 						$('#lid_open_label').hide();
 						$('#pmode_group').show();
 					} else if (mode == 'Hold') {
-						$('#status_footer').slideUp();
+						$('#status_footer').slideUp(400, recalculateMasonryLayout);
 						$('#mode_timer_label').hide();
 						$('#lid_open_label').show();
 						$('#pmode_group').hide();
 					} else if (mode == 'Smoke') {
-						$('#status_footer').slideUp();
+						$('#status_footer').slideUp(400, recalculateMasonryLayout);
 						$('#mode_timer_label').hide();
 						$('#lid_open_label').hide();
 						$('#pmode_group').show();
 					} else {
-						$('#status_footer').slideUp();
+						$('#status_footer').slideUp(400, recalculateMasonryLayout);
 						$('#mode_timer_label').hide();
 						$('#lid_open_label').hide();
 						$('#pmode_group').hide();
@@ -249,14 +249,15 @@ function updateProbeCards() {
 			if ((mode == 'Hold') && (last_lid_open_status != current.status.lid_open_detected)) {
 				last_lid_open_status = current.status.lid_open_detected;
 				if (last_lid_open_status) {
-					$('#status_footer').slideDown();
+					$('#status_footer').slideDown(400, recalculateMasonryLayout);
 					$('#mode_timer_label').hide();
 					$('#lid_open_label').show();
 				} else {
-					$('#status_footer').slideUp();
+					$('#status_footer').slideUp(400, recalculateMasonryLayout);
 					$('#mode_timer_label').hide();
 					$('#lid_open_label').show();
 				};
+
 			}; 
 
 			if ((mode == 'Hold') && (last_lid_open_status)) {
