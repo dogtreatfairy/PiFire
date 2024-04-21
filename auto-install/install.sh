@@ -218,6 +218,42 @@ fi
 # If supervisor isn't already running, startup Supervisor
 $SUDO service supervisor start
 
+echo "*************************************************************************"
+echo "**                                                                     **"
+echo "**      Configuring SAMBA SHare...                                     **"
+echo "**                                                                     **"
+echo "*************************************************************************"
+
+# Check if Samba is installed
+if ! dpkg -l | grep -q "samba"; then
+    echo "Samba is not installed. Installing it..."
+    sudo apt-get update
+    sudo apt-get install samba
+fi
+
+# Define the shared folder path
+SHARE_PATH="/usr/local/bin"
+
+# Get the current IP address
+RASPBERRY_PI_IP=$(hostname -I | awk '{print $1}')
+
+# Configure Samba
+echo "[pifiredev]" | sudo tee -a /etc/samba/smb.conf
+echo "path = $SHARE_PATH" | sudo tee -a /etc/samba/smb.conf
+echo "read only = no" | sudo tee -a /etc/samba/smb.conf
+echo "guest ok = yes" | sudo tee -a /etc/samba/smb.conf
+
+# Restart Samba
+sudo systemctl restart smbd
+
+# Add user 'ryan' to Samba
+sudo smbpasswd -a ryan
+
+# Provide instructions to access the shared folder
+echo "The shared folder is accessible at:"
+echo "smb://$RASPBERRY_PI_IP/pifiredev"
+
+
 # Rebooting
 whiptail --msgbox --backtitle "Install Complete / Reboot Required" --title "Installation Completed - Rebooting" "Congratulations, the installation is complete.  At this time, we will perform a reboot and your application should be ready.  On first boot, the wizard will guide you through the remaining setup steps.  You should be able to access your application by opening a browser on your PC or other device and using the IP address (or http://[hostname].local) for this device.  Enjoy!" ${r} ${c}
 clear
