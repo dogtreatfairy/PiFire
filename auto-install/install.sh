@@ -113,7 +113,7 @@ source bin/activate
 
 echo " - Installing module dependencies... "
 # Install module dependencies 
-modules=("flask==2.3.3" "flask-mobility" "flask-qrcode" "flask-socketio" "eventlet==0.30.2" "gunicorn" "gpiozero" "redis" "uuid" "influxdb-client[ciso]" "apprise" "scikit-fuzzy" "scikit-learn" "ratelimitingfilter" "pillow>=9.2.0" "paho-mqtt" "psutil" "luma.lcd" "pyky040==0.1.4" "git+https://github.com/pimoroni/VL53L0X-python.git" "rpi-hardware-pwm")
+modules=("flask==2.3.3" "flask-mobility" "flask-qrcode" "flask-socketio" "gevent" "gunicorn" "gpiozero" "redis" "uuid" "influxdb-client[ciso]" "apprise" "scikit-fuzzy" "scikit-learn" "ratelimitingfilter" "pillow>=9.2.0" "paho-mqtt" "psutil" "luma.lcd" "pyky040==0.1.4" "git+https://github.com/pimoroni/VL53L0X-python.git" "rpi-hardware-pwm")
 
 failed=()
 
@@ -254,7 +254,7 @@ SAMBA=$(whiptail --title "Install SAMBA Server?" --yesno "Do you want to install
 
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
-    sudo apt-get install -y samba
+    sudo apt-get install -y samba libpam-smbpass
 
     # Create the directory if it doesn't exist
     sudo mkdir -p /usr/local/bin/pifire
@@ -283,9 +283,11 @@ if [ $exitstatus = 0 ]; then
     echo "read only = no" | sudo tee -a /etc/samba/smb.conf
     echo "create mask = 0664" | sudo tee -a /etc/samba/smb.conf
     echo "directory mask = 0775" | sudo tee -a /etc/samba/smb.conf
+    echo "pam password change = yes" | sudo tee -a /etc/samba/smb.conf
 
-    # Set Samba password for the provided user
-    sudo smbpasswd -a "$smb_user"
+    # Configure PAM to use the pam_smbpass.so module
+    echo "password   optional   pam_smbpass.so nullok use_authtok use_first_pass" | sudo tee -a /etc/pam.d/common-password
+    echo "password   optional   pam_smbpass.so nullok use_authtok use_first_pass" | sudo tee -a /etc/pam.d/common-auth
 
     # Restart Samba services
     sudo systemctl restart smbd nmbd
