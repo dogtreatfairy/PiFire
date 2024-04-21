@@ -89,7 +89,7 @@ def default_settings():
 	settings['probe_settings']['probe_map'] = default_probe_map(settings['probe_settings']['probe_profiles'])
 
 	settings['globals'] = {
-		'grill_name' : 'PB850-DTFE',
+		'grill_name' : '',
 		'debug_mode' : False,
 		'page_theme' : 'dark',
 		'triggerlevel' : 'HIGH',
@@ -99,7 +99,7 @@ def default_settings():
 		'startup_timer' : 240,
 		'startup_exit_temp' : 0,  # Exit startup at this temperature threshold. [0 = disabled]
 		'auto_power_off' : False,
-		'dc_fan': False,
+		'dc_fan': True,
 		'standalone': True,
 		'units' : 'F',
 		'augerrate' : 0.3,  		# (grams per second) default auger load rate is 10 grams / 30 seconds
@@ -109,7 +109,7 @@ def default_settings():
 		'boot_to_monitor' : False,  # Set to True to boot directly into monitor mode
 		'prime_ignition' : False,  # Set to True to enable the igniter in prime & startup mode
 		'updated_message' : False,   # Set to True to display a pop-up message after the system has been updated 
-		'venv' : False,  # Set to True if running in virtual environment (needed for Raspberry Pi OS Bookworm)
+		'venv' : True,  # Set to True if running in virtual environment (needed for Raspberry Pi OS Bookworm)
 		'real_hw' : True  # Set to True if running on real hardware (i.e. Raspberry Pi), False if running in a test environment 
 	}
 
@@ -163,7 +163,7 @@ def default_settings():
 	settings['controller']['config'] = _default_controller_config()
 
 	settings['display'] = {
-		'selected' : 'ili9341e'
+		'selected' : 'none'
 	}
 	settings['display']['config'] = _default_display_config()
 
@@ -225,9 +225,9 @@ def default_settings():
 	}
 
 	settings['modules'] = {
-		'grillplat' : 'pifire_pwm',
-		'display' : 'ili9341e',
-		'dist' : 'vl53l0x'
+		'grillplat' : 'prototype',
+		'display' : 'none',
+		'dist' : 'none'
 	}
 
 	settings['lastupdated'] = {
