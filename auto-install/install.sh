@@ -113,29 +113,43 @@ source bin/activate
 
 echo " - Installing module dependencies... "
 # Install module dependencies 
-python -m pip install "flask==2.3.3" 
-python -m pip install flask-mobility
-python -m pip install flask-qrcode
-python -m pip install flask-socketio
-if ! python -c "import sys; assert sys.version_info[:2] >= (3,11)" > /dev/null; then
-    echo "System is running a python version lower than 3.11, installing eventlet==0.30.2";
-    python -m pip install "eventlet==0.30.2"
+modules=("flask==2.3.3" "flask-mobility" "flask-qrcode" "flask-socketio" "eventlet==0.30.2" "gunicorn" "gpiozero" "redis" "uuid" "influxdb-client[ciso]" "apprise" "scikit-fuzzy" "scikit-learn" "ratelimitingfilter" "pillow>=9.2.0" "paho-mqtt" "psutil" "luma.lcd" "pyky040==0.1.4" "git+https://github.com/pimoroni/VL53L0X-python.git" "rpi-hardware-pwm")
+
+failed=()
+
+for module in "${modules[@]}"; do
+    python -m pip install $module || failed+=($module)
+done
+
+if [ ${#failed[@]} -ne 0 ]; then
+    echo "ERROR: Modules Failed to Install"
+    echo "${failed[@]}"
+
+    PS3='Please enter your choice: '
+    options=("Try Again" "Continue" "Exit Script")
+    select opt in "${options[@]}"
+    do
+        case $opt in
+            "Try Again")
+                for module in "${failed[@]}"; do
+                    python -m pip install $module
+                done
+                break
+                ;;
+            "Continue")
+                break
+                ;;
+            "Exit Script")
+                exit 1
+                ;;
+            *) echo "invalid option $REPLY";;
+        esac
+    done
 else
-    echo "System is running a python version 3.11 or greater, installing latest eventlet"
-    python -m pip install eventlet
-fi      
-python -m pip install gunicorn
-python -m pip install gpiozero
-python -m pip install redis
-python -m pip install uuid
-python -m pip install influxdb-client[ciso]
-python -m pip install apprise
-python -m pip install scikit-fuzzy
-python -m pip install scikit-learn
-python -m pip install ratelimitingfilter
-python -m pip install "pillow>=9.2.0"
-python -m pip install paho-mqtt
-python -m pip install psutil
+    clear
+    echo -e "Python Modules Install - \e[32mOK\e[0m"
+    sleep 2
+fi
 
 # Setup config.txt to enable busses 
 clear
@@ -146,12 +160,23 @@ echo "**                                                                     **"
 echo "*************************************************************************"
 
 # Enable SPI - Needed for some displays
-echo "dtparam=spi=on" | $SUDO tee -a /boot/config.txt > /dev/null
+if ! grep -q "dtparam=spi=on" /boot/config.txt; then
+    echo "dtparam=spi=on" | $SUDO tee -a /boot/config.txt > /dev/null
+fi
+
 # Enable I2C - Needed for some displays, ADCs, distance sensors
-echo "dtparam=i2c_arm=on" | $SUDO tee -a /boot/config.txt > /dev/null
-echo "i2c-dev" | $SUDO tee -a /etc/modules > /dev/null
+if ! grep -q "dtparam=i2c_arm=on" /boot/config.txt; then
+    echo "dtparam=i2c_arm=on" | $SUDO tee -a /boot/config.txt > /dev/null
+fi
+
+if ! grep -q "i2c-dev" /etc/modules; then
+    echo "i2c-dev" | $SUDO tee -a /etc/modules > /dev/null
+fi
+
 # Enable Hardware PWM - Needed for hardware PWM support 
-echo "dtoverlay=pwm,pin=13,func=4" | $SUDO tee -a /boot/config.txt > /dev/null
+if ! grep -q "dtoverlay=pwm,pin=13,func=4" /boot/config.txt; then
+    echo "dtoverlay=pwm,pin=13,func=4" | $SUDO tee -a /boot/config.txt > /dev/null
+fi
 
 # Setup backlight / power permissions if a DSI screen is installed  
 clear
@@ -218,40 +243,55 @@ fi
 # If supervisor isn't already running, startup Supervisor
 $SUDO service supervisor start
 
+clear
 echo "*************************************************************************"
 echo "**                                                                     **"
-echo "**      Configuring SAMBA SHare...                                     **"
+echo "**      Configuring SAMBA Share...                                     **"
 echo "**                                                                     **"
 echo "*************************************************************************"
 
-# Check if Samba is installed
-if ! dpkg -l | grep -q "samba"; then
-    echo "Samba is not installed. Installing it..."
-    sudo apt-get update
-    sudo apt-get install samba
+SAMBA=$(whiptail --title "Install SAMBA Server?" --yesno "Do you want to install the SAMBA server and configure a share?" 8 78 3>&1 1>&2 2>&3)
+
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+    sudo apt-get install -y samba
+
+    # Create the directory if it doesn't exist
+    sudo mkdir -p /usr/local/bin/pifire
+
+    # Get list of users
+    users=$(cut -d: -f1 /etc/passwd)
+
+    # Convert users to array
+    users_array=($users)
+
+    # Create menu options
+    menu_options=()
+    for user in "${users_array[@]}"; do
+        menu_options+=("$user" "")
+    done
+
+    # Prompt for Samba username
+    smb_user=$(whiptail --title "User Selection" --menu "Select a user for the Samba share:" 20 78 10 "${menu_options[@]}" 3>&1 1>&2 2>&3)
+
+    # Set up Samba configuration
+    echo "[pifire]" | sudo tee -a /etc/samba/smb.conf
+    echo "comment = PiFire Share" | sudo tee -a /etc/samba/smb.conf
+    echo "path = /usr/local/bin/pifire" | sudo tee -a /etc/samba/smb.conf
+    echo "browsable = yes" | sudo tee -a /etc/samba/smb.conf
+    echo "valid users = $smb_user" | sudo tee -a /etc/samba/smb.conf
+    echo "read only = no" | sudo tee -a /etc/samba/smb.conf
+    echo "create mask = 0664" | sudo tee -a /etc/samba/smb.conf
+    echo "directory mask = 0775" | sudo tee -a /etc/samba/smb.conf
+
+    # Set Samba password for the provided user
+    sudo smbpasswd -a "$smb_user"
+
+    # Restart Samba services
+    sudo systemctl restart smbd nmbd
 fi
 
-# Define the shared folder path
-SHARE_PATH="/usr/local/bin"
-
-# Get the current IP address
-RASPBERRY_PI_IP=$(hostname -I | awk '{print $1}')
-
-# Configure Samba
-echo "[pifiredev]" | sudo tee -a /etc/samba/smb.conf
-echo "path = $SHARE_PATH" | sudo tee -a /etc/samba/smb.conf
-echo "read only = no" | sudo tee -a /etc/samba/smb.conf
-echo "guest ok = yes" | sudo tee -a /etc/samba/smb.conf
-
-# Restart Samba
-sudo systemctl restart smbd
-
-# Add user 'ryan' to Samba
-sudo smbpasswd -a ryan
-
-# Provide instructions to access the shared folder
-echo "The shared folder is accessible at:"
-echo "smb://$RASPBERRY_PI_IP/pifiredev"
+# Continue with the rest of the install.sh script
 
 
 # Rebooting
