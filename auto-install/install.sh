@@ -10,6 +10,11 @@
 #
 # NOTE: Pre-Requisites to run Raspi-Config first.  See README.md.
 
+APT_PACKAGES=("python3-dev" "python3-pip" "python3-venv" "python3-rpi.gpio" "python3-scipy" "nginx" "git" "supervisor" "ttf-mscorefonts-installer" "redis-server" "libatlas-base-dev" "libopenjp2-7")
+PYTHON_MODULES=("flask==2.3.3" "flask-mobility" "flask-qrcode" "flask-socketio" "gevent" "gunicorn" "gpiozero" "redis" "evdev" "uuid" "influxdb-client[ciso]" "apprise" "scikit-fuzzy" "scikit-learn" "ratelimitingfilter" "pillow>=9.2.0" "paho-mqtt" "psutil")
+GIT_REPO=("https://github.com/dogtreatfairy/pifire")
+GIT_BRANCH=("development")
+
 # Must be root to install
 if [[ $EUID -eq 0 ]];then
     echo "You are root."
@@ -39,8 +44,46 @@ r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
 # Display the welcome dialog
-whiptail --msgbox --backtitle "Welcome" --title "PiFire DTFE - Development - Automated Installer" "This installer will transform your Single Board Computer into a connected Smoker Controller.  NOTE: This installer is intended to be run on a fresh install of Raspberry Pi OS Lite 32-Bit Bullseye or later." ${r} ${c}
+# Check if /usr/local/bin/pifire exists
+if [ -d "/usr/local/bin/pifire" ]; then
+    DESCRIPTION="This installer will transform your Single Board Computer into a connected Smoker Controller.  NOTE: This installer is intended to be run on a fresh install of Raspberry Pi OS Lite 32-Bit Bullseye or later."
+    OPTION=$(whiptail --title "PiFire Installer" --menu "$DESCRIPTION\n\nChoose your option" 20 78 4 \
+    "Re-Install" "Purge and re-install PiFire" \
+    "Uninstall" "Remove PiFire" \
+    "Exit" "Exit installer" 3>&1 1>&2 2>&3)
 
+    exitstatus=$?
+    if [ $exitstatus = 0 ]; then
+        if [ "$OPTION" = "Exit" ]; then
+            exit 0
+        elif [ "$OPTION" = "Uninstall" ]; then
+            # Uninstall APT_PACKAGES, PYTHON_MODULES, and GIT_REPO
+            for pkg in "${APT_PACKAGES[@]}"; do
+                sudo apt-get purge -y $pkg
+            done
+            for mod in "${PYTHON_MODULES[@]}"; do
+                sudo pip3 uninstall -y $mod
+            done
+            sudo rm -rf /usr/local/bin/pifire
+            exit 0
+        elif [ "$OPTION" = "Re-Install" ]; then
+            # Uninstall APT_PACKAGES, PYTHON_MODULES, and GIT_REPO
+            for pkg in "${APT_PACKAGES[@]}"; do
+                sudo apt-get purge -y $pkg
+            done
+            for mod in "${PYTHON_MODULES[@]}"; do
+                sudo pip3 uninstall -y $mod
+            done
+            sudo rm -rf /usr/local/bin/pifire
+            # Ask if the user wants to remove Samba
+            if (whiptail --title "Remove Samba" --yesno "Do you want to remove Samba?" 10 60) then
+                sudo apt-get purge -y samba
+            fi
+        fi
+    else
+        exit 0
+    fi
+fi
 # Starting actual steps for installation
 clear
 echo "*************************************************************************"
@@ -71,7 +114,9 @@ echo "**                                                                     **"
 echo "**      Installing Dependencies... (This could take several minutes)   **"
 echo "**                                                                     **"
 echo "*************************************************************************"
-$SUDO apt install python3-dev python3-pip python3-venv python3-rpi.gpio python3-scipy nginx git supervisor ttf-mscorefonts-installer redis-server libatlas-base-dev libopenjp2-7 -y
+for pkg in "${APT_PACKAGES[@]}"; do
+    sudo apt install -y $pkg
+done
 
 # Grab project files
 clear
@@ -84,7 +129,7 @@ cd /usr/local/bin
 # Use a shallow clone to reduce download size
 #$SUDO git clone --depth 1 https://github.com/dogtreatfairy/pifire
 # Replace the below command to fetch development branch
-$SUDO git clone --depth 1 --branch development https://github.com/dogtreatfairy/pifire
+$SUDO git clone --depth 1 --branch $GIT_BRANCH $GIT_REPO
 
 # Setup Python VENV & Install Python dependencies
 clear
@@ -113,11 +158,9 @@ source bin/activate
 
 echo " - Installing module dependencies... "
 # Install module dependencies 
-modules=("flask==2.3.3" "flask-mobility" "flask-qrcode" "flask-socketio" "gevent" "gunicorn" "gpiozero" "redis" "evdev" "uuid" "influxdb-client[ciso]" "apprise" "scikit-fuzzy" "scikit-learn" "ratelimitingfilter" "pillow>=9.2.0" "paho-mqtt" "psutil")
-
 failed=()
 
-for module in "${modules[@]}"; do
+for module in "${PYTHON_MODULES[@]}"; do
     python -m pip install $module || failed+=($module)
 done
 
@@ -254,7 +297,7 @@ SAMBA=$(whiptail --title "Install SAMBA Server?" --yesno "Do you want to install
 
 exitstatus=$?
 if [ $exitstatus = 0 ]; then
-    sudo apt-get install -y samba libpam-smbpass
+    sudo apt-get install -y samba
 
     # Create the directory if it doesn't exist
     sudo mkdir -p /usr/local/bin/pifire
@@ -273,6 +316,10 @@ if [ $exitstatus = 0 ]; then
 
     # Prompt for Samba username
     smb_user=$(whiptail --title "User Selection" --menu "Select a user for the Samba share:" 20 78 10 "${menu_options[@]}" 3>&1 1>&2 2>&3)
+
+    # Add the user to the Samba password database
+    sudo pdbedit -a -u $smb_user
+
     # Set up Samba configuration
     while true; do
         if echo "[pifire]" | sudo tee -a /etc/samba/smb.conf &&
@@ -282,11 +329,11 @@ if [ $exitstatus = 0 ]; then
            echo "valid users = $smb_user" | sudo tee -a /etc/samba/smb.conf &&
            echo "read only = no" | sudo tee -a /etc/samba/smb.conf &&
            echo "create mask = 0664" | sudo tee -a /etc/samba/smb.conf &&
-           echo "directory mask = 0775" | sudo tee -a /etc/samba/smb.conf &&
-           echo "pam password change = yes" | sudo tee -a /etc/samba/smb.conf; then
+           echo "directory mask = 0775" | sudo tee -a /etc/samba/smb.conf; then
             break
         else
-            read -p "Failed to write to smb.conf. Try again? (y/n) " choice
+            echo "Failed to write to smb.conf. Try again? (y/n) "
+            read choice
             case "$choice" in
                 y|Y ) continue;;
                 * ) echo "Continuing without updating smb.conf"; break;;
@@ -294,23 +341,11 @@ if [ $exitstatus = 0 ]; then
         fi
     done
 
-    # Configure PAM to use the pam_smbpass.so module
-    while true; do
-        if echo "password   optional   pam_smbpass.so nullok use_authtok use_first_pass" | sudo tee -a /etc/pam.d/common-password &&
-           echo "password   optional   pam_smbpass.so nullok use_authtok use_first_pass" | sudo tee -a /etc/pam.d/common-auth; then
-            break
-        else
-            read -p "Failed to write to common-password or common-auth. Try again? (y/n) " choice
-            case "$choice" in
-                y|Y ) continue;;
-                * ) echo "Continuing without updating common-password or common-auth"; break;;
-            esac
-        fi
-    done
-
     # Restart Samba services
     sudo systemctl restart smbd nmbd
 fi
+
+sleep 1
 
 # Rebooting
 clear

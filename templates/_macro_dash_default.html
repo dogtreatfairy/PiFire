@@ -157,28 +157,6 @@
 {% endmacro %}
 
 {% macro render_hopper_card() %}
-<div {% if (settings['modules']['dist'] == 'none') %} style="display:none" {% endif %}>
-	<div class="card shadow">
-		<div class="card-header bg-primary text-white text-center">
-			<h5><i class="fas fa-tree mr-2"></i><b>Pellets:</b><span id="hopperPellets" class="ml-2"></span></h5>
-		</div>
-		<div class="card-body text-center text-large pl-3 pr-3">
-			<div class="row mb-3 bg-dark align-items-center justify-content-center">
-				<div class="col-12">
-					<div class="progress shadow" style="height:38px">
-						<div id="hopperLevel" class="progress-bar progress-bar-striped bg-success" style="width:100%;height:38px">100%</div>
-					</div>
-				</div>
-			</div>
-			<div class="row rounded-bottom align-items-center justify-content-end">
-				<div class="col-12 d-flex justify-content-center justify-content-lg-end align-items-center">
-					<a href="/pellets" type="button" class="btn btn-outline-success mr-2">Pellet Manager</a>
-					<button type="button" class="btn btn-outline-primary" onclick="refreshHopperStatus()"><i class="fas fa-sync"></i></button>
-				</div>
-			</div>
-		</div>
-	</div>
-</div>
 {% endmacro %}
 
 {% macro render_status_card(settings) %}
