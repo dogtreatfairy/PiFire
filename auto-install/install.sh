@@ -18,6 +18,7 @@ GIT_BRANCH=("development")
 # Must be root to install
 if [[ $EUID -eq 0 ]];then
     echo "You are root."
+    echo ""
 else
     echo "SUDO will be used for the install."
     # Check if it is actually installed
@@ -47,7 +48,7 @@ c=$(( c < 70 ? 70 : c ))
 # Check if /usr/local/bin/pifire exists
 if [ -d "/usr/local/bin/pifire" ]; then
     DESCRIPTION="This installer will transform your Single Board Computer into a connected Smoker Controller.  NOTE: This installer is intended to be run on a fresh install of Raspberry Pi OS Lite 32-Bit Bullseye or later."
-    OPTION=$(whiptail --title "PiFire Installer" --menu "$DESCRIPTION\n\nChoose your option" 20 78 4 \
+    OPTION=$(whiptail --title "PiFire-DTFE (Dev) Installer" --menu "$DESCRIPTION\n\nChoose your option" 20 78 4 \
     "Re-Install" "Purge and re-install PiFire" \
     "Uninstall" "Remove PiFire" \
     "Exit" "Exit installer" 3>&1 1>&2 2>&3)
@@ -60,6 +61,9 @@ if [ -d "/usr/local/bin/pifire" ]; then
             # Ask if the user wants to keep user settings
             if (whiptail --title "Keep User Settings" --yesno "Do you want to keep user settings?" 10 60) then
                 sudo cp /usr/local/bin/pifire/settings.json /usr/local/bin/settings-user.json
+                echo ""
+                echo -e "User Settings - \e[32mSAVED[0m"
+                echo ""
             fi
 
             # Uninstall PYTHON_MODULES in the virtual environment
@@ -73,6 +77,7 @@ if [ -d "/usr/local/bin/pifire" ]; then
 
             for pkg in "${APT_PACKAGES[@]}"; do
                 sudo apt-get purge -y $pkg
+                
             done
 
             sudo rm -rf /usr/local/bin/pifire
@@ -82,16 +87,17 @@ if [ -d "/usr/local/bin/pifire" ]; then
                 sudo apt-get purge -y samba
             fi
 
-            # If settings-user.json exists, move it back to settings.json
-            if [ -f "/usr/local/bin/settings-user.json" ]; then
-                sudo mv /usr/local/bin/settings-user.json /usr/local/bin/pifire/settings.json
-            fi
+            sudo apt autoremove -y
+            sudo apt autoclean -y
 
             exit 0
         elif [ "$OPTION" = "Re-Install" ]; then
             # Ask if the user wants to keep user settings
             if (whiptail --title "Keep User Settings" --yesno "Do you want to keep user settings?" 10 60) then
                 sudo cp /usr/local/bin/pifire/settings.json /usr/local/bin/settings-user.json
+                echo ""
+                echo -e "User Settings - \e[32mSAVED[0m"
+                echo ""                
             fi
 
             # Uninstall PYTHON_MODULES in the virtual environment
@@ -106,6 +112,9 @@ if [ -d "/usr/local/bin/pifire" ]; then
             for pkg in "${APT_PACKAGES[@]}"; do
                 sudo apt-get purge -y $pkg
             done
+
+            sudo apt autoremove -y
+            sudo apt autoclean -y
 
             sudo rm -rf /usr/local/bin/pifire
 
@@ -115,7 +124,10 @@ if [ -d "/usr/local/bin/pifire" ]; then
             fi
         fi
     else
-        exit 0
+        DESCRIPTION="This installer will transform your Single Board Computer into a connected Smoker Controller.  NOTE: This installer is intended to be run on a fresh install of Raspberry Pi OS Lite 32-Bit Bullseye or later."
+        OPTION=$(whiptail --title "PiFire-DTFE (Dev) Installer" --menu "$DESCRIPTION\n\nChoose your option" 20 78 2 \
+        "Install" "Install PiFire" \
+        "Exit" "Exit installer" 3>&1 1>&2 2>&3)
     fi
 fi
 # Starting actual steps for installation
@@ -352,7 +364,19 @@ if [ $exitstatus = 0 ]; then
     smb_user=$(whiptail --title "User Selection" --menu "Select a user for the Samba share:" 20 78 10 "${menu_options[@]}" 3>&1 1>&2 2>&3)
 
     # Add the user to the Samba password database
-    sudo pdbedit -a -u $smb_user
+    for i in {1..3}
+    do
+        sudo pdbedit -a -u $smb_user
+        if [ $? -eq 0 ]; then
+            break
+        else
+            echo "Passwords do not match. Please try again."
+        fi
+        if [ $i -eq 3 ]; then
+            echo "Failed to set Samba password after 3 attempts. Exiting."
+            exit 1
+        fi
+    done
 
     # Set up Samba configuration
     while true; do
@@ -386,7 +410,7 @@ clear
 # If settings-user.json exists, move it back to settings.json
 if [ -f "/usr/local/bin/settings-user.json" ]; then
     sudo mv /usr/local/bin/settings-user.json /usr/local/bin/pifire/settings.json
-    echo "User Settings Restored - \e[32mOK\e[0m"
+    echo -e "User Settings - \e[32mRESTORED[0m"
     echo ""
 fi
 

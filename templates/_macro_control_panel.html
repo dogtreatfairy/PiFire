@@ -145,22 +145,21 @@
         </div>
     </div>
 <!-- Startup Modal -->
-    <div class="modal" id="startupModal">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <!-- Modal Header -->
-                <div class="modal-header">
-                    <h4 class="modal-title"><i class="fa-solid fa-triangle-exclamation"></i> Startup Check</h4>
-                    <button type="button" class="close" data-dismiss="modal">×</button>
+    <div class="modal fade" id="startupModal" tabindex="-1" role="dialog" aria-labelledby="startupModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content shadow-lg border rounded border-warning">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title" id="startupModalLabel"><i class="fa-solid fa-triangle-exclamation"></i> Startup Check</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
-                <!-- Modal body -->
                 <div class="modal-body text-center">
                     Confirm Startup Grill?<br><br>
-                    <button class="btn btn-primary" onclick="cpStartup()">Startup</button>
                 </div>
-                <!-- Modal footer -->
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+                <div class="modal-footer list-group-item bg-light pl-2 pt-1 pb-1">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="cpStartup()">Startup</button>
                 </div>
             </div>
         </div>
