@@ -57,25 +57,58 @@ if [ -d "/usr/local/bin/pifire" ]; then
         if [ "$OPTION" = "Exit" ]; then
             exit 0
         elif [ "$OPTION" = "Uninstall" ]; then
-            # Uninstall APT_PACKAGES, PYTHON_MODULES, and GIT_REPO
+            # Ask if the user wants to keep user settings
+            if (whiptail --title "Keep User Settings" --yesno "Do you want to keep user settings?" 10 60) then
+                cp /usr/local/bin/pifire/settings.json /usr/local/bin/settings-user.json
+            fi
+
+            # Uninstall PYTHON_MODULES in the virtual environment
+            cd /usr/local/bin/pifire || { echo "Failed to change directory"; exit 1; }
+            source bin/activate || { echo "Failed to activate virtual environment"; exit 1; }
             for mod in "${PYTHON_MODULES[@]}"; do
-                sudo pip3 uninstall -y $mod
+                pip3 uninstall -y $mod || { echo "Failed to uninstall $mod"; exit 1; }
             done
+            deactivate || { echo "Failed to deactivate virtual environment"; exit 1; }
+            cd / || { echo "Failed to change directory"; exit 1; }
+
             for pkg in "${APT_PACKAGES[@]}"; do
                 sudo apt-get purge -y $pkg
             done
+
             sudo rm -rf /usr/local/bin/pifire
+
+            # Ask if the user wants to remove Samba
+            if (whiptail --title "Remove Samba" --yesno "Do you want to remove Samba?" 10 60) then
+                sudo apt-get purge -y samba
+            fi
+
+            # If settings-user.json exists, move it back to settings.json
+            if [ -f "/usr/local/bin/settings-user.json" ]; then
+                mv /usr/local/bin/settings-user.json /usr/local/bin/pifire/settings.json
+            fi
+
             exit 0
         elif [ "$OPTION" = "Re-Install" ]; then
-            # Uninstall APT_PACKAGES, PYTHON_MODULES, and GIT_REPO
+            # Ask if the user wants to keep user settings
+            if (whiptail --title "Keep User Settings" --yesno "Do you want to keep user settings?" 10 60) then
+                cp /usr/local/bin/pifire/settings.json /usr/local/bin/settings-user.json
+            fi
+
+            # Uninstall PYTHON_MODULES in the virtual environment
+            cd /usr/local/bin/pifire || { echo "Failed to change directory"; exit 1; }
+            source bin/activate || { echo "Failed to activate virtual environment"; exit 1; }
             for mod in "${PYTHON_MODULES[@]}"; do
-                sudo pip3 uninstall -y $mod
+                pip3 uninstall -y $mod || { echo "Failed to uninstall $mod"; exit 1; }
             done
+            deactivate || { echo "Failed to deactivate virtual environment"; exit 1; }
+            cd / || { echo "Failed to change directory"; exit 1; }
+
             for pkg in "${APT_PACKAGES[@]}"; do
                 sudo apt-get purge -y $pkg
             done
-            
+
             sudo rm -rf /usr/local/bin/pifire
+
             # Ask if the user wants to remove Samba
             if (whiptail --title "Remove Samba" --yesno "Do you want to remove Samba?" 10 60) then
                 sudo apt-get purge -y samba
@@ -348,8 +381,17 @@ fi
 
 sleep 1
 
-# Rebooting
+
 clear
+# If settings-user.json exists, move it back to settings.json
+if [ -f "/usr/local/bin/settings-user.json" ]; then
+    mv /usr/local/bin/settings-user.json /usr/local/bin/pifire/settings.json
+    echo "User Settings Restored - \e[32mOK\e[0m"
+    echo ""
+fi
+
+# Rebooting
+
 echo "Congratulations, the installation is complete.  At this time, we will perform a reboot and your application should be ready.  On first boot, the wizard will guide you through the remaining setup steps.  You should be able to access your application by opening a browser on your PC or other device and using the IP address (or http://[hostname].local) for this device.  Enjoy!"
 echo ""
 
