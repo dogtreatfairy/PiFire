@@ -58,22 +58,23 @@ if [ -d "/usr/local/bin/pifire" ]; then
             exit 0
         elif [ "$OPTION" = "Uninstall" ]; then
             # Uninstall APT_PACKAGES, PYTHON_MODULES, and GIT_REPO
-            for pkg in "${APT_PACKAGES[@]}"; do
-                sudo apt-get purge -y $pkg
-            done
             for mod in "${PYTHON_MODULES[@]}"; do
                 sudo pip3 uninstall -y $mod
+            done
+            for pkg in "${APT_PACKAGES[@]}"; do
+                sudo apt-get purge -y $pkg
             done
             sudo rm -rf /usr/local/bin/pifire
             exit 0
         elif [ "$OPTION" = "Re-Install" ]; then
             # Uninstall APT_PACKAGES, PYTHON_MODULES, and GIT_REPO
-            for pkg in "${APT_PACKAGES[@]}"; do
-                sudo apt-get purge -y $pkg
-            done
             for mod in "${PYTHON_MODULES[@]}"; do
                 sudo pip3 uninstall -y $mod
             done
+            for pkg in "${APT_PACKAGES[@]}"; do
+                sudo apt-get purge -y $pkg
+            done
+            
             sudo rm -rf /usr/local/bin/pifire
             # Ask if the user wants to remove Samba
             if (whiptail --title "Remove Samba" --yesno "Do you want to remove Samba?" 10 60) then
