@@ -10,8 +10,17 @@
 #
 # NOTE: Pre-Requisites to run Raspi-Config first.  See README.md.
 
+# Check Python version and determine appropriate eventlet version
+if ! python -c "import sys; assert sys.version_info[:2] >= (3,11)" > /dev/null; then
+    echo "System is running a python version lower than 3.11, installing eventlet==0.30.2";
+    EVENTLET_VERSION="eventlet==0.30.2"
+else
+    echo "System is running a python version 3.11 or greater, installing latest eventlet"
+    EVENTLET_VERSION="eventlet"
+fi
+
 APT_PACKAGES=("python3-dev" "python3-pip" "python3-venv" "python3-rpi.gpio" "python3-scipy" "nginx" "git" "supervisor" "ttf-mscorefonts-installer" "redis-server" "libatlas-base-dev" "libopenjp2-7")
-PYTHON_MODULES=("flask==2.3.3" "flask-mobility" "flask-qrcode" "flask-socketio" "gevent" "gunicorn" "gpiozero" "redis" "evdev" "uuid" "influxdb-client[ciso]" "apprise" "scikit-fuzzy" "scikit-learn" "ratelimitingfilter" "pillow>=9.2.0" "paho-mqtt" "psutil")
+PYTHON_MODULES=("flask==2.3.3" "flask-mobility" "flask-qrcode" "flask-socketio" "$EVENTLET_VERSION" "gunicorn" "gpiozero" "redis" "evdev" "uuid" "influxdb-client[ciso]" "apprise" "scikit-fuzzy" "scikit-learn" "ratelimitingfilter" "pillow>=9.2.0" "paho-mqtt" "psutil")
 GIT_REPO=("https://github.com/dogtreatfairy/pifire")
 GIT_BRANCH=("development")
 
