@@ -113,7 +113,7 @@ source bin/activate
 
 echo " - Installing module dependencies... "
 # Install module dependencies 
-modules=("flask==2.3.3" "flask-mobility" "flask-qrcode" "flask-socketio" "gevent" "gunicorn" "gpiozero" "redis" "uuid" "influxdb-client[ciso]" "apprise" "scikit-fuzzy" "scikit-learn" "ratelimitingfilter" "pillow>=9.2.0" "paho-mqtt" "psutil" "luma.lcd" "pyky040==0.1.4" "git+https://github.com/pimoroni/VL53L0X-python.git" "rpi-hardware-pwm")
+modules=("flask==2.3.3" "flask-mobility" "flask-qrcode" "flask-socketio" "gevent" "gunicorn" "gpiozero" "redis" "evdev" "uuid" "influxdb-client[ciso]" "apprise" "scikit-fuzzy" "scikit-learn" "ratelimitingfilter" "pillow>=9.2.0" "paho-mqtt" "psutil")
 
 failed=()
 
@@ -125,21 +125,21 @@ if [ ${#failed[@]} -ne 0 ]; then
     echo "ERROR: Modules Failed to Install"
     echo "${failed[@]}"
 
-    PS3='Please enter your choice: '
+    PS3='Do you wish to: '
     options=("Try Again" "Continue" "Exit Script")
     select opt in "${options[@]}"
     do
         case $opt in
-            "Try Again")
+            "Try to install these modules again.")
                 for module in "${failed[@]}"; do
                     python -m pip install $module
                 done
                 break
                 ;;
-            "Continue")
+            "Continue without installing.")
                 break
                 ;;
-            "Exit Script")
+            "Exit Installer.")
                 exit 1
                 ;;
             *) echo "invalid option $REPLY";;
@@ -273,30 +273,59 @@ if [ $exitstatus = 0 ]; then
 
     # Prompt for Samba username
     smb_user=$(whiptail --title "User Selection" --menu "Select a user for the Samba share:" 20 78 10 "${menu_options[@]}" 3>&1 1>&2 2>&3)
-
     # Set up Samba configuration
-    echo "[pifire]" | sudo tee -a /etc/samba/smb.conf
-    echo "comment = PiFire Share" | sudo tee -a /etc/samba/smb.conf
-    echo "path = /usr/local/bin/pifire" | sudo tee -a /etc/samba/smb.conf
-    echo "browsable = yes" | sudo tee -a /etc/samba/smb.conf
-    echo "valid users = $smb_user" | sudo tee -a /etc/samba/smb.conf
-    echo "read only = no" | sudo tee -a /etc/samba/smb.conf
-    echo "create mask = 0664" | sudo tee -a /etc/samba/smb.conf
-    echo "directory mask = 0775" | sudo tee -a /etc/samba/smb.conf
-    echo "pam password change = yes" | sudo tee -a /etc/samba/smb.conf
+    while true; do
+        if echo "[pifire]" | sudo tee -a /etc/samba/smb.conf &&
+           echo "comment = PiFire Share" | sudo tee -a /etc/samba/smb.conf &&
+           echo "path = /usr/local/bin/pifire" | sudo tee -a /etc/samba/smb.conf &&
+           echo "browsable = yes" | sudo tee -a /etc/samba/smb.conf &&
+           echo "valid users = $smb_user" | sudo tee -a /etc/samba/smb.conf &&
+           echo "read only = no" | sudo tee -a /etc/samba/smb.conf &&
+           echo "create mask = 0664" | sudo tee -a /etc/samba/smb.conf &&
+           echo "directory mask = 0775" | sudo tee -a /etc/samba/smb.conf &&
+           echo "pam password change = yes" | sudo tee -a /etc/samba/smb.conf; then
+            break
+        else
+            read -p "Failed to write to smb.conf. Try again? (y/n) " choice
+            case "$choice" in
+                y|Y ) continue;;
+                * ) echo "Continuing without updating smb.conf"; break;;
+            esac
+        fi
+    done
 
     # Configure PAM to use the pam_smbpass.so module
-    echo "password   optional   pam_smbpass.so nullok use_authtok use_first_pass" | sudo tee -a /etc/pam.d/common-password
-    echo "password   optional   pam_smbpass.so nullok use_authtok use_first_pass" | sudo tee -a /etc/pam.d/common-auth
+    while true; do
+        if echo "password   optional   pam_smbpass.so nullok use_authtok use_first_pass" | sudo tee -a /etc/pam.d/common-password &&
+           echo "password   optional   pam_smbpass.so nullok use_authtok use_first_pass" | sudo tee -a /etc/pam.d/common-auth; then
+            break
+        else
+            read -p "Failed to write to common-password or common-auth. Try again? (y/n) " choice
+            case "$choice" in
+                y|Y ) continue;;
+                * ) echo "Continuing without updating common-password or common-auth"; break;;
+            esac
+        fi
+    done
 
     # Restart Samba services
     sudo systemctl restart smbd nmbd
 fi
 
-# Continue with the rest of the install.sh script
-
-
 # Rebooting
-whiptail --msgbox --backtitle "Install Complete / Reboot Required" --title "Installation Completed - Rebooting" "Congratulations, the installation is complete.  At this time, we will perform a reboot and your application should be ready.  On first boot, the wizard will guide you through the remaining setup steps.  You should be able to access your application by opening a browser on your PC or other device and using the IP address (or http://[hostname].local) for this device.  Enjoy!" ${r} ${c}
 clear
+echo "Congratulations, the installation is complete.  At this time, we will perform a reboot and your application should be ready.  On first boot, the wizard will guide you through the remaining setup steps.  You should be able to access your application by opening a browser on your PC or other device and using the IP address (or http://[hostname].local) for this device.  Enjoy!"
+echo ""
+
+echo "Press any key to cancel."
+echo "Rebooting in:"
+for i in 5 4 3 2 1; do
+    echo "$i..."
+    read -r -s -n 1 -t 1 key
+    if [ $? -eq 0 ]; then
+        echo "Reboot cancelled"
+        exit 0
+    fi
+done
+
 $SUDO reboot

@@ -109,7 +109,7 @@ def default_settings():
 		'boot_to_monitor' : False,  # Set to True to boot directly into monitor mode
 		'prime_ignition' : False,  # Set to True to enable the igniter in prime & startup mode
 		'updated_message' : False,   # Set to True to display a pop-up message after the system has been updated 
-		'venv' : True,  # Set to True if running in virtual environment (needed for Raspberry Pi OS Bookworm)
+		'venv' : False,  # Set to True if running in virtual environment (needed for Raspberry Pi OS Bookworm)
 		'real_hw' : True  # Set to True if running on real hardware (i.e. Raspberry Pi), False if running in a test environment 
 	}
 
