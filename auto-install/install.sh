@@ -59,7 +59,7 @@ if [ -d "/usr/local/bin/pifire" ]; then
         elif [ "$OPTION" = "Uninstall" ]; then
             # Ask if the user wants to keep user settings
             if (whiptail --title "Keep User Settings" --yesno "Do you want to keep user settings?" 10 60) then
-                cp /usr/local/bin/pifire/settings.json /usr/local/bin/settings-user.json
+                sudo cp /usr/local/bin/pifire/settings.json /usr/local/bin/settings-user.json
             fi
 
             # Uninstall PYTHON_MODULES in the virtual environment
@@ -84,14 +84,14 @@ if [ -d "/usr/local/bin/pifire" ]; then
 
             # If settings-user.json exists, move it back to settings.json
             if [ -f "/usr/local/bin/settings-user.json" ]; then
-                mv /usr/local/bin/settings-user.json /usr/local/bin/pifire/settings.json
+                sudo mv /usr/local/bin/settings-user.json /usr/local/bin/pifire/settings.json
             fi
 
             exit 0
         elif [ "$OPTION" = "Re-Install" ]; then
             # Ask if the user wants to keep user settings
             if (whiptail --title "Keep User Settings" --yesno "Do you want to keep user settings?" 10 60) then
-                cp /usr/local/bin/pifire/settings.json /usr/local/bin/settings-user.json
+                sudo cp /usr/local/bin/pifire/settings.json /usr/local/bin/settings-user.json
             fi
 
             # Uninstall PYTHON_MODULES in the virtual environment
@@ -385,7 +385,7 @@ sleep 1
 clear
 # If settings-user.json exists, move it back to settings.json
 if [ -f "/usr/local/bin/settings-user.json" ]; then
-    mv /usr/local/bin/settings-user.json /usr/local/bin/pifire/settings.json
+    sudo mv /usr/local/bin/settings-user.json /usr/local/bin/pifire/settings.json
     echo "User Settings Restored - \e[32mOK\e[0m"
     echo ""
 fi
