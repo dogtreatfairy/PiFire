@@ -64,17 +64,31 @@
   font-size: 64px;
 }
 
-/* Medium devices (landscape tablets, 768px and up) */
-@media only screen and (max-width: 992px) {
+/* Extra small devices (portrait phones, less than 600px) */
+@media only screen and (max-width: 599px) {
   .grid-item {
-    width: 350px;
+    width: calc(100%);
   }
 }
 
-/* Large devices (laptops/desktops, 992px and up) */
-@media only screen and (min-width: 992px) {
+/* Small devices (landscape phones to portrait tablets, 600px and up) */
+@media only screen and (min-width: 600px) and (max-width: 899px) {
   .grid-item {
-    width: 400px;
+    width: calc((100% - 20px) / 2);
+  }
+}
+
+/* Medium devices (landscape tablets, 900px and up) */
+@media only screen and (min-width: 900px) and (max-width: 1199px) {
+  .grid-item {
+    width: calc((100% - 40px) / 3);
+  }
+}
+
+/* Large devices (laptops/desktops, 1200px and up) */
+@media only screen and (min-width: 1200px) {
+  .grid-item {
+    width: calc((100% - 60px) / 4);
   }
 }
 

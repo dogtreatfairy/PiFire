@@ -172,9 +172,28 @@
 	});
 
 	function recalculateMasonryLayout() {
-        msnry.reloadItems();
-        msnry.layout();
-    }
+		msnry.reloadItems();
+		msnry.layout();
+	}
+
+	// Listen for changes in the viewport size
+	window.addEventListener('resize', function() {
+		// Delay the recalculation of the layout to ensure the viewport dimensions have updated
+		setTimeout(function() {
+			recalculateMasonryLayout();
+		}, 300);
+	});
+
+	// Listen for changes in device orientation
+	window.addEventListener('orientationchange', function() {
+		// Delay the recalculation of the layout to ensure the viewport dimensions have updated
+		setTimeout(function() {
+			recalculateMasonryLayout();
+		}, 300);
+	});
+
+	// Initial layout
+	setTimeout(function() {recalculateMasonryLayout();}, 300);
 </script>
 
 
