@@ -23,16 +23,13 @@
 				<div class="collapse navbar-collapse overflow-auto mt-2 px-0 ml-auto col-12 col-lg-auto" style="z-index:1001;" id="settingsNav"> 
 					<ul class="nav nav-pills flex-column mx-auto px-0">
 						<li class="nav-item mt-1 px-1">
-							<a class="nav-link subnav-link active d-flex align-items-start" id="v-pills-systemUpdates-tab" data-toggle="pill" href="#v-pills-systemUpdates" role="tab" aria-controls="v-pills-systemUpdates" aria-selected="true">System Updates</a>
+							<a class="nav-link subnav-link active d-flex align-items-start" id="v-pills-systemStatus-tab" data-toggle="pill" href="#v-pills-systemStatus" role="tab" aria-controls="v-pills-systemStatus" aria-selected="true">System Status</a>
 						</li>
 						<li class="nav-item mt-1 px-1">
-							<a class="nav-link subnav-link d-flex align-items-start" id="v-pills-debugManual-tab" data-toggle="pill" href="#v-pills-debugManual" role="tab" aria-controls="v-pills-debugManual" aria-selected="false">Debug & Manual</a>
+							<a href="/wizard" class="nav-link subnav-link d-flex align-items-start btn btn-outline-primary btn-block shadow">Config Wizard</a>
 						</li>
 						<li class="nav-item mt-1 px-1">
 							<a class="nav-link subnav-link d-flex align-items-start" id="v-pills-dataManagement-tab" data-toggle="pill" href="#v-pills-dataManagement" role="tab" aria-controls="v-pills-dataManagement" aria-selected="false">Data Management</a>
-						</li>
-						<li class="nav-item mt-1 px-1">
-							<a class="nav-link subnav-link d-flex align-items-start" id="v-pills-configWizard-tab" data-toggle="pill" href="#v-pills-configWizard" role="tab" aria-controls="v-pills-configWizard" aria-selected="false">Config Wizard</a>
 						</li>
 						<li class="nav-item mt-1 px-1">
 							<a class="nav-link subnav-link d-flex align-items-start" id="v-pills-systemPower-tab" data-toggle="pill" href="#v-pills-systemPower" role="tab" aria-controls="v-pills-systemPower" aria-selected="false">System Power</a>
@@ -62,7 +59,7 @@
 			<div class="overflow-auto">
 				<div class="tab-content" id="v-pills-tabContent">
 					<!-- ============================ System Updates ========================== -->
-					<div class="tab-pane fade show active" id="v-pills-systemUpdates" role="tabpanel" aria-labelledby="v-pills-systemUpdates-tab">
+					<div class="tab-pane fade show active" id="v-pills-systemStatus" role="tabpanel" aria-labelledby="v-pills-systemStatus-tab">
 						<div class="card shadow">
 							<div class="card-header bg-secondary text-white">
 								<h5>
@@ -107,64 +104,72 @@
 									</div>
 								</div>
 							</div>
-						</div>
-					</div><!-- End of Tab -->
-					<!-- ============================ Debug and Manual Options ========================== -->
-					<div class="tab-pane fade" id="v-pills-debugManual" role="tabpanel" aria-labelledby="v-pills-debugManual-tab">
-						<div class="card shadow">
-							<div class="card-header bg-secondary text-white">
-								<h5>
+							<!-- Debug Options -->
+							<div class="btn bg-warning section-header justify-content-between align-items-center mt-3">
+								<h5 class="mb-0 d-flex align-items-center">
 									<i class="fas fa-bug mr-2"></i>Debug Options
 								</h5>
+								{% if settings['globals']['debug_mode'] %}
+									<span class="badge badge-warning">DEBUG</span>
+								{% endif %}
 							</div>
-							<div class="list-group">
-								<!-- Debug Mode Toggle -->
-								<div class="list-group-item border rounded border-success">
-									<div class="d-flex align-items-center justify-content-between mb-2">
-										<div>
-											<strong><i class="fas fa-bug mr-2"></i>Debug Mode</strong>
+							<div id="debugOptions">
+								<div class="list-group">
+									<!-- Debug Mode Toggle -->
+									<div class="list-group-item border rounded border-success py-4">
+										<div class="d-flex align-items-center justify-content-between mb-2">
+											<div>
+												<strong><i class="fas fa-bug mr-2"></i>Debug Mode</strong>
+											</div>
+											<div class="custom-control custom-switch d-flex justify-content-end">
+												<input type="checkbox" class="custom-control-input" id="debugtoggle" name="debugtoggle" {% if settings['globals']['debug_mode'] %}checked{% endif %} onchange="submitDebugToggle(this)">
+												<label class="custom-control-label" for="debugtoggle"></label>
+											</div>
 										</div>
-										<div class="custom-control custom-switch d-flex justify-content-end">
-											<input type="checkbox" class="custom-control-input" id="debugtoggle" name="debugtoggle" {% if settings['globals']['debug_mode'] %}checked{% endif %} onchange="submitDebugToggle(this)">
-											<label class="custom-control-label" for="debugtoggle"></label>
-										</div>
-									</div>
-									<div class="row">
-										<div class="col">
-											<span class="badge badge-note mr-2">NOTE</span>
-											<p class="text-muted mb-0 mt-1">This mode enables a debug.log to be generated with more verbose debug information provided.  May impact performance.</p>
-										</div>
-									</div>
-								</div>
-								<div class="list-group-item">
-									<div class="card">
-										<div class="card-header bg-warning">
-											<i class="fas fa-sliders-h"></i>&nbsp; Manual Control Mode
-										</div>
-										<div class="card-body">
-											<a href="/manual" class="btn btn-outline-warning btn-block shadow" role="button"><i class="fas fa-sliders-h"></i>&nbsp; Manual Controls</a><br>
-											<span class="badge badge-warning">NOTE:</span><i class="small"> This mode cancels current mode and will allow you to control the Auger, Fan, Igniter and Power outputs from the relay.</i>
-											<br>
+										<div class="row">
+											<div class="col">
+												<p class="text-muted mb-0 mt-1"><span class="badge badge-note mr-2">NOTE</span>This mode enables a debug.log to be generated with more verbose debug information provided.  May impact performance.</p>
+											</div>
 										</div>
 									</div>
-								</div>
-								<div class="list-group-item">
-									<div class="card">
-										<div class="card-header bg-primary">
-											<i class="fa-regular fa-file-lines"></i>&nbsp; Logs 
+									<!-- Manual Control Mode -->
+									<div class="list-group-item py-4">
+										<div class="row align-items-center justify-content-between mb-3">
+											<div class="col-12 col-lg-auto">
+												<strong><i class="fas fa-sliders-h mr-2"></i>Manual Control Mode</strong>
+											</div>
+											<div class="col-12 col-lg-auto mt-2 mt-lg-0">
+												<a href="/manual" class="btn btn-outline-warning shadow btn-block" role="button">
+													<i class="fas fa-sliders-h mr-2"></i> Manual Controls
+												</a>
+											</div>
 										</div>
-										<div class="card-body">
-											<form action="/admin/setting" method="POST">
-												<!-- Download Logs -->
-												<button type="submit" class="btn btn-outline-primary btn-block shadow" name="download_logs" value="true">
-													<i class="fa-solid fa-download"></i>&nbsp; Download Server Logs (zipped)
-												</button>
-											</form>
-											<br>
-											<a href="/logs" class="btn btn-outline-primary btn-block shadow" role="button">
-												<i class="fa-solid fa-eye"></i>&nbsp; Log Viewer
-											</a>
-											<br>
+										<div class="row">
+											<div class="col">
+												<p class="text-muted mb-0 mt-1"><span class="badge badge-note mr-2">NOTE</span>This mode cancels current mode and will allow you to control the Auger, Fan, Igniter and Power outputs from the relay.</p>
+											</div>
+										</div>
+									</div>
+									<!-- Logs -->
+									<div class="list-group-item py-4">
+										<div class="d-flex align-items-center justify-content-between">
+											<div class="col-12 mb-3">
+												<strong><i class="fa-regular fa-file-lines mr-2"></i>Logs</strong>
+											</div>
+										</div>
+										<div class="row">
+											<div class="col-12 col-lg-6 mt-1 mt-lg-0">
+												<form action="/admin/setting" method="POST">
+													<button type="submit" class="btn btn-outline-primary shadow btn-block" name="download_logs" value="true">
+														<i class="fa-solid fa-download mr-2"></i>Download Server Logs (zipped)
+													</button>
+												</form>
+											</div>
+											<div class="col-12 col-lg-6 mt-2 mt-lg-0 mb-lg-0 mb-2">
+												<a href="/logs" class="btn btn-outline-primary shadow btn-block" role="button">
+													<i class="fa-solid fa-eye mr-2"></i>Log Viewer
+												</a>
+											</div>
 										</div>
 									</div>
 								</div>
@@ -481,19 +486,6 @@
 							</div>
 						</div>
 					</form>
-					<!-- ============================ Configuration Wizard ========================== -->
-					<div class="tab-pane fade" id="v-pills-configWizard" role="tabpanel" aria-labelledby="v-pills-configWizard-tab">
-						<div class="card shadow">
-							<div class="card-header bg-primary text-white">
-								<h5>
-									<i class="fas fa-hat-wizard"></i>&nbsp; PiFire Configuration Wizard
-								</h5>
-							</div>
-							<div class="card-body">
-								<a href="/wizard" class="btn btn-outline-primary btn-block shadow">Launch PiFire Configuration Wizard</a>
-							</div>
-						</div>
-					</div><!-- End of Tab -->
 					<!-- ============================ System Power ========================== -->
 					<div class="tab-pane fade" id="v-pills-systemPower" role="tabpanel" aria-labelledby="v-pills-systemPower-tab">
 						<div class="card shadow">

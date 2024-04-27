@@ -10,17 +10,7 @@
 #
 # NOTE: Pre-Requisites to run Raspi-Config first.  See README.md.
 
-# Check Python version and determine appropriate eventlet version
-if ! python -c "import sys; assert sys.version_info[:2] >= (3,11)" > /dev/null; then
-    echo "System is running a python version lower than 3.11, installing eventlet==0.30.2";
-    EVENTLET_VERSION="eventlet==0.30.2"
-else
-    echo "System is running a python version 3.11 or greater, installing latest eventlet"
-    EVENTLET_VERSION="eventlet"
-fi
-
-APT_PACKAGES=("python3-dev" "python3-pip" "python3-venv" "python3-rpi.gpio" "python3-scipy" "nginx" "git" "supervisor" "ttf-mscorefonts-installer" "redis-server" "libatlas-base-dev" "libopenjp2-7")
-PYTHON_MODULES=("flask==2.3.3" "flask-mobility" "flask-qrcode" "flask-socketio" "$EVENTLET_VERSION" "gunicorn" "gpiozero" "redis" "evdev" "uuid" "influxdb-client[ciso]" "apprise" "scikit-fuzzy" "scikit-learn" "ratelimitingfilter" "pillow>=9.2.0" "paho-mqtt" "psutil")
+APT_PACKAGES=("python3-dev" "python3-pip" "python3-venv" "python3-rpi.gpio" "python3-scipy" "nginx" "git" "supervisor" "ttf-mscorefonts-installer" "redis-server" "libatlas-base-dev" "libopenjp2-7" "rpi-hardware-pwm")
 GIT_REPO=("https://github.com/dogtreatfairy/pifire")
 GIT_BRANCH=("development")
 
@@ -68,19 +58,17 @@ if [ -d "/usr/local/bin/pifire" ]; then
             exit 0
         elif [ "$OPTION" = "Uninstall" ]; then
             # Ask if the user wants to keep user settings
-            if (whiptail --title "Keep User Settings" --yesno "Do you want to keep user settings?" 10 60) then
-                sudo cp /usr/local/bin/pifire/settings.json /usr/local/bin/settings-user.json
+            if (whiptail --title "Keep User Settings" --yesno "Do you want to save user settings?" 10 60) then
+                sudo cp /usr/local/bin/pifire/settings.json /usr/local/bin/settings-bak.json
                 echo ""
-                echo -e "User Settings - \e[32mSAVED[0m"
+                echo -e "User Settings - \e[32mSAVED\e[0m"
                 echo ""
             fi
 
             # Uninstall PYTHON_MODULES in the virtual environment
             cd /usr/local/bin/pifire || { echo "Failed to change directory"; exit 1; }
             source bin/activate || { echo "Failed to activate virtual environment"; exit 1; }
-            for mod in "${PYTHON_MODULES[@]}"; do
-                pip3 uninstall -y $mod || { echo "Failed to uninstall $mod"; exit 1; }
-            done
+            pip freeze | xargs pip uninstall -y || { echo "Failed to uninstall pip packages"; exit 1; }
             deactivate || { echo "Failed to deactivate virtual environment"; exit 1; }
             cd / || { echo "Failed to change directory"; exit 1; }
 
@@ -103,18 +91,16 @@ if [ -d "/usr/local/bin/pifire" ]; then
         elif [ "$OPTION" = "Re-Install" ]; then
             # Ask if the user wants to keep user settings
             if (whiptail --title "Keep User Settings" --yesno "Do you want to keep user settings?" 10 60) then
-                sudo cp /usr/local/bin/pifire/settings.json /usr/local/bin/settings-user.json
+                sudo cp /usr/local/bin/pifire/settings.json /usr/local/bin/settings-bak.json
                 echo ""
-                echo -e "User Settings - \e[32mSAVED[0m"
+                echo -e "User Settings - \e[32mSAVED\e[0m"
                 echo ""                
             fi
 
             # Uninstall PYTHON_MODULES in the virtual environment
             cd /usr/local/bin/pifire || { echo "Failed to change directory"; exit 1; }
             source bin/activate || { echo "Failed to activate virtual environment"; exit 1; }
-            for mod in "${PYTHON_MODULES[@]}"; do
-                pip3 uninstall -y $mod || { echo "Failed to uninstall $mod"; exit 1; }
-            done
+            pip freeze | xargs pip uninstall -y || { echo "Failed to uninstall pip packages"; exit 1; }
             deactivate || { echo "Failed to deactivate virtual environment"; exit 1; }
             cd / || { echo "Failed to change directory"; exit 1; }
 
@@ -213,41 +199,29 @@ source bin/activate
 
 echo " - Installing module dependencies... "
 # Install module dependencies 
-failed=()
-
-for module in "${PYTHON_MODULES[@]}"; do
-    python -m pip install $module || failed+=($module)
-done
-
-if [ ${#failed[@]} -ne 0 ]; then
-    echo "ERROR: Modules Failed to Install"
-    echo "${failed[@]}"
-
-    PS3='Do you wish to: '
-    options=("Try Again" "Continue" "Exit Script")
-    select opt in "${options[@]}"
-    do
-        case $opt in
-            "Try to install these modules again.")
-                for module in "${failed[@]}"; do
-                    python -m pip install $module
-                done
-                break
-                ;;
-            "Continue without installing.")
-                break
-                ;;
-            "Exit Installer.")
-                exit 1
-                ;;
-            *) echo "invalid option $REPLY";;
-        esac
-    done
+python -m pip install "flask==2.3.3" 
+python -m pip install flask-mobility
+python -m pip install flask-qrcode
+python -m pip install flask-socketio
+if ! python -c "import sys; assert sys.version_info[:2] >= (3,11)" > /dev/null; then
+    echo "System is running a python version lower than 3.11, installing eventlet==0.30.2";
+    python -m pip install "eventlet==0.30.2"
 else
-    clear
-    echo -e "Python Modules Install - \e[32mOK\e[0m"
-    sleep 2
-fi
+    echo "System is running a python version 3.11 or greater, installing latest eventlet"
+    python -m pip install eventlet
+fi      
+python -m pip install gunicorn
+python -m pip install gpiozero
+python -m pip install redis
+python -m pip install uuid
+python -m pip install influxdb-client[ciso]
+python -m pip install apprise
+python -m pip install scikit-fuzzy
+python -m pip install scikit-learn
+python -m pip install ratelimitingfilter
+python -m pip install "pillow>=9.2.0"
+python -m pip install paho-mqtt
+python -m pip install psutil
 
 # Setup config.txt to enable busses 
 clear
@@ -258,23 +232,12 @@ echo "**                                                                     **"
 echo "*************************************************************************"
 
 # Enable SPI - Needed for some displays
-if ! grep -q "dtparam=spi=on" /boot/config.txt; then
-    echo "dtparam=spi=on" | $SUDO tee -a /boot/config.txt > /dev/null
-fi
-
+echo "dtparam=spi=on" | $SUDO tee -a /boot/config.txt > /dev/null
 # Enable I2C - Needed for some displays, ADCs, distance sensors
-if ! grep -q "dtparam=i2c_arm=on" /boot/config.txt; then
-    echo "dtparam=i2c_arm=on" | $SUDO tee -a /boot/config.txt > /dev/null
-fi
-
-if ! grep -q "i2c-dev" /etc/modules; then
-    echo "i2c-dev" | $SUDO tee -a /etc/modules > /dev/null
-fi
-
+echo "dtparam=i2c_arm=on" | $SUDO tee -a /boot/config.txt > /dev/null
+echo "i2c-dev" | $SUDO tee -a /etc/modules > /dev/null
 # Enable Hardware PWM - Needed for hardware PWM support 
-if ! grep -q "dtoverlay=pwm,pin=13,func=4" /boot/config.txt; then
-    echo "dtoverlay=pwm,pin=13,func=4" | $SUDO tee -a /boot/config.txt > /dev/null
-fi
+echo "dtoverlay=pwm,pin=13,func=4" | $SUDO tee -a /boot/config.txt > /dev/null
 
 # Setup backlight / power permissions if a DSI screen is installed  
 clear
@@ -381,11 +344,11 @@ if [ $exitstatus = 0 ]; then
         else
             echo "Passwords do not match. Please try again."
         fi
-        if [ $i -eq 3 ]; then
-            echo "Failed to set Samba password after 3 attempts. Exiting."
-            exit 1
-        fi
     done
+
+    if [ $i -eq 3 ]; then
+        echo "Failed to set Samba password after 3 attempts. Continuing without setting password."
+    fi
 
     # Set up Samba configuration
     while true; do
@@ -416,13 +379,6 @@ sleep 1
 
 
 clear
-# If settings-user.json exists, move it back to settings.json
-if [ -f "/usr/local/bin/settings-user.json" ]; then
-    sudo mv /usr/local/bin/settings-user.json /usr/local/bin/pifire/settings.json
-    echo -e "User Settings - \e[32mRESTORED[0m"
-    echo ""
-fi
-
 # Rebooting
 
 echo "Congratulations, the installation is complete.  At this time, we will perform a reboot and your application should be ready.  On first boot, the wizard will guide you through the remaining setup steps.  You should be able to access your application by opening a browser on your PC or other device and using the IP address (or http://[hostname].local) for this device.  Enjoy!"
