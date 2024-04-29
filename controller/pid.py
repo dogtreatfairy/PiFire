@@ -79,7 +79,7 @@ class Controller(ControllerBase):
 		# P
 		error = current - self.set_point
 		if self.set_point_weighing:
-			self.p = self.kp * (self.beta * (self.set_point - current)) + self.center
+			self.p = self.kp * (self.beta * (current - self.set_point)) + self.center
 		else:
 			self.p = self.kp * error + self.center
 	
@@ -90,7 +90,7 @@ class Controller(ControllerBase):
 		self.inter = min(self.inter, self.inter_max)
 	
 		if self.set_point_weighing:
-			self.i = self.ki * (self.gamma * (self.set_point - current))
+			self.i = self.ki * (self.gamma * (current - self.set_point))
 		else:
 			self.i = self.ki * self.inter
 	
