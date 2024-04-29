@@ -387,9 +387,9 @@
             </div>
             <div class="col-8 col-lg-5 d-flex align-items-center justify-content-end mt-lg-0 mt-2">
                 {% if setting == 'name' %} 
-                <input class="form-control" type="text" value="{{ defaultConfig[setting] }}" id="probe_config_{{ setting }}" required>
+                <input class="form-control probeConfig" type="text" value="{{ defaultConfig[setting] }}" id="probe_config_{{ setting }}" required>
                 {% else %}
-                <select class="form-control" id="probe_config_{{ setting }}" name="probe_config_{{ setting }}">
+                <select class="form-control probeConfig" id="probe_config_{{ setting }}" name="probe_config_{{ setting }}">
                 {% for option in configOptions[setting]['options'] %}
                     <option value="{{ option }}" {% if option == defaultConfig[setting] %}selected{% endif %}>{{ configOptions[setting]['options'][option] }}</option>
                 {% endfor %}
