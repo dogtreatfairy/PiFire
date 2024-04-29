@@ -120,6 +120,8 @@
 		<div class="col-12 col-lg-6 mt-1" style="position:fixed; right:0; z-index: 1020;">
 			{% block notify %}
 			<!-- Begin Error Notification Section -->
+			<!-- First check if we have any notifications, and insert blank space at the top of the screen if we do. -->
+			{% set notify_offset = False %}
 			{% if errors is defined %}
 				{% for error in errors %}                            
 				<div class="notification-window">

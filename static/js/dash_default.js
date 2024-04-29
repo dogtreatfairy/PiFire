@@ -588,6 +588,7 @@ function dashToggleVisible(cardID) {
 		};
 		recalculateMasonryLayout();
 		//console.log('dashData Hidden='+dashDataStruct.custom.hidden_cards);
+		console.log('dashData Hidden='+dashDataStruct.custom.hidden_cards);
 		dashSetData();
 	} else {
 		// change card to hidden
@@ -601,6 +602,7 @@ function dashToggleVisible(cardID) {
 		};
 		recalculateMasonryLayout();
 		//console.log('dashData Hidden='+dashDataStruct.custom.hidden_cards);
+		console.log('dashData Hidden='+dashDataStruct.custom.hidden_cards);
 		dashSetData();
 	};
 }
