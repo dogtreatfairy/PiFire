@@ -60,6 +60,39 @@
                     "option_max" : null, 
                     "option_step" : 0.01, 
                     "hidden" : false
+                },
+                {
+                    "option_name" : "set_point_weighing",
+                    "option_friendly_name" : "Enable Set Point Weighing",
+                    "option_description" : "Enable or disable set point weighing in the PID controller. [Default=false]",
+                    "option_type" : "boolean",
+                    "option_default" : false,
+                    "option_min" : null,
+                    "option_max" : null, 
+                    "option_step" : null, 
+                    "hidden" : false
+                },
+                {
+                    "option_name" : "beta",
+                    "option_friendly_name" : "Beta",
+                    "option_description" : "Weight given to the set point in the proportional term of the PID controller. [Default=1]",
+                    "option_type" : "float",
+                    "option_default" : 1.0,
+                    "option_min" : 0.0,
+                    "option_max" : 2.0, 
+                    "option_step" : 0.01, 
+                    "hidden" : false
+                },
+                {
+                    "option_name" : "gamma",
+                    "option_friendly_name" : "Gamma",
+                    "option_description" : "Weight given to the set point in the derivative term of the PID controller. [Default=0]",
+                    "option_type" : "float",
+                    "option_default" : 0.0,
+                    "option_min" : 0.0,
+                    "option_max" : 2.0, 
+                    "option_step" : 0.01, 
+                    "hidden" : false
                 }
             ]
         },

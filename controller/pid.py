@@ -62,6 +62,10 @@ class Controller(ControllerBase):
 
 		self.last = 150
 
+		self.beta = config['beta']
+		self.gamma = config['gamma']
+		self.set_point_weighing = config['set_point_weighing']
+
 		self.set_target(0.0)
 
 	def _calculate_gains(self, pb, ti, td):
@@ -72,27 +76,33 @@ class Controller(ControllerBase):
 	def update(self, current):
 		# P
 		error = current - self.set_point
-		self.p = self.kp * error + self.center # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
+		if self.set_point_weighing:
+			weighted_error = self.beta * self.set_point - current
+			self.p = self.kp * weighted_error + self.center
+		else:
+			self.p = self.kp * error + self.center
 
-		# I
+        # I
 		dt = time.time() - self.last_update
-		# if self.p > 0 and self.p < 1: # Ensure we are in the pb, otherwise do not calculate i to avoid windup
 		self.inter += error * dt
 		self.inter = max(self.inter, -self.inter_max)
 		self.inter = min(self.inter, self.inter_max)
-
 		self.i = self.ki * self.inter
 
-		# D
-		self.derv = (current - self.last) / dt
+        # D
+		if self.set_point_weighing:
+			d_error = self.gamma * self.set_point - current
+		else:
+			d_error = current - self.last
+		self.derv = (d_error - self.last) / dt
 		self.d = self.kd * self.derv
 
-		# PID
+        # PID
 		self.u = self.p + self.i + self.d
 
-		# Update for next cycle
+        # Update for next cycle
 		self.error = error
-		self.last = current
+		self.last = d_error if self.set_point_weighing else current
 		self.last_update = time.time()
 
 		return self.u
