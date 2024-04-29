@@ -65,7 +65,7 @@
                     "option_name" : "set_point_weighing",
                     "option_friendly_name" : "Enable Set Point Weighing",
                     "option_description" : "Enable or disable set point weighing in the PID controller. [Default=false]",
-                    "option_type" : "boolean",
+                    "option_type" : "bool",
                     "option_default" : false,
                     "option_min" : null,
                     "option_max" : null, 
