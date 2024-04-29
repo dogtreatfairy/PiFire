@@ -127,7 +127,6 @@
 						</tr>
 					</table>
 				</div>
-
 			</div>
 		</div>
 		<!-- Modal footer -->
@@ -163,37 +162,36 @@
 <script src="{{ url_for('static', filename='js/masonry.pkgd.min.js') }}"></script>
 
 <script>
-	var elem = document.querySelector('.cards-wrapper');
-	var msnry = new Masonry( elem, {
-		// options
-		itemSelector: '.grid-item',
-		gutter: 20,
-		fitWidth: true
-	});
+	var elem;
+	var msnry;
+
+	window.onload = function() {
+		elem = document.querySelector('.cards-wrapper');
+		msnry = new Masonry( elem, {
+			itemSelector: '.grid-item',
+			gutter: 20,
+			fitWidth: false
+		});
+	}
 
 	function recalculateMasonryLayout() {
-		msnry.reloadItems();
-		msnry.layout();
+		setTimeout(function() {
+			msnry.reloadItems();
+			msnry.layout();
+		}, 300);
 	}
 
 	// Listen for changes in the viewport size
 	window.addEventListener('resize', function() {
-		// Delay the recalculation of the layout to ensure the viewport dimensions have updated
-		setTimeout(function() {
-			recalculateMasonryLayout();
-		}, 300);
+		recalculateMasonryLayout();
 	});
 
 	// Listen for changes in device orientation
 	window.addEventListener('orientationchange', function() {
-		// Delay the recalculation of the layout to ensure the viewport dimensions have updated
-		setTimeout(function() {
-			recalculateMasonryLayout();
-		}, 300);
+		recalculateMasonryLayout();
 	});
 
-	// Initial layout
-	setTimeout(function() {recalculateMasonryLayout();}, 300);
+
 </script>
 
 

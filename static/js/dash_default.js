@@ -559,7 +559,7 @@ function dashSetData() {
 			'dashboards' : {
 				'Default' : dashDataStruct
 			}
-		} 
+		}
     };
 
 	$.ajax({
@@ -572,6 +572,7 @@ function dashSetData() {
             //console.log('dashSetData -> ' + response);
         }
     });
+	
 };
 
 function dashToggleVisible(cardID) {
@@ -585,6 +586,7 @@ function dashToggleVisible(cardID) {
 		if (index !== -1) {
 			dashDataStruct.custom.hidden_cards.splice(index, 1); // If found, remove
 		};
+		recalculateMasonryLayout();
 		//console.log('dashData Hidden='+dashDataStruct.custom.hidden_cards);
 		dashSetData();
 	} else {
@@ -597,6 +599,7 @@ function dashToggleVisible(cardID) {
 		if (index == -1) {
 			dashDataStruct.custom.hidden_cards.push(cardID); // If not found, add
 		};
+		recalculateMasonryLayout();
 		//console.log('dashData Hidden='+dashDataStruct.custom.hidden_cards);
 		dashSetData();
 	};
@@ -624,4 +627,6 @@ $(document).ready(function(){
 	
 	// Current hopper information loop
 	setInterval(updateHopperStatus, 150000);  // Update every 150000ms 
+
+	recalculateMasonryLayout();
 });
