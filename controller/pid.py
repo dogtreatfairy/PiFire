@@ -24,7 +24,10 @@
       "PB": 60.0,
       "Td": 45.0,
       "Ti": 180.0,
-      "center": 0.5
+      "center": 0.5,
+	  "set_point_weighing": true,
+	  "beta" : 1.0,
+	  "gamma" : 0.0
    }
 
 *****************************************
@@ -55,16 +58,15 @@ class Controller(ControllerBase):
 		self.set_point = 0
 
 		self.center = config['center']
+		self.set_point_weighing = config['set_point_weighing']
+		self.beta = config['beta']
+		self.gamma = config['gamma']
 
 		self.derv = 0.0
 		self.inter = 0.0
 		self.inter_max = abs(self.center / self.ki)
 
 		self.last = 150
-
-		self.beta = config['beta']
-		self.gamma = config['gamma']
-		self.set_point_weighing = config['set_point_weighing']
 
 		self.set_target(0.0)
 
@@ -77,34 +79,33 @@ class Controller(ControllerBase):
 		# P
 		error = current - self.set_point
 		if self.set_point_weighing:
-			weighted_error = self.beta * self.set_point - current
-			self.p = self.kp * weighted_error + self.center
+			self.p = self.kp * (self.beta * (self.set_point - current)) + self.center
 		else:
 			self.p = self.kp * error + self.center
-
-        # I
+	
+		# I
 		dt = time.time() - self.last_update
 		self.inter += error * dt
 		self.inter = max(self.inter, -self.inter_max)
 		self.inter = min(self.inter, self.inter_max)
-		self.i = self.ki * self.inter
-
-        # D
+	
 		if self.set_point_weighing:
-			d_error = self.gamma * self.set_point - current
+			self.i = self.ki * (self.gamma * (self.set_point - current))
 		else:
-			d_error = current - self.last
-		self.derv = (d_error - self.last) / dt
+			self.i = self.ki * self.inter
+	
+		# D
+		self.derv = (current - self.last) / dt
 		self.d = self.kd * self.derv
-
-        # PID
+	
+		# PID
 		self.u = self.p + self.i + self.d
-
-        # Update for next cycle
+	
+		# Update for next cycle
 		self.error = error
-		self.last = d_error if self.set_point_weighing else current
+		self.last = current
 		self.last_update = time.time()
-
+	
 		return self.u
 
 	def set_target(self, set_point):
