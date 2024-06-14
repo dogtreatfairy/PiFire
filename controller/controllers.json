@@ -73,7 +73,7 @@
                     "hidden" : false
                 },
                 {
-                    "option_name" : "prediction_window",
+                    "option_name" : "prediction_time",
                     "option_friendly_name" : "Prediction Window (s)",
                     "option_description" : "How far to predict ahead in seconds [Default=60]",
                     "option_type" : "float",
@@ -82,19 +82,7 @@
                     "option_max" : null, 
                     "option_step" : 1,
                     "hidden" : false
-                },
-                {
-                    "option_name" : "prediction_deadzone",
-                    "option_friendly_name" : "Prediction Deadzone (F)",
-                    "option_description" : "Deadzone surrounding set_point where prediction is disabled. [Default=7]",
-                    "option_type" : "float",
-                    "option_default" : 7,
-                    "option_min" : 0,
-                    "option_max" : null, 
-                    "option_step" : 1,
-                    "hidden" : false
                 }
-
             ]
         },
         "fuzzy" : {
