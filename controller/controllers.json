@@ -19,33 +19,44 @@
             "config" : [
                 {
                     "option_name" : "PB",
-                    "option_friendly_name" : "Proportional Band(PB)", 
-                    "option_description" : "This is the temperature band centered around the set point, that the controller is active.  If the error is greater than PB/2, the command is 0.  If the error is less than PB/2, the command is 1.0. [Default=60.0]",
+                    "option_friendly_name" : "Proportional Band (PB)", 
+                    "option_description" : "This is the temperature band centered around the set point, that the controller is active.  If the error is greater than PB/2, the command is 0.  If the error is less than PB/2, the command is 1.0. [Default=1.5]",
                     "option_type" : "float",
-                    "option_default" : 60.0,
+                    "option_default" : 1.5,
                     "option_min" : null,
                     "option_max" : null, 
-                    "option_step" : 0.1,
-                    "hidden" : false
-                },
-                {
-                    "option_name" : "Td",
-                    "option_friendly_name" : "Derivative Time (Td)", 
-                    "option_description" : "Time (in seconds) to predict the future value. [Default=45.0]",
-                    "option_type" : "float",
-                    "option_default" : 45.0,
-                    "option_min" : null,
-                    "option_max" : null,
-                    "option_step" : 0.1,  
+                    "option_step" : 0.001,
                     "hidden" : false
                 },
                 {
                     "option_name" : "Ti",
-                    "option_friendly_name" : "Integral Time (Ti)", 
-                    "option_description" : "Time (in seconds) to eliminate the integral error. [Default=180.0]",
+                    "option_friendly_name" : "Integral Time Constant (Ti)",
+                    "option_description" : "This is the integral time constant. It determines how much the controller output responds to past errors. A higher value means a slower response to accumulated errors. [Default=60.0]",
                     "option_type" : "float",
-                    "option_default" : 180.0,
-                    "option_min" : null,
+                    "option_default" : 75.0,
+                    "option_min" : 0,
+                    "option_max" : null, 
+                    "option_step" : 0.01,
+                    "hidden" : false
+                },
+                {
+                    "option_name" : "Td",
+                    "option_friendly_name" : "Derivative Time Constant (Td)",
+                    "option_description" : "This is the derivative time constant. It determines how much the controller output responds to future errors. A higher value means a stronger response to rapid changes in error. [Default=120.0]",
+                    "option_type" : "float",
+                    "option_default" : 120.0,
+                    "option_min" : 0,
+                    "option_max" : null, 
+                    "option_step" : 0.01,
+                    "hidden" : false
+                },
+                {
+                    "option_name" : "anti_windup",
+                    "option_friendly_name" : "Anti-Windup",
+                    "option_description" : "This is the max the Integral can contribute to total output. [Default=0.7]",
+                    "option_type" : "float",
+                    "option_default" : 0.7,
+                    "option_min" : 0,
                     "option_max" : null, 
                     "option_step" : 0.1,
                     "hidden" : false
@@ -62,38 +73,28 @@
                     "hidden" : false
                 },
                 {
-                    "option_name" : "set_point_weighing",
-                    "option_friendly_name" : "Enable Set Point Weighing",
-                    "option_description" : "Enable or disable set point weighing in the PID controller. [Default=false]",
-                    "option_type" : "bool",
-                    "option_default" : false,
-                    "option_min" : null,
+                    "option_name" : "prediction_window",
+                    "option_friendly_name" : "Prediction Window (s)",
+                    "option_description" : "How far to predict ahead in seconds [Default=60]",
+                    "option_type" : "float",
+                    "option_default" : 60,
+                    "option_min" : 0,
                     "option_max" : null, 
-                    "option_step" : null, 
+                    "option_step" : 1,
                     "hidden" : false
                 },
                 {
-                    "option_name" : "beta",
-                    "option_friendly_name" : "Beta",
-                    "option_description" : "Weight given to the set point in the proportional term of the PID controller. [Default=1]",
+                    "option_name" : "prediction_deadzone",
+                    "option_friendly_name" : "Prediction Deadzone (F)",
+                    "option_description" : "Deadzone surrounding set_point where prediction is disabled. [Default=7]",
                     "option_type" : "float",
-                    "option_default" : 1.0,
-                    "option_min" : 0.0,
-                    "option_max" : 2.0, 
-                    "option_step" : 0.01, 
-                    "hidden" : false
-                },
-                {
-                    "option_name" : "gamma",
-                    "option_friendly_name" : "Gamma",
-                    "option_description" : "Weight given to the set point in the derivative term of the PID controller. [Default=0]",
-                    "option_type" : "float",
-                    "option_default" : 0.0,
-                    "option_min" : 0.0,
-                    "option_max" : 2.0, 
-                    "option_step" : 0.01, 
+                    "option_default" : 7,
+                    "option_min" : 0,
+                    "option_max" : null, 
+                    "option_step" : 1,
                     "hidden" : false
                 }
+
             ]
         },
         "fuzzy" : {
