@@ -122,15 +122,15 @@ class Controller(ControllerBase):
         if len(self.temperature_history) == self.temperature_history.maxlen:
             # If the current temperature is within the deadzone, skip the prediction
             if abs(current - self.set_point) > self.prediction_deadzone:
-                X = np.array(self.time_history).reshape(-1, 1)
-                y = np.array(self.temperature_history)
-                self.regression_model.fit(X, y)
-                predicted_temperature = self.regression_model.predict([[time.time() + self.prediction_window]])
+            X = np.array(self.time_history).reshape(-1, 1)
+            y = np.array(self.temperature_history)
+            self.regression_model.fit(X, y)
+            predicted_temperature = self.regression_model.predict([[time.time() + self.prediction_window]])
 
-                # If the predicted temperature exceeds the set point, reduce u
-                if predicted_temperature > self.set_point:
-                    overshoot = predicted_temperature - self.set_point
-                    self.u -= overshoot / self.set_point
+            # If the predicted temperature exceeds the set point, reduce u
+            if predicted_temperature > self.set_point:
+                overshoot = predicted_temperature - self.set_point
+                self.u -= overshoot / self.set_point
 
         # Ensure u is within [0, 1]
         self.u = max(0, min(self.u, 1))
