@@ -4,10 +4,10 @@
             "friendly_name" : "PID Standard",
             "module_name" : "pid",
             "image" : "pid.png",
-            "description" : "The standard PID controller for PiFire, used by default. This software was originally developed by GitHub user DBorello as part of his excellent PiSmoker project.  Slightly modified by @weberbox and adapted for PiFire. ",
+            "description" : "An updated standard PID controller for PiFire with an added Anti-Windup Function and a Prediction Model to prevent overshoots. This software was originally developed by GitHub user DBorello as part of his excellent PiSmoker project.  Slightly modified by @weberbox and adapted for PiFire. ",
             "author" : "Dan Borello",
             "link" : "https://github.com/DBorello/PiSmoker", 
-            "contributors" : ["Ben Parmeter", "James Weber"],
+            "contributors" : ["Ben Parmeter", "James Weber", "Ryan Steel"],
             "attributions" : [],
             "recommendations" : {
                 "cycle" : { 
@@ -20,34 +20,34 @@
                 {
                     "option_name" : "PB",
                     "option_friendly_name" : "Proportional Band (PB)", 
-                    "option_description" : "This is the temperature band centered around the set point, that the controller is active.  If the error is greater than PB/2, the command is 0.  If the error is less than PB/2, the command is 1.0. [Default=1.5]",
+                    "option_description" : "This is the temperature band centered around the set point, that the controller is active.  If the error is greater than PB/2, the command is 0.  If the error is less than PB/2, the command is 1.0. [Default=65.0]",
                     "option_type" : "float",
-                    "option_default" : 1.5,
+                    "option_default" : 65.0,
                     "option_min" : null,
                     "option_max" : null, 
-                    "option_step" : 0.001,
+                    "option_step" : 0.1,
                     "hidden" : false
                 },
                 {
                     "option_name" : "Ti",
                     "option_friendly_name" : "Integral Time Constant (Ti)",
-                    "option_description" : "This is the integral time constant. It determines how much the controller output responds to past errors. A higher value means a slower response to accumulated errors. [Default=60.0]",
+                    "option_description" : "This is the integral time constant. It determines how much the controller output responds to past errors. A higher value means a slower response to accumulated errors. [Default=180.0]",
                     "option_type" : "float",
-                    "option_default" : 75.0,
+                    "option_default" : 180.0,
                     "option_min" : 0,
                     "option_max" : null, 
-                    "option_step" : 0.01,
+                    "option_step" : 0.1,
                     "hidden" : false
                 },
                 {
                     "option_name" : "Td",
                     "option_friendly_name" : "Derivative Time Constant (Td)",
-                    "option_description" : "This is the derivative time constant. It determines how much the controller output responds to future errors. A higher value means a stronger response to rapid changes in error. [Default=120.0]",
+                    "option_description" : "This is the derivative time constant. It determines how much the controller output responds to future errors. A higher value means a stronger response to rapid changes in error. [Default=60.0]",
                     "option_type" : "float",
-                    "option_default" : 120.0,
+                    "option_default" : 60.0,
                     "option_min" : 0,
                     "option_max" : null, 
-                    "option_step" : 0.01,
+                    "option_step" : 0.1,
                     "hidden" : false
                 },
                 {
@@ -75,9 +75,9 @@
                 {
                     "option_name" : "prediction_time",
                     "option_friendly_name" : "Prediction Window (s)",
-                    "option_description" : "How far to predict ahead in seconds [Default=60]",
+                    "option_description" : "How far to predict ahead in seconds [Default=70]",
                     "option_type" : "float",
-                    "option_default" : 60,
+                    "option_default" : 70,
                     "option_min" : 0,
                     "option_max" : null, 
                     "option_step" : 1,

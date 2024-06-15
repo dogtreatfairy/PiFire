@@ -73,8 +73,8 @@ class Controller(ControllerBase):
 		
 	def _predict_error(self, error, dt):
 		# Predict future error based on current rate of change
-		rate_of_change = (error - self.error) / dt
-		predicted_error = error + rate_of_change * self.prediction_time
+		error_rate_of_change = (error - self.error) / dt
+		predicted_error = error + error_rate_of_change * self.prediction_time
 		return predicted_error
 
 	def update(self, current):
@@ -84,7 +84,8 @@ class Controller(ControllerBase):
 
 		# I
 		dt = time.time() - self.last_update
-		predicted_error = self._predict_error(error, dt)  # Calculate predicted_error here
+		predicted_error = self._predict_error(error, dt)
+
 		self.inter += error * dt
 		self.inter = max(self.inter, -self.inter_max)
 		self.inter = min(self.inter, self.inter_max)
