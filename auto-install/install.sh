@@ -232,12 +232,17 @@ echo "**                                                                     **"
 echo "*************************************************************************"
 
 # Enable SPI - Needed for some displays
-echo "dtparam=spi=on" | $SUDO tee -a /boot/config.txt > /dev/null
+$SUDO raspi-config nonint do_spi 0
+
 # Enable I2C - Needed for some displays, ADCs, distance sensors
-echo "dtparam=i2c_arm=on" | $SUDO tee -a /boot/config.txt > /dev/null
-echo "i2c-dev" | $SUDO tee -a /etc/modules > /dev/null
+$SUDO raspi-config nonint do_i2c 0
+
 # Enable Hardware PWM - Needed for hardware PWM support 
-echo "dtoverlay=pwm,pin=13,func=4" | $SUDO tee -a /boot/config.txt > /dev/null
+if test -f /boot/firmware/config.txt; then
+  echo "dtoverlay=pwm,gpiopin=13,func=4" | $SUDO tee -a /boot/firmware/config.txt > /dev/null
+else
+  echo "dtoverlay=pwm,gpiopin=13,func=4" | $SUDO tee -a /boot/config.txt > /dev/null
+fi
 
 # Setup backlight / power permissions if a DSI screen is installed  
 clear
@@ -320,34 +325,24 @@ if [ $exitstatus = 0 ]; then
     # Create the directory if it doesn't exist
     sudo mkdir -p /usr/local/bin/pifire
 
-    # Get list of users
-    users=$(cut -d: -f1 /etc/passwd)
-
-    # Convert users to array
-    users_array=($users)
-
-    # Create menu options
-    menu_options=()
-    for user in "${users_array[@]}"; do
-        menu_options+=("$user" "")
-    done
-
     # Prompt for Samba username
-    smb_user=$(whiptail --title "User Selection" --menu "Select a user for the Samba share:" 20 78 10 "${menu_options[@]}" 3>&1 1>&2 2>&3)
+    smb_user=$(whiptail --inputbox "Enter a username for the Samba share:" 10 60 3>&1 1>&2 2>&3)
 
-    # Add the user to the Samba password database
+    # Prompt for Samba password
     for i in {1..3}
     do
-        sudo pdbedit -a -u $smb_user
-        if [ $? -eq 0 ]; then
+        smb_pass=$(whiptail --passwordbox "Enter a password for the Samba share:" 10 60 3>&1 1>&2 2>&3)
+        smb_pass_confirm=$(whiptail --passwordbox "Confirm your password:" 10 60 3>&1 1>&2 2>&3)
+
+        if [ "$smb_pass" = "$smb_pass_confirm" ]; then
             break
         else
-            echo "Passwords do not match. Please try again."
+            whiptail --msgbox "Passwords do not match. Please try again." 10 60
         fi
     done
 
     if [ $i -eq 3 ]; then
-        echo "Failed to set Samba password after 3 attempts. Continuing without setting password."
+        whiptail --msgbox "Failed to get Samba password after 3 attempts. Continuing without setting password." 10 60
     fi
 
     # Set up Samba configuration
@@ -370,6 +365,15 @@ if [ $exitstatus = 0 ]; then
             esac
         fi
     done
+
+    # Get the group owner of the directory
+    group_owner=$(ls -ld /usr/local/bin/pifire | awk '{print $4}')
+
+    # Add the Samba user to the group owner
+    sudo usermod -a -G $group_owner $smb_user
+
+    # Set the permissions so that the group owner can read and write all files in the Samba directory
+    sudo chmod -R g+rw /usr/local/bin/pifire
 
     # Restart Samba services
     sudo systemctl restart smbd nmbd
