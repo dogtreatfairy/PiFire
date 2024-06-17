@@ -28,119 +28,174 @@
 
     </head>
     <body class="{% block body_class %}{% endblock %}">
-		<!-- Navbar Header -->
-		<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-			<a class="navbar-brand text-truncate" {% if request.MOBILE %}style="max-width: 210px;"{% endif %} href="/">
-				<img src="{{ url_for('static', filename='img/launcher-icon-1x.png') }}" width="30" height="30" class="d-inline-block align-top" alt="">
-				<b>Pi<i class="text-danger">Fire</i></b>
-				{% if grill_name != '' %}
-					| <small class="">{{ grill_name }}</small> 
-				{% endif %}
-			</a>
-			<div class="ml-auto d-flex order-0 order-lg-1">
+		
+		<header class="border-bottom shadow sticky-top">
+<!-- Navbar -->
+			<nav class="navbar navbar-expand-lg border-bottom navbar-dark bg-dark d-flex align-items-center">
+				<!-- Navbar Brand -->
+				<a class="navbar-brand order-0" href="/">
+					<img src="{{ url_for('static', filename='img/launcher-icon-1x.png') }}" width="30" height="30" class="d-inline-block align-top" alt="">
+					<b>Pi<i class="text-danger">Fire</i></b>
+					{% if grill_name != '' %}
+						| <small class="">{{ grill_name }}</small> 
+					{% endif %}
+				</a>
+				<!-- Navbar Debug Icon -->
+				<div class="ml-lg-2 mr-lg-1 mx-auto order-1 order-lg-5">
+					{% if settings['globals']['debug_mode'] %}
+					<a href="/admin#v-pills-debugManual">
+						<button class="btn btn-warning d-flex justify-content-center align-items-center" style="height:37px; width:38px" type="button">
+							<i class="fas fa-bug"></i>
+						</button>
+					</a>
+					{% endif %}
+				</div>
+				<!-- Top Timer Toggler -->
 				{% block timer_toggler %}
-				<div class="btn-group mr-2 custom-toggler" role="group">
+				<div class="btn-group ml-auto order-2 order-lg-4" role="group">
 					<button type="button" class="btn btn-outline-secondary border-secondary" id="timerButton" onclick="timerToggle()">
 						<i class="fas fa-stopwatch"></i>
 					</button>
 				</div>
 				{% endblock %}
-				<button class="navbar-toggler btn btn-outline-secondary border-secondary" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+				<!-- Right Navbar Links -->
+				<button class="navbar-toggler ml-1 order-3 d-lg-none d-flex justify-content-center align-items-center" style="height:37px; width:38px" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
 					<i class="fas fa-bars"></i>
 				</button>
-			</div>
-			<div class="collapse navbar-collapse order-1 order-lg-0 d-lg-flex justify-content-lg-start mx-lg-0" id="navbarNav">
-				<ul class="navbar-nav mx-auto mx-lg-0 text-center">
-					<li class="nav-item">
-						<a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Dashboard</a>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link {% if request.path == '/recipes' %}active{% endif %}" href="/recipes">Recipes</a>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link {% if request.path == '/history' %}active{% endif %}" href="/history">History</a>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link {% if request.path == '/events' %}active{% endif %}" href="/events">Events</a>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link {% if request.path == '/settings' %}active{% endif %}" href="/settings">Settings</a>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link {% if request.path == '/admin' %}active{% endif %}" href="/admin">Admin</a>
-					</li>
-				</ul>
-			</div>
-		</nav>
+				<!-- Navbar Collapsible Menu -->
+				<div class="collapse navbar-collapse order-4 order-lg-1" id="navbarNav">
+					<ul class="navbar-nav text-center text-lg-start">
+						<li class="nav-item">
+							<a href="/" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+								<i class="nav-icon fas fa-tachometer-alt mr-2"></i>
+								<p class="mb-0">Dashboard</p>
+							</a>
+						</li>
+						<li class="nav-item">
+							<a href="/recipes" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+								<i class="nav-icon fas fa-utensils mr-2"></i>
+								<p class="mb-0">Recipes</p>
+							</a>
+						</li>
+						<li class="nav-item">
+							<a href="/history" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+								<i class="nav-icon fas fa-history mr-2"></i>
+								<p class="mb-0">History</p>
+							</a>
+						</li>
+						<li class="nav-item">
+							<a href="/events" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+								<i class="nav-icon fas fa-stream mr-2"></i>
+								<p class="mb-0">Events</p>
+							</a>
+						</li>
+						<li class="nav-item">
+							<a href="/settings" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+								<i class="nav-icon fas fa-cog mr-2"></i>
+								<p class="mb-0">Settings</p>
+							</a>
+						</li>
+						<li class="nav-item">
+							<a href="/admin" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+								<i class="nav-icon fas fa-hammer mr-2"></i>
+								<p class="mb-0">Admin</p>
+							</a>
+						</li>
+					</ul>
+				</div>
+				<!-- Timer Dropdown -->
+				<div class="col-12 col-lg-2 mt-lg-0 order-5 order-lg-2 d-flex order-4 justify-content-center justify-content-lg-end">
+					{% block navbar %}
+					{% block timer_bar %}
+						{% from '_macro_timer.html' import render_timer_bar, render_timer_modal %}
+						{{ render_timer_bar() }}
+						{{ render_timer_modal() }}
+					{% endblock %}
+					{% endblock %}
+				</div>
+			</nav>
+		</header>
 
-		{% block timer_bar %}
-			{% from '_macro_timer.html' import render_timer_bar, render_timer_modal %}
-			{{ render_timer_bar() }}
-			{{ render_timer_modal() }}
-		{% endblock %}
-
-		<div class="container theme-showcase" role="main">
-
-		{% block notify %}
+<!-- Notifications -->	
+		<div class="col-12 col-lg-6 mt-1" style="position:fixed; right:0; z-index: 1020;">
+			{% block notify %}
 			<!-- Begin Error Notification Section -->
 			<!-- First check if we have any notifications, and insert blank space at the top of the screen if we do. -->
 			{% set notify_offset = False %}
 			{% if errors is defined %}
-				{% if errors != [] %}
-					{% set notify_offset = True %}
-				{% endif %}
-			{% endif %}
-			{% if warnings is defined %}
-				{% if warnings != [] %}
-					{% set notify_offset = True %}
-				{% endif %}
-			{% endif %}
-			{% if success is defined %}
-				{% if success != [] %}
-					{% set notify_offset = True %}
-				{% endif %}
-			{% endif %}
-			{% if notify_offset %}
-				<br><br> 
-			{% endif %}
-
-			<div class="row">
-				{% if errors is defined %}
-				{% if errors != [] %}<br>{% endif %}
-				{% for error in errors %}
+				{% for error in errors %}                            
+				<div class="notification-window">
 					<div class="alert alert-danger alert-dismissible">
 						<button type="button" class="close" data-dismiss="alert">&times;</button>
 						<b><i class="fas fa-exclamation-triangle"></i>&nbsp; ERROR:</b> <i>{{ error }}</i>
 					</div>
+				</div>
 				{% endfor %}
-				{% endif %}
-				{% if warnings is defined %}
-				{% if warnings != [] %}<br>{% endif %}
+			{% endif %}
+			{% if warnings is defined %}
 				{% for warning in warnings %}
+				<div class="notification-window">
 					<div class="alert alert-info alert-dismissible">
 						<button type="button" class="close" data-dismiss="alert">&times;</button>
 						<b><i class="fa-solid fa-circle-info"></i>&nbsp; Info:</b> <i>{{ warning }}</i>
 					</div>
+				</div>
 				{% endfor %}
-				{% endif %}
-				{% if success is defined %}
-				{% if success != [] %}<br>{% endif %}
+			{% endif %}
+			{% if success is defined %}
 				{% for message in success %}
+				<div class="notification-window">
 					<div class="alert alert-success alert-dismissible">
 						<button type="button" class="close" data-dismiss="alert">&times;</button>
 						<b><i class="fa-solid fa-circle-info"></i>&nbsp; Success:</b> <i>{{ message }}</i>
 					</div>
+				</div>
 				{% endfor %}
-				{% endif %}
-			</div>
-			<!-- End Error Notification Section -->
-		{% endblock %}
-
-		{% block content %} {% endblock %}
-		<br>
+			{% endif %}
+			{% endblock %}
 		</div>
+
+		<!-- Server Reload Modal -->
+		<div class="modal" id="serverReloadModal" tabindex="-1" aria-labelledby="serverReloadModalLabel" aria-hidden="true">
+			<div class="modal-dialog modal-dialog-centered">
+				<div class="modal-content">
+
+					<!-- Modal Header -->
+					<div class="modal-header">
+						<h4 class="modal-title" id="serverReloadModalLabel">Server Change Detected</h4>
+						<button type="button" class="close" data-dismiss="modal">&times;</button>
+					</div>
+
+					<!-- Modal body -->
+					<div class="modal-body">
+						A server side change was detected (probably some probes got reconfigured) and needs to reload this page. <br>
+						<br>
+						Please click reload below to reload the page.
+					</div>
+
+					<!-- Modal footer -->
+					<div class="modal-footer">
+						<button type="button" class="btn btn-danger" id="reloadPage" data-dismiss="modal">Reload</button>
+					</div>
+
+				</div>
+			</div>
+		</div> <!-- End Server Reload Modal -->
+
+<!-- Pre-Container Block -->
+		{% block precontainer %}{% endblock %}
+
+<!-- Main Content Block -->
+		<div class="container-fluid overflow-auto {% if settings['globals']['global_control_panel'] %} pb-5 mb-5 {% endif %}">
+			{% block content %}{% endblock %}
+		</div>
+		{% block dash %} {% endblock %}
+
+<!-- Post Container Block -->
 		{% block postcontainer %}{% endblock %}
 
+<!-- Control Bar Content -->
+		<div class="control-bar" role="footer">
 		{% block controlpanel %}
 			{% if settings['globals']['global_control_panel'] %}
 				<!-- Control Panel -->
@@ -149,34 +204,36 @@
 				<!-- End Control Panel -->
 			{% endif %}
 		{% endblock %}
+		</div>
 
 		{% block updater_message %}
 			{% if settings is defined %}
 				{% if settings['globals']['updated_message'] %}
 				<!-- Updater Message Modal -->
-				<div class="modal fade" id="updater_message_modal" data-backdrop="false" data-keyboard="false" tabindex="-1" aria-labelledby="udpate_message_title" aria-hidden="true">
+				<div class="modal fade" id="updater_message_modal" tabindex="-1" aria-labelledby="udpate_message_title" aria-hidden="true">
 					<div class="modal-dialog modal-dialog-scrollable modal-xl">
-					<div class="modal-content">
-						<div class="modal-header">
-						<h5 class="modal-title" id="update_message_title"><i class="fa-solid fa-gift"></i>&nbsp; Update Message</h5>
-						<button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="clearMessage();">
-							<span aria-hidden="true">&times;</span>
-						</button>
-						</div>
-						<div class="modal-body">
-							<div id="update_message_html">
-							Loading...
+						<div class="modal-content">
+							<div class="modal-header">
+								<h5 class="modal-title" id="update_message_title"><i class="fa fa-gift"></i>&nbsp; Update Message</h5>
+								<button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="clearMessage();">
+									<span aria-hidden="true">&times;</span>
+								</button>
+							</div>
+							<div class="modal-body">
+								<div id="update_message_html">
+									Loading...
+								</div>
+							</div>
+							<div class="modal-footer">
+								<button type="button" class="btn btn-primary" data-dismiss="modal" onclick="clearMessage();">Close</button>
 							</div>
 						</div>
-						<div class="modal-footer">
-						<button type="button" class="btn btn-primary" data-dismiss="modal" onclick="clearMessage();">Close</button>
-						</div>
-					</div>
 					</div>
 				</div>
 				{% endif %}
 			{% endif %}
 		{% endblock %}
+		
 
         <!-- Standard JavaScript -->
         <!-- jQuery --> 
@@ -216,7 +273,29 @@
 				input.select();
 			});
 		</script>
+		<script>
+			$(document).ready(function() {
+				var selectedPill = sessionStorage.getItem('selectedPill');
+				if (selectedPill) {
+					// Remove the active class from all tabs
+					$('.nav-link').removeClass('active');
+					// Remove the show and active classes from all tab panes
+					$('.tab-pane').removeClass('show active');
+					// Select the new tab
+					var pillElement = new bootstrap.Tab(document.getElementById(selectedPill));
+					pillElement.show();
+					// Add the active class to the new tab
+					$('#' + selectedPill).addClass('active');
+					// Add the show and active classes to the new tab pane
+					$('#' + selectedPill.replace('-tab', '')).addClass('show active');
+					// Add the active class to the debugManual nav-link
+					$('#v-pills-debugManual-tab').addClass('active');
+					sessionStorage.removeItem('selectedPill');
+				}
+			});
+		</script>
 		{% endblock %}		
 
     </body>
 </html>
+

@@ -1,151 +1,155 @@
 {% macro render_controller_config(selected, metadata, settings, cycle_data) %}
-<div class="row">
-    <div class="col-12">
-        <!-- Media Section-->
-        <div class="mb-3 mb-md-0 mr-lg-3">
-            {% if metadata[selected]['image'] != "" %}
-            <img src="{{ url_for('static', filename='img/controller/' + metadata[selected]['image']) }}" class="mr-3 mr-md-0 border border-secondary rounded" width="128">
-            {% else %}
-            <img src="{{ url_for('static', filename='img/controller/none.jpg') }}" class="mr-3 mr-md-0 border border-secondary rounded" width="128">
-            {% endif %}
-        </div>
-        <!-- Media Text-->
-        <div class="media-body">
-            <strong>Description: </strong>{{ metadata[selected]['description'] }}<br>
-            <strong>Original Author: </strong>{{ metadata[selected]['author'] }}<br>
-            {% if metadata[selected]['link'] != "" %}
-            <strong>Link to Homepage: </strong><a href="{{ metadata[selected]['link'] }}" target="_blank">{{ metadata[selected]['link'] }} <i class="fas fa-external-link-alt"></i></a><br>
-            {% endif %}
-            {% if metadata[selected]['contributors'] != [] %}
-            <strong>Contributors: </strong>
-            {% for contributor in metadata[selected]['contributors'] %}{% if loop.index0 != 0 %}, {% endif %}{{ contributor }}{% endfor %}<br>
-            {% endif %}
-            {% if metadata[selected]['attributions'] != [] %}
-            <strong>Attributions: </strong>
-            {% for attribution in metadata[selected]['attributions'] %}
-                {% if loop.index0 != 0 %}, {% endif %}
-                {{ attribution }}
-            {% endfor %}<br>
-            {% endif %}
+    <div class="list-group-item"> 
+        <div class="d-flex flex-column flex-lg-row align-items-center">
+            <div class="col-12 col-lg-4 mb-3 mb-lg-0">
+                {% if metadata[selected]['image'] != "" %}
+                    <img src="{{ url_for('static', filename='img/controller/' + metadata[selected]['image']) }}" class="border border-secondary rounded img-fluid">
+                {% else %}
+                    <img src="{{ url_for('static', filename='img/controller/none.jpg') }}" class="border border-secondary rounded img-fluid">
+                {% endif %}
+            </div>
+            <!-- Media Text-->
+            <div class="col-12 col-lg-8">
+                <p class="mb-0 ml-2 p-2">
+                    <b>Description: </b>{{ metadata[selected]['description'] }}
+                </p>
+                <p class="mb-0 ml-2 p-2">
+                    <b>Original Author: </b>{{ metadata[selected]['author'] }}
+                </p>
+                {% if metadata[selected]['link'] != "" %}
+                <p class="mb-0 ml-2 p-2">
+                    <b>Link to Homepage: </b><a href="{{ metadata[selected]['link'] }}" target="_blank">{{ metadata[selected]['link'] }}</a>
+                </p>
+                {% endif %}
+                {% if metadata[selected]['contributors'] != [] %}
+                <p class="mb-0 ml-2 p-2">
+                    <b>Contributors: </b>
+                    {% for contributor in metadata[selected]['contributors'] %}{% if loop.index0 != 0 %}, {% endif %}{{ contributor }}{% endfor %}
+                </p>
+                {% endif %}
+                {% if metadata[selected]['attributions'] != [] %}
+                <p class="mb-0 ml-2 p-2">
+                    <b>Attributions: </b>
+                    {% for attribution in metadata[selected]['attributions'] %}
+                        {% if loop.index0 != 0 %}, {% endif %}
+                        {{ attribution }}
+                    {% endfor %}
+                </p>
+                {% endif %}
+            </div>
         </div>
     </div>
 
-    <div class="col-12">
-        <br><br>
-        {% if metadata[selected]['config'] != [] %}
-        <!-- Data Table-->
-        <table class="table">
-            <thead class="thead-light">
-                <tr>
-                    <th scope="col">Option</th>
-                    <th scope="col" style="min-width: 6ch;">Setting</th>
-                    <th scope="col" class="d-none d-md-table-cell">Description</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for option in metadata[selected]['config'] %}
-                <tr {% if option['hidden'] %} hidden {% endif %}>
-                    <td>{{ option['option_friendly_name'] }}</td>
-                    <td>
-                        <span data-toggle="tooltip" data-placement="top" title="{{ option['option_description'] }}">
-                            {% if option['option_type'] == 'float' or option['option_type'] == 'int' %}
-                                {{ render_input_float_int(option['option_friendly_name'], option['option_name'], settings['config'][selected][option['option_name']], option['option_min'], option['option_max'], option['option_step']) }} 
-                            {% elif option['option_type'] == 'bool' %}
-                                {{ render_input_bool(option['option_friendly_name'], option['option_name'], value=settings['config'][selected][option['option_name']]) }}
-                            {% elif option['option_type'] == 'list' or option['option_type'] == 'numlist' %}
-                                {{ render_input_list(option['option_friendly_name'], option['option_name'], settings['config'][selected][option['option_name']], option['option_list'], option['option_list_labels']) }}
-                            {% else %}
-                                {{ render_input_string(option['option_friendly_name'], option['option_name'], settings['config'][selected][option['option_name']]) }}
-                            {% endif %}
-                        </span>
-                    </td>
-                    <td class="d-none d-md-table-cell">{{ option['option_description'] }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    {% if metadata[selected]['config'] != [] %}
+        {% for option in metadata[selected]['config'] %}
+        <div class="list-group-item" {% if option['hidden'] %} hidden {% endif %}>
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <strong>{{ option['option_friendly_name'] }}</strong>
+                </div>
+                <div class="col-4 col-lg-3 ml-auto mr-0 pr-0 d-flex justify-content-end">
+                    <span data-toggle="tooltip" data-placement="top" title="{{ option['option_description'] }}">
+                        {% if option['option_type'] == 'float' or option['option_type'] == 'int' %}
+                            {{ render_input_float_int(option['option_friendly_name'], option['option_name'], settings['config'][selected][option['option_name']], option['option_min'], option['option_max'], option['option_step']) }} 
+                        {% elif option['option_type'] == 'bool' %}
+                            {{ render_input_bool(option['option_friendly_name'], option['option_name'], value=settings['config'][selected][option['option_name']]) }}
+                        {% elif option['option_type'] == 'list' or option['option_type'] == 'numlist' %}
+                            {{ render_input_list(option['option_friendly_name'], option['option_name'], settings['config'][selected][option['option_name']], option['option_list'], option['option_list_labels']) }}
+                        {% else %}
+                            {{ render_input_string(option['option_friendly_name'], option['option_name'], settings['config'][selected][option['option_name']]) }}
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            {% set description, default = option['option_description'].split('Default', 1) %}
+            <p class="text-muted mb-0 ml-2 p-2">
+                <b>Default: </b>{{ default.replace('[', '').replace(']', '').replace('=', '').strip() }}
+            </p>
+            <p class="text-muted mb-0 ml-2 p-2">
+                {{ description.replace('Description:', '').replace('[', '').strip() }}
+            </p>
+        </div>
+        {% endfor %}
         {% else %}
-        <i><strong>Note:</strong> No configuration options are exposed for this controller.</i>
-        {% endif %}
+        <div class="list-group-item">
+            <div class="d-flex align-items-center justify-content-between">
+                <p class="text-muted mb-0 ml-2 p-2">
+                    <i class="badge badge-note mr-2">NOTE</i> <b>No configuration options are exposed for this controller.</b>
+                </p>
+            </div>
+        </div> 
+    {% endif %}
+
+    <div class="card shadow-sm mt-2 mb-2">
+        <div class="btn bg-secondary section-header justify-content-between align-items-center">
+            <h5 class="mb-0 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-wave-square mr-2"></i>Controller Cycle Settings
+                </div>
+            </h5>
+        </div>
+        <div class="list-group">
+            <div class="list-group-item">
+                <p class="text-muted mb-0 ml-2 p-2">
+                    <i class="badge badge-note mr-2">NOTE</i> For each controller, you can set certain cycle settings, like the cycle time (length of time between controller sampling temperature and adjusting the amount of auger ON time).
+                </p>
+            </div>
+            <div class="list-group-item">
+                <div class="d-flex flex-column">
+                    <div class="d-flex flex-lg-row align-items-center">
+                        <div class="col-9 col-lg-10 mb-3 mb-lg-0">
+                            <i class="far fa-clock mr-2"></i>Cycle Time (s)
+                        </div>
+                        <div class="col-3 col-lg-2">
+                            <input id="holdcycletime" type="number" inputmode="numeric" min="1" step="1" class="form-control" value="{{ cycle_data['HoldCycleTime'] }}" name="holdcycletime">
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 ml-2 p-2">
+                        <b>Default: </b>{{ metadata[selected]['recommendations']['cycle']['cycle_time'] }}
+                    </p>
+                    <p class="text-muted mb-0 ml-2 p-2">
+                        Amount of seconds for a complete cycle. At the beginning of each cycle, the controller will check the current temperature and set point to determine the cycle ratio (auger ON time / auger OFF time).
+                    </p>
+                </div>
+            </div>
+            <div class="list-group-item">
+                <div class="d-flex flex-column">
+                    <div class="d-flex flex-lg-row align-items-center">
+                        <div class="col-9 col-lg-10 mb-3 mb-lg-0">
+                            <i class="fas fa-percentage mr-2"></i>Min Cycle Ratio
+                        </div>
+                        <div class="col-3 col-lg-2">
+                            <input id="u_min" type="number" inputmode="numeric" min="0.05" max="0.99" step="0.01" class="form-control" value="{{ cycle_data['u_min'] }}" name="u_min">
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 ml-2 p-2">
+                        <b>Default: </b>{{ metadata[selected]['recommendations']['cycle']['cycle_ratio_min'] }}
+                    </p>
+                    <p class="text-muted mb-0 ml-2 p-2">
+                        Minimum percentage of cycle where the auger is on. This is to prevent flame-out which can happen with a cycle ratio of less than 0.1. (0.0 - 0.99)
+                    </p>
+                </div>
+            </div>
+            <div class="list-group-item">
+                <div class="d-flex flex-column">
+                    <div class="d-flex flex-lg-row align-items-center">
+                        <div class="col-9 col-lg-10 mb-3 mb-lg-0">
+                            <i class="fas fa-percentage mr-2"></i>Max Cycle Ratio
+                        </div>
+                        <div class="col-3 col-lg-2">
+                            <input id="u_max" type="number" inputmode="numeric" min="0.1" max="1" step="0.01" class="form-control" value="{{ cycle_data['u_max'] }}" name="u_max">
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0 ml-2 p-2">
+                        <b>Default: </b>{{ metadata[selected]['recommendations']['cycle']['cycle_ratio_max'] }}
+                    </p>
+                    <p class="text-muted mb-0 ml-2 p-2">
+                        Maximum percentage of cycle where the auger is on. This is to minimize possible overshoots, or overcompensation in temperature. (0.0 - 1.0)
+                    </p>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
-
-<br>
-
-<div class="card-header">
-    <i class="fas fa-wave-square"></i>&nbsp; Controller Cycle Settings
-</div>
-<div class="card-body">
-    <i>
-        For each controller, you can set certain cycle settings, 
-        like the cycle time (length of time between controller sampling 
-        temperature and adjusting the amount of auger ON time).  To use the 
-        recommended values for the currently selected controller, click on 
-        the button in the recommended column.  
-    </i><br><br>
-
-    <table class="table">
-        <thead class="thead-light">
-            <tr>
-            <th scope="col">Setting</th>
-            <th scope="col">Value</th>
-            <th scope="col" class="d-none d-md-table-cell">Recommended</th>
-            <th scope="col" class="d-none d-md-table-cell">Description</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td data-toggle="tooltip" title="Amount of seconds for a complete cycle. At the beginning of each cycle, the controller will check the current temperature and set point to determine the cycle ratio (auger ON time / auger OFF time). [Default={{ metadata[selected]['recommendations']['cycle']['cycle_time'] }}]">
-                    <i class="far fa-clock"></i>&nbsp; Cycle Time (s)</td>
-                <td>
-                    <input id="holdcycletime" type="number" inputmode="numeric" min="1" step="1" class="form-control" value="{{ cycle_data['HoldCycleTime'] }}" name="holdcycletime" style="width: 6ch;">
-                </td>
-                <td class="d-none d-md-table-cell">
-                    <button class="btn btn-outline-secondary" data-toggle="tooltip" title="Click to Use Recommended Value." type="button" onclick="$('#holdcycletime').val({{ metadata[selected]['recommendations']['cycle']['cycle_time'] }})">
-                        <i class="fas fa-arrow-left"></i> {{ metadata[selected]['recommendations']['cycle']['cycle_time'] }}
-                    </button>
-                </td>
-                <td class="d-none d-md-table-cell">
-                    Amount of seconds for a complete cycle. At the beginning of each cycle, the controller will check the current temperature and set point to determine the cycle ratio (auger ON time / auger OFF time). [Default={{ metadata[selected]['recommendations']['cycle']['cycle_time'] }}]
-                </td>
-            </tr>
-            <tr>
-                <td data-toggle="tooltip" title="Minimum percentage of cycle where the auger is on. This is to prevent flame-out which can happen with a cycle ratio of less than 0.1. (0.0 - 0.99) [Default={{ metadata[selected]['recommendations']['cycle']['cycle_ratio_min'] }}]">
-                    <i class="fas fa-percentage"></i>&nbsp; Min Cycle Ratio
-                </td>
-                <td>
-                    <input id="u_min" type="number" inputmode="numeric" min="0.05" max="0.99" step="0.01" class="form-control" value="{{ cycle_data['u_min'] }}" name="u_min" style="width: 6ch;">
-                </td>
-                <td class="d-none d-md-table-cell">
-                    <button class="btn btn-outline-secondary" data-toggle="tooltip" title="Use Recommended Value." type="button" onclick="$('#u_min').val({{ metadata[selected]['recommendations']['cycle']['cycle_ratio_min'] }})">
-                        <i class="fas fa-arrow-left"></i> {{ metadata[selected]['recommendations']['cycle']['cycle_ratio_min'] }}
-                    </button>
-                </td>
-                <td class="d-none d-md-table-cell">
-                    Minimum percentage of cycle where the auger is on. This is to prevent flame-out which can happen with a cycle ratio of less than 0.1. (0.0 - 0.99) [Default={{ metadata[selected]['recommendations']['cycle']['cycle_ratio_min'] }}]
-                </td>
-            </tr>
-            <tr>
-                <td data-toggle="tooltip" title="Maximum percentage of cycle where the auger is on. This is to minimize possible overshoots, or overcompensation in temperature. (0.0 - 1.0) [Default={{ metadata[selected]['recommendations']['cycle']['cycle_ratio_max'] }}]">
-                    <i class="fas fa-percentage"></i>&nbsp; Max Cycle Ratio
-                </td>
-                <td>
-                    <input id="u_max" type="number" inputmode="numeric" min="0.1" max="1" step="0.01" class="form-control" value="{{ cycle_data['u_max'] }}" name="u_max" style="width: 6ch;">
-                </td>
-                <td class="d-none d-md-table-cell">
-                    <button class="btn btn-outline-secondary" data-toggle="tooltip" title="Use Recommended Value." type="button" onclick="$('#u_max').val({{ metadata[selected]['recommendations']['cycle']['cycle_ratio_max'] }})">
-                        <i class="fas fa-arrow-left"></i> {{ metadata[selected]['recommendations']['cycle']['cycle_ratio_max'] }}
-                    </button>
-                </td>
-                <td class="d-none d-md-table-cell">
-                    Maximum percentage of cycle where the auger is on. This is to minimize possible overshoots, or overcompensation in temperature. (0.0 - 1.0) [Default={{ metadata[selected]['recommendations']['cycle']['cycle_ratio_max'] }}]
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-
-
 {% endmacro %}
 
 

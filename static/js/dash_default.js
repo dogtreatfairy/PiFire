@@ -12,7 +12,6 @@ var probes = []; // List of probe keys
 var primary = ''; // Primary key 
 var probeGauges = {}; // List of probe gauges 
 var probesReady = false; // Pre-initialized state
-
 var last_fan_status = null;
 var last_auger_status = null;
 var last_igniter_status = null;
@@ -20,24 +19,24 @@ var last_pmode_status = null;
 var last_lid_open_status = false;
 var display_mode = null;
 if (typeof dashDataStruct == 'undefined') {
-    var dashDataStruct = {};
-	console.log('DEBUG: dashDataStruct undefined');
-	// Set max temperatures for units specified 
-	if (units == 'F') {
-		var maxTempPrimary = 600; 
-		var maxTempFood = 300;
-	} else {
-		var maxTempPrimary = 300; 
-		var maxTempFood = 150;
-	};
+var dashDataStruct = {};
+console.log('DEBUG: dashDataStruct undefined');
+// Set max temperatures for units specified 
+if (units == 'F') {
+	var maxTempPrimary = 600; 
+	var maxTempFood = 300;
 } else {
-	if (units == 'F') {
-		var maxTempPrimary = dashDataStruct.config.max_primary_temp_F; 
-		var maxTempFood = dashDataStruct.config.max_food_temp_F;
-	} else {
-		var maxTempPrimary = dashDataStruct.config.max_primary_temp_C; 
-		var maxTempFood = dashDataStruct.config.max_food_temp_C;
-	};
+	var maxTempPrimary = 300; 
+	var maxTempFood = 150;
+};
+} else {
+if (units == 'F') {
+	var maxTempPrimary = dashDataStruct.config.max_primary_temp_F; 
+	var maxTempFood = dashDataStruct.config.max_food_temp_F;
+} else {
+	var maxTempPrimary = dashDataStruct.config.max_primary_temp_C; 
+	var maxTempFood = dashDataStruct.config.max_food_temp_C;
+};
 };
 
 // Credits to https://github.com/naikus for SVG-Gauge (https://github.com/naikus/svg-gauge) MIT License Copyright (c) 2016 Aniket Naik
@@ -156,27 +155,27 @@ function updateProbeCards() {
 					};
 					mode = current.status.mode;
 					if (['Prime', 'Shutdown'].includes(mode)) {
-						$('#status_footer').slideDown();
+						$('#status_footer').slideDown(400, recalculateMasonryLayout);
 						$('#mode_timer_label').show();
 						$('#lid_open_label').hide();
 						$('#pmode_group').hide();
 					} else if (['Startup', 'Reignite'].includes(mode)) {
-						$('#status_footer').slideDown();
+						$('#status_footer').slideDown(400, recalculateMasonryLayout);
 						$('#mode_timer_label').show();
 						$('#lid_open_label').hide();
 						$('#pmode_group').show();
 					} else if (mode == 'Hold') {
-						$('#status_footer').slideUp();
+						$('#status_footer').slideUp(400, recalculateMasonryLayout);
 						$('#mode_timer_label').hide();
 						$('#lid_open_label').show();
 						$('#pmode_group').hide();
 					} else if (mode == 'Smoke') {
-						$('#status_footer').slideUp();
+						$('#status_footer').slideUp(400, recalculateMasonryLayout);
 						$('#mode_timer_label').hide();
 						$('#lid_open_label').hide();
 						$('#pmode_group').show();
 					} else {
-						$('#status_footer').slideUp();
+						$('#status_footer').slideUp(400, recalculateMasonryLayout);
 						$('#mode_timer_label').hide();
 						$('#lid_open_label').hide();
 						$('#pmode_group').hide();
@@ -261,14 +260,15 @@ function updateProbeCards() {
 			if ((mode == 'Hold') && (last_lid_open_status != current.status.lid_open_detected)) {
 				last_lid_open_status = current.status.lid_open_detected;
 				if (last_lid_open_status) {
-					$('#status_footer').slideDown();
+					$('#status_footer').slideDown(400, recalculateMasonryLayout);
 					$('#mode_timer_label').hide();
 					$('#lid_open_label').show();
 				} else {
-					$('#status_footer').slideUp();
+					$('#status_footer').slideUp(400, recalculateMasonryLayout);
 					$('#mode_timer_label').hide();
 					$('#lid_open_label').show();
 				};
+
 			}; 
 
 			if ((mode == 'Hold') && (last_lid_open_status)) {
@@ -574,7 +574,7 @@ function dashSetData() {
 			'dashboards' : {
 				'Default' : dashDataStruct
 			}
-		} 
+		}
     };
 
 	$.ajax({
@@ -587,6 +587,7 @@ function dashSetData() {
             //console.log('dashSetData -> ' + response);
         }
     });
+	
 };
 
 function dashToggleVisible(cardID) {
@@ -600,6 +601,8 @@ function dashToggleVisible(cardID) {
 		if (index !== -1) {
 			dashDataStruct.custom.hidden_cards.splice(index, 1); // If found, remove
 		};
+		recalculateMasonryLayout();
+		//console.log('dashData Hidden='+dashDataStruct.custom.hidden_cards);
 		console.log('dashData Hidden='+dashDataStruct.custom.hidden_cards);
 		dashSetData();
 	} else {
@@ -612,6 +615,8 @@ function dashToggleVisible(cardID) {
 		if (index == -1) {
 			dashDataStruct.custom.hidden_cards.push(cardID); // If not found, add
 		};
+		recalculateMasonryLayout();
+		//console.log('dashData Hidden='+dashDataStruct.custom.hidden_cards);
 		console.log('dashData Hidden='+dashDataStruct.custom.hidden_cards);
 		dashSetData();
 	};
@@ -639,4 +644,6 @@ $(document).ready(function(){
 	
 	// Current hopper information loop
 	setInterval(updateHopperStatus, 150000);  // Update every 150000ms 
+
+	recalculateMasonryLayout();
 });

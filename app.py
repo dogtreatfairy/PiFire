@@ -18,7 +18,7 @@ Description: This script will start at boot, and start up the web user
 ==============================================================================
 '''
 
-from flask import Flask, request, abort, render_template, make_response, send_file, jsonify, redirect, render_template_string
+from flask import Flask, request, abort, render_template, make_response, send_file, jsonify, redirect, render_template_string, url_for
 from flask_mobility import Mobility
 from flask_socketio import SocketIO
 from flask_qrcode import QRcode
@@ -57,6 +57,10 @@ Mobility(app)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['HISTORY_FOLDER'] = HISTORY_FOLDER
 app.config['RECIPE_FOLDER'] = RECIPE_FOLDER
+
+@app.context_processor
+def inject_settings():
+	return dict(settings=settings)
 
 '''
 ==============================================================================
@@ -1933,6 +1937,10 @@ def settings_page(action=None):
 			settings['startup']['smartstart']['exit_temp'] = int(response['smartstart_exit_temp'])
 		if _is_not_blank(response, 'startup_exit_temp'):
 			settings['startup']['startup_exit_temp'] = int(response['startup_exit_temp'])
+		if _is_checked(response, 'prime_ignition'):
+			settings['globals']['prime_ignition'] = True
+		else:
+			settings['globals']['prime_ignition'] = False
 		if _is_not_blank(response, 'prime_on_startup'):
 			prime_amount = int(response['prime_on_startup'])
 			if prime_amount < 0 or prime_amount > 200:
@@ -2058,6 +2066,46 @@ def settings_page(action=None):
 			event['text'] = 'Successfully updated grill name.'
 
 		write_settings(settings)
+	
+	if request.method == 'POST' and action == 'misc':
+		response = request.form
+
+		if 'grill_name' in response:
+			settings['globals']['grill_name'] = response['grill_name']		
+		if _is_not_blank(response, 'dashboardSelect'):
+			settings['dashboard']['current'] = response['dashboardSelect']
+		if _is_checked(response, 'darkmode'):
+			settings['globals']['page_theme'] = 'dark'
+		else:
+			settings['globals']['page_theme'] = 'light'
+		if _is_checked(response, 'global_control_panel'):
+			settings['globals']['global_control_panel'] = True
+		else:
+			settings['globals']['global_control_panel'] = False
+		if 'units' in response:
+			if response['units'] == 'C' and settings['globals']['units'] == 'F':
+				settings = convert_settings_units('C', settings)
+				write_settings(settings)
+				control = {}
+				control['updated'] = True
+				control['units_change'] = True
+				write_control(control, origin='app')
+			elif response['units'] == 'F' and settings['globals']['units'] == 'C':
+				settings = convert_settings_units('F', settings)
+				write_settings(settings)
+				control = {}
+				control['updated'] = True
+				control['units_change'] = True
+				write_control(control, origin='app')
+		if 'boot_to_monitor' in response:
+			settings['globals']['boot_to_monitor'] = True 
+		else:
+			settings['globals']['boot_to_monitor'] = False 
+
+		event['type'] = 'updated'
+		event['text'] = 'Successfully updated settings.'
+
+		write_settings(settings)
 
 	if request.method == 'POST' and action == 'pellets':
 		response = request.form
@@ -2078,11 +2126,6 @@ def settings_page(action=None):
 			control['distance_update'] = True
 		if _is_not_blank(response, 'auger_rate'):
 			settings['globals']['augerrate'] = float(response['auger_rate'])
-
-		if _is_checked(response, 'prime_ignition'):
-			settings['globals']['prime_ignition'] = True
-		else:
-			settings['globals']['prime_ignition'] = False
 
 		event['type'] = 'updated'
 		event['text'] = 'Successfully updated pellet settings.'
@@ -2198,9 +2241,9 @@ def admin_page(action=None):
 	if request.method == 'POST' and action == 'setting':
 		response = request.form
 
-		if 'debugenabled' in response:
+		if 'debugtoggle' in response:
 			control['settings_update'] = True
-			if response['debugenabled'] == 'disabled':
+			if response['debugtoggle'] == 'disabled':
 				write_log('Debug Mode Disabled.')
 				settings['globals']['debug_mode'] = False
 				write_settings(settings)

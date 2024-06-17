@@ -1,65 +1,100 @@
-  .gauge-container {
-    width: 250px;
-    height: 250px;
-    display: inline-block;
-    padding: 10px;
-  }
-  .gauge-container > .gauge .dial {
-    stroke: #eee;
-    stroke-width: 10;
-    fill: rgba(0,0,0,0);
-  }
-  .gauge-container > .gauge .value {
-    stroke: #3498db;
-    stroke-width: 12;
-    fill: rgba(0,0,0,0);
-  }
-  .gauge-container > .gauge .value-text {
-    fill: #3498db;
-    font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    font-weight: bold;
-    font-size: 2em;
-  }
+.gauge-container {
+  width: 80%;
+  height: auto;
+  display: inline-block;
+  padding:0px;
+}
+.gauge-container > .gauge .dial {
+  stroke: #eee;
+  stroke-width: 10;
+  fill: rgba(0,0,0,0);
+}
+.gauge-container > .gauge .value {
+  stroke: #3498db;
+  stroke-width: 12;
+  fill: rgba(0,0,0,0);
+}
+.gauge-container > .gauge .value-text {
+  fill: #3498db;
+  font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-weight: bold;
+  font-size: 2em;
+}
 
-  .gauge-container > .value-text {
-    color: #3498db;
-    font-weight: 100;
-    position: absolute;
-    bottom: 10%;
-    right: 48%;
-    display: inline-block;
-    font-size: 1.4em;
-  }
+.gauge-container > .value-text {
+  color: #3498db;
+  font-weight: 100;
+  position: absolute;
+  bottom: 10%;
+  right: 48%;
+  display: inline-block;
+  font-size: 1.4em;
+}
 
-  .gear-icon {
-    position: fixed;
-    bottom: 85px;
-    left: 20px;
-    width: 50px;
-    height: 50px;
-    color: #ffffff;
-    background-color: #80808083;
-    border-radius: 25px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    transition: all 0.3s ease-in-out;
-  }
-  
-  .gear-icon:hover {
-    width: 200px;
-    background-color: #007bff;
-  }
-  
-  .gear-icon:hover::after {
-    content: "Dash Settings";
-    white-space: nowrap;
-    color: #fff;
-    font-size: 1.25rem;
-    margin-left: 10px;
-    transition: all 0.3s ease-in-out;
-  }
+.gear-icon {
+  position: fixed;
+  bottom: 85px;
+  left: 20px;
+  width: 50px;
+  height: 50px;
+  color: #ffffff;
+  background-color: #80808083;
+  border-radius: 25px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease-in-out;
+}
 
-  .temperature-input {
-    font-size: 64px;
+.gear-icon:hover {
+  width: 200px;
+  background-color: #007bff;
+}
+
+.gear-icon:hover::after {
+  content: "Dash Settings";
+  white-space: nowrap;
+  color: #fff;
+  font-size: 1.25rem;
+  margin-left: 10px;
+  transition: all 0.3s ease-in-out;
+}
+
+.temperature-input {
+  font-size: 64px;
+}
+
+/* Extra small devices (portrait phones, less than 600px) */
+@media only screen and (max-width: 599px) {
+  .grid-item {
+    width: calc(100%);
   }
+}
+
+/* Small devices (landscape phones to portrait tablets, 600px and up) */
+@media only screen and (min-width: 600px) and (max-width: 899px) {
+  .grid-item {
+    width: calc((100% - 20px) / 2);
+  }
+}
+
+/* Medium devices (landscape tablets, 900px and up) */
+@media only screen and (min-width: 900px) and (max-width: 1199px) {
+  .grid-item {
+    width: calc((100% - 40px) / 3);
+  }
+}
+
+/* Large devices (laptops/desktops, 1200px and up) */
+@media only screen and (min-width: 1200px) {
+  .grid-item {
+    width: calc((100% - 60px) / 4);
+  }
+}
+
+.grid-item {
+  margin-top:20px;
+  box-sizing: border-box;
+}
+
+
