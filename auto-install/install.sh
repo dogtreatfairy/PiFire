@@ -71,7 +71,7 @@ echo "**                                                                     **"
 echo "**      Installing Dependencies... (This could take several minutes)   **"
 echo "**                                                                     **"
 echo "*************************************************************************"
-$SUDO apt install python3-dev python3-pip python3-venv python3-rpi.gpio python3-scipy nginx git supervisor ttf-mscorefonts-installer redis-server libatlas-base-dev libopenjp2-7 -y
+$SUDO apt install python3-dev python3-pip python3-venv python3-rpi.gpio python3-scipy nginx git supervisor ttf-mscorefonts-installer redis-server gfortran libatlas-base-dev libopenblas-dev liblapack-dev libopenjp2-7 -y
 
 # Grab project files
 clear
@@ -131,7 +131,7 @@ python -m pip install uuid
 python -m pip install influxdb-client[ciso]
 python -m pip install apprise
 python -m pip install scikit-fuzzy
-python -m pip install scikit-learn
+python -m pip install "scikit-learn==1.4.2"
 python -m pip install ratelimitingfilter
 python -m pip install "pillow>=9.2.0"
 python -m pip install paho-mqtt
