@@ -5,7 +5,7 @@
 
 ***Warning:*** *The creator of this project takes no responsibility for any damage that you may do to your personal property including modifications to your smoker grill if you choose to use this project.  The creator also takes no responsibility for any resulting harm or damages that may come from issues with the hardware or software design.*  ***This project is provided for educational purposes, and should be attempted only by individuals who wish to assume all risks involved.***
 
-***Note: (2020-12-29)*** *Full documentation including hardware and software installation guide are now located [here](https://nebhead.github.io/PiFire/) at the [https://nebhead.github.io/PiFire/](https://nebhead.github.io/PiFire/).*
+***Note: (2020-12-29)*** *Full documentation including hardware and software installation guide are now located [here](https://nebhead.github.io/PiFire-Pages) at the [https://nebhead.github.io/PiFire-Pages](https://nebhead.github.io/PiFire-Pages).*
 
 ### Introduction
 This project was inspired by user dborello and his excellent PiSmoker project (http://engineeredmusings.com/pismoker/ and https://github.com/DBorello/PiSmoker).  I encourage you to check it out and get a rough idea of how this all works.  This particular project was built around a Traeger Texas smoker grill platform, but should work for most older Traeger models (or other brands with similar parts like the older Pit Boss) built with similar parts (fan, auger, and igniter).  I've built the code in a way to be somewhat modular & extensible such that you can replace the grill platform with your own specific platform instead.  Newer Traeger grills with their newer wifi enabled controllers have DC components (instead of the AC Fan / Auger) and aren't covered by this project.  
@@ -85,15 +85,15 @@ I recommend at least taking a peek at the PiFire overview video below.  It cover
 
 [Link to our channel on YouTube](https://www.youtube.com/channel/UCYYs50U5QvHHhogx_rqs0Yg)
 
-Here is a the latest version 2.0 of the hardware w/TFT screen and hardware buttons in a custom 3D printed enclosure. We've come a long way since v1.0.
+Pictured below is version 2.0 of the hardware w/TFT screen and hardware buttons in a custom 3D printed enclosure. 
 
 ![Hardware v2](docs/photos/HW-V2-Display.jpg)
 
-And if you're interested in seeing more builds from other users, we have a discussions thread [here](https://github.com/nebhead/PiFire/discussions/28) where others have posted pictures of their unique builds.  
+And if you're interested in seeing more builds from other users, we have a discussions thread [here](https://github.com/nebhead/PiFire/discussions/28) or on [Discord](https://discord.gg/F9mbCrbrZS) (see below) where others have posted pictures of their unique builds.  
 
 ## Full Documentation / Hardware and Software Installation
 
-The full documentation has been moved to a GitHub page here: [https://nebhead.github.io/PiFire/](https://nebhead.github.io/PiFire/)
+The full documentation has been moved to a GitHub page here: [https://nebhead.github.io/PiFire-Pages](https://nebhead.github.io/PiFire-Pages)
 
 ### Discord
 I've added a discord server [here](https://discord.gg/F9mbCrbrZS) which can be a great resource for all who want to get more information, want to share their own builds, or just chat about pellet cooking.  Looking forward to seeing you there. 
@@ -101,7 +101,7 @@ I've added a discord server [here](https://discord.gg/F9mbCrbrZS) which can be a
 ### Updates
 
 * 9/2020 - Initial Release
-* 12/2020 - Moved documentation to [https://nebhead.github.io/PiFire/](https://nebhead.github.io/PiFire/)
+* 12/2020 - Moved documentation to [https://nebhead.github.io/PiFire-Pages](https://nebhead.github.io/PiFire-Pages)
 * 11/2021 - Many new features, bug fixes, and improvements.  New hardware support etc. which have been in incorporated over the last year, have been merged from the development branch
 * 4/2022 - Release v1.3.1 - Another HUGE release with many new features including an updater, a new configuration wizard, bug fixes, Smart Start feature and much, much more!
 * 6/2022 - Release v1.3.3 - Lot's of changes for this latest stable release for June 2022. It's been a busy couple of months and we've had a few bug fixes pulled into this latest version, including an installer bug. The display modules have been completely overhauled in this latest release to improve responsiveness and capabilities. We've added a module for the ILI1394 with rotary encoder support, which is a nice option for those who like to use a dial with push button to interface the menu system. When doing the update, consider doing a full reboot (instead of just restarting the server) to ensure connected display devices are fully reset.
@@ -109,12 +109,12 @@ I've added a discord server [here](https://discord.gg/F9mbCrbrZS) which can be a
 * 10/2022 - Release v1.3.5 - Bug fixes, feature refinements and brand new features galore in this latest release.  Added a new ADS1115 module (using Adafruits Circuit Python), due to some reports of issues with the existing ADS1115 module. These can be optionally selected in the configuration wizard.  PWM Fan Support and a boatload of code cleanup was introduced, thanks to contributor @weberbox.  Support for saving cook files was introduced in this version, so that you can go back to older cooks, edit some of the information and add images and comments.  Added a Prime Mode to allow you to prime the fire pot with pellets prior to a cook, and even prime & startup.  Added estimated pellet usage to the pellet manager, which will attempt to track just how many pellets you have used since your last load of pellets.  Added Apprise notification capability thanks to contributor @calonmerc.  320x200 displays have been update and added timers to specific modes. And even more!  
 * 6/2023 - Release v1.5.0 - Arguably one of the biggest overhauls to PiFire since it's inception.  The Probe system has been completely refactored to allow for multiple probe sensing devices (i.e. ADS1115, MAX31865, or even Virtual Probes to augment your inputs).  This extension of the probe system, allows for any number of probe inputs to be tracked in PiFire, allowing from notifications and tracking of history for each probe.  The sky is the limit!  With this change the the probe architecture, a number of other things needed to be modified/updated, including the notification system, the history/charting, the dashboards, cookfiles and recipe modes.  Note that if you are updating to this version, your settings will be upgraded in the process and you will not be able to roll back to a previous version (unless you restore from a backup of your settings).  
 * 11/2023 - Release v1.6.0 - In this month comes another huge update with lots of new features and bug fixes.  Many thanks to the users from discord that have been testing along the way (as well as submitting some bugs), what a great community we have!  Many of these features have been deployed on our development branch for some time, so they should be relatively stable.  Please do file issues on GitHub if you find any new bugs with the formal release.  With that, enjoy and happy grilling/smoking!
-* **5/2024** - Release v1.7.0 - Lot's of new updates in this release with the UI, new features (i.e. exit startup temp, etc.) and new device support.  Some improvements to the tuning tools (including an auto-tuning tool).  Under the covers improvements for stability and cleanup.  As usual, submit issues to GitHub if you run into anything.  Enjoy!
-
+* 5/2024 - Release v1.7.0 - Lot's of new updates in this release with the UI, new features (i.e. exit startup temp, etc.) and new device support.  Some improvements to the tuning tools (including an auto-tuning tool).  Under the covers improvements for stability and cleanup.  As usual, submit issues to GitHub if you run into anything.  Enjoy!
+* **9/2024 - Release v1.8.0** - Overhaul of the configuration wizard and underlying platform pin definitions to support board selection and configuration versus the platform selection that was previously provided.  This allows much more flexibility when it comes to custom pinouts.  This version now supports the PCB v4.x modular design allowing the ability to mix and match probe devices, relay/fan hardware, etc.  
 
 ### Credits
 
-Web Application created by Ben Parmeter, copyright 2020-2023. Check out my other projects on [github](https://github.com/nebhead). If you enjoy this software and feel the need to donate a cup of coffee, a frosty beer or a bottle of wine to the developer you can click [here](https://paypal.me/benparmeter).
+Web Application created by Ben Parmeter, copyright 2020-2024. Check out my other projects on [github](https://github.com/nebhead). If you enjoy this software and feel the need to donate a cup of coffee, a frosty beer or a bottle of wine to the developer you can click [here](https://paypal.me/benparmeter).
 
 Of course, none of this project would be available without the wonderful and amazing folks below.  If I forgot anyone please don't hesitate to let me know.  
 

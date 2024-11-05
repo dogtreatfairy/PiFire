@@ -47,3 +47,39 @@
 		{% endfor %}
 	{% endif %}
 {% endmacro %}
+
+{% macro render_option_list(section, label, default, list_values, list_labels) %}
+<select class="form-control {{ section }}Config"
+    id="{{ section }}_config_{{ label }}" 
+    name="{{ section }}_config_{{ label }}">
+    {% for item in list_values %}
+    <option value="{{ item }}"{% if default|string = item|string %} selected{% endif %}>{{ list_labels[loop.index0] }}</option>
+    {% endfor %}
+</select>
+{% endmacro %}
+
+{% macro render_option_string(section, label, default) %}
+<input type="text" class="form-control {{ section }}Config" 
+    value="{{ default }}" aria-label="{{ label }}" 
+    aria-describedby="{{name}}_addon" 
+    id="{{ section }}_config_{{ label }}" 
+    name="{{ section }}_config_{{ label }}"/>
+{% endmacro %}
+
+{% macro render_option_list(section, label, default, list_values, list_labels) %}
+<select class="form-control {{ section }}Config"
+    id="{{ section }}_config_{{ label }}" 
+    name="{{ section }}_config_{{ label }}">
+    {% for item in list_values %}
+    <option value="{{ item }}"{% if default|string == item|string %} selected{% endif %}>{{ list_labels[loop.index0] }}</option>
+    {% endfor %}
+</select>
+{% endmacro %}
+
+{% macro render_option_string(section, label, default) %}
+<input type="text" class="form-control {{ section }}Config" 
+    value="{{ default }}" aria-label="{{ label }}" 
+    aria-describedby="{{name}}_addon" 
+    id="{{ section }}_config_{{ label }}" 
+    name="{{ section }}_config_{{ label }}"/>
+{% endmacro %}

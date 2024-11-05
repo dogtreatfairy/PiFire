@@ -32,6 +32,10 @@ class ProbeInterface:
 	def __init__(self, probe_info, device_info, units):
 		self.units = units 
 		self.device_info = device_info
+		if self.device_info['config'].get('transient', 'False') == 'True':
+			self.transient = True
+		else:
+			self.transient = False
 		self.set_profiles(probe_info)
 		self._build_port_map(probe_info)
 		self._build_output_data(probe_info)
@@ -122,7 +126,11 @@ class ProbeInterface:
 
 		return Tr 
 
-	def _voltage_to_temp(self, voltage, probe_profile):
+	def _voltage_to_temp(self, voltage, probe_profile, port=None):
+		if voltage == None:
+			''' Transient probe detected. '''
+			return None, 0
+
 		''' Check to make sure voltage is between 0V and Vs defined in profile, plus some guard band '''
 		if(voltage > 0) and (voltage <= ((probe_profile['Vs'] * 1000) * 1.01)):
 			'''
@@ -172,9 +180,12 @@ class ProbeInterface:
 			tempF = 0.0
 			tempC = 0.0
 			Tr = 0
-			error_event = f'An error occurred reading the voltage from one of the ports. The voltage read ({voltage}mV) ' \
-				f'was outside the expected range of 0mV to {probe_profile["Vs"] * 1000}mV'	
-			self.logger.error(error_event)
+			error_event = f'An error occurred reading the voltage from device: {self.device_info["device"]}, ' \
+				f'port: {port}. The voltage read {(voltage / 1000):,.2f}V ({voltage}mV) ' \
+				f'was outside the expected range of 0mV to {probe_profile["Vs"]}V.  This usually means that ' \
+				f'the voltage reference is set too low in the probe device configuration.  To fix this issue, ' \
+				f'please set the voltage reference to a value greater than {(voltage / 1000):,.2f}V in the configuration wizard.'	
+			self.logger.debug(error_event)
 
 		if self.units == 'F':
 			return tempF, round(Tr)  # Return Calculated Temperature and Thermistor Value in Ohms
@@ -189,18 +200,23 @@ class ProbeInterface:
 			port_values[port] = self.device.read_voltage(port)
 
 			''' Convert Voltage to Temperature and Tr '''
-			port_values[port], self.output_data['tr'][self.port_map[port]] = self._voltage_to_temp(port_values[port], self.probe_profiles[port])
+			port_values[port], self.output_data['tr'][self.port_map[port]] = self._voltage_to_temp(port_values[port], self.probe_profiles[port], port=port)
 
 			''' Enqueue the Temperature Readings to Port Queues '''
-			self.port_queues[port].enqueue(port_values[port])
+			if port_values[port] == None:
+				''' If the read value is None, pass that to the output instead of adding to the queue '''
+				output_value = None
+			else:
+				self.port_queues[port].enqueue(port_values[port])
+				output_value = self.port_queues[port].average() 
 
 			''' Get average temperature from the queue and store it in the output data structure'''
 			if port == self.primary_port:
-				self.output_data['primary'][self.port_map[port]] = self.port_queues[port].average()
+				self.output_data['primary'][self.port_map[port]] = output_value
 			elif port in self.food_ports:
-				self.output_data['food'][self.port_map[port]] = self.port_queues[port].average()
+				self.output_data['food'][self.port_map[port]] = output_value
 			elif port in self.aux_ports:
-				self.output_data['aux'][self.port_map[port]] = self.port_queues[port].average()
+				self.output_data['aux'][self.port_map[port]] = output_value
 
 			if self.time_delay:
 				time.sleep(self.time_delay)  # Time delay, if needed for single-shot mode on some ADC's
@@ -223,6 +239,9 @@ class ProbeInterface:
 
 	def get_port_map(self):
 		return self.port_map
+
+	def get_device_info(self):
+		return self.device_info
 
 class FakeDevice:
 
