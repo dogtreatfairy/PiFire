@@ -34,15 +34,11 @@
 Imported Libraries
 '''
 import time
-import collections
-import numpy as np
-from sklearn.linear_model import LinearRegression
 from controller.base import ControllerBase 
 
 '''
 Class Definition
 '''
-
 class Controller(ControllerBase):
     def __init__(self, config, units, cycle_data):
         super().__init__(config, units, cycle_data)
@@ -57,24 +53,20 @@ class Controller(ControllerBase):
         self.last_update = time.time()
         self.error = 0.0
         self.set_point = 0
-        self.original_set_point = 0
 
         self.center = config['center']
-        self.anti_windup = config['anti_windup']
 
         self.derv = 0.0
         self.inter = 0.0
         self.inter_max = abs(self.center / self.ki)
 
-        self.prediction_window = config['prediction_window']
-        self.prediction_deadzone = config['prediction_deadzone']
-        self.temperature_history = collections.deque(maxlen=int(self.prediction_window / 25))
-        self.time_history = collections.deque(maxlen=int(self.prediction_window / 25))
-        self.regression_model = LinearRegression()
-
         self.last = 150
 
         self.set_target(0.0)
+
+        # Deadzone tracking
+        self.deadzone_start_time = None
+        self.deadzone_duration = 60  # 1 minute
 
     def _calculate_gains(self, pb, ti, td):
         self.kp = -1 / pb
@@ -82,58 +74,54 @@ class Controller(ControllerBase):
         self.kd = self.kp * td
 
     def update(self, current):
-
         # P
         error = current - self.set_point
-        self.p = self.kp * error + self.center # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
+        self.p = self.kp * error + self.center  # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
 
         # I
         dt = time.time() - self.last_update
-        self.inter += error * dt
-        self.inter = max(self.inter, -self.inter_max)
-        self.inter = min(self.inter, self.inter_max)
+        if 0 < self.p <= 1:  # Ensure we are in the pb, otherwise do not calculate i to avoid windup
+            self.inter += error * dt
+            self.inter = max(self.inter, -self.inter_max)
+            self.inter = min(self.inter, self.inter_max)
+
         self.i = self.ki * self.inter
 
-        # Anti-windup: Don't accumulate if we're at the output limits
-        if self.u >= self.anti_windup and error > 0:
-            self.inter -= error * dt
-        if self.u <= 0 and error < 0:
-            self.inter -= error * dt
-
-        # D with low-pass filter
-        alpha = 0.1  # Filter parameter, adjust as needed
-        self.derv = alpha * self.derv + (1 - alpha) * ((current - self.last) / dt)
+        # D
+        self.derv = (current - self.last) / dt
         self.d = self.kd * self.derv
 
-        # PID
-        self.u = self.p + self.i + self.d
-        self.u = max(0, min(self.u, 1))  # Ensure u is within [0, 1]
+        # Deadzone logic
+        deadzone = 7  # ±7 degrees
+        if abs(error) <= deadzone:
+            if self.deadzone_start_time is None:
+                self.deadzone_start_time = time.time()
+            elif time.time() - self.deadzone_start_time >= self.deadzone_duration:
+                # Temperature has stabilized within the deadzone for 1 minute
+                self.u = 0  # Adjust control output to maintain stability
+                self.error = error
+                self.last = current
+                self.last_update = time.time()
+                return self.u
+        else:
+            self.deadzone_start_time = None
+
+        # Predictive Adjustment
+        if abs(error) < (self.set_point / 2):
+            # Predict potential overshoot
+            predicted_temp = current + self.derv * dt
+            if predicted_temp > self.set_point:
+                # Reduce control output to avoid overshoot
+                self.u = (self.p + self.i + self.d) * 0.5
+            else:
+                self.u = self.p + self.i + self.d
+        else:
+            self.u = self.p + self.i + self.d
 
         # Update for next cycle
         self.error = error
         self.last = current
         self.last_update = time.time()
-
-        # Add the current temperature and time to the history
-        self.temperature_history.append(current)
-        self.time_history.append(time.time())
-
-        # If we have enough data, fit the regression model and make a prediction
-        if len(self.temperature_history) == self.temperature_history.maxlen:
-            # If the current temperature is within the deadzone, skip the prediction
-            if abs(current - self.set_point) > self.prediction_deadzone:
-            X = np.array(self.time_history).reshape(-1, 1)
-            y = np.array(self.temperature_history)
-            self.regression_model.fit(X, y)
-            predicted_temperature = self.regression_model.predict([[time.time() + self.prediction_window]])
-
-            # If the predicted temperature exceeds the set point, reduce u
-            if predicted_temperature > self.set_point:
-                overshoot = predicted_temperature - self.set_point
-                self.u -= overshoot / self.set_point
-
-        # Ensure u is within [0, 1]
-        self.u = max(0, min(self.u, 1))
 
         return self.u
 
@@ -150,7 +138,7 @@ class Controller(ControllerBase):
 
     def get_k(self):
         return self.kp, self.ki, self.kd
-
+    
     def supported_functions(self):
         function_list = [
             'update', 
