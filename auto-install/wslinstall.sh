@@ -184,6 +184,9 @@ elif [[ $DEV_FOLDER == C:/ || $DEV_FOLDER == C:\\ ]]; then
     DEV_FOLDER="/mnt/c/${DEV_FOLDER:3}"
 fi
 
+# Remove existing pifire() function if it exists
+sed -i '/^pifire() {/,/^}/d' ~/.bashrc
+
 # Add custom command to .bashrc
 echo '# Custom command to activate venv, wait, and run control.py' >> ~/.bashrc
 echo 'pifire() {' >> ~/.bashrc
