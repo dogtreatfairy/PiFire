@@ -188,7 +188,7 @@ fi
 echo '# Custom command to activate venv, wait, and run control.py' >> ~/.bashrc
 echo 'pifire() {' >> ~/.bashrc
 echo '    if [ "$1" == "--install" ]; then' >> ~/.bashrc
-echo '        cd "/mnt/c/Users/ryans/OneDrive/GitHub/pifire/auto-install"' >> ~/.bashrc
+echo "        cd \"$DEV_FOLDER/auto-install\"" >> ~/.bashrc
 echo '        bash wslinstall.sh' >> ~/.bashrc
 echo '    elif [ "$1" == "--update" ]; then' >> ~/.bashrc
 echo "        rsync -avz $DEV_FOLDER/ /usr/local/bin/pifire/" >> ~/.bashrc
