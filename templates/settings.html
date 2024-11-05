@@ -43,37 +43,21 @@
 
 {% block content %}    
     <div class="row">
-        <!-- Spacer for Left Nav on large screens -->
-        <div class="col-lg-2 d-none d-lg-block"></div>
-        <!-- Spacer for Sub Nav on everything but large screens -->
-        <div class="col-12 mt-5 d-lg-none d-block"></div>
-        <!-- Nav Content-->
-        <aside class="col-12 col-lg-2 navbar-dark bg-dark px-0 position-fixed vh-lg-100 border-bottom" style="z-index:1000;">
-            <nav class="navbar navbar-expand-lg px-0">   
-                <button class="ml-auto btn btn-warning mr-2 d-lg-none d-flex justify-content-center align-items-center" data-toggle="collapse" data-target="#settingsNav" aria-controls="settingsNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <b>Settings</b><span class="fa fa-chevron-down ml-2"></span>
-                </button>
-                <div class="collapse navbar-collapse overflow-auto mt-2 px-0 ml-auto col-12 col-lg-auto" style="z-index:1001;" id="settingsNav"> 
-                    <ul class="nav nav-pills flex-column mx-auto px-0">
-                        <li class="nav-item mt-1 px-1">
-                            <a class="nav-link subnav-link active d-flex align-items-start" id="v-pills-misc-tab" data-toggle="pill" href="#v-pills-misc" role="tab" aria-controls="v-pills-misc" aria-selected="true">Misc Settings</a>
-                        </li>
-                        <li class="nav-item mt-1 px-1">
-                            <a class="nav-link subnav-link d-flex align-items-start" id="v-pills-history-tab" data-toggle="pill" href="#v-pills-history" role="tab" aria-controls="v-pills-history" aria-selected="false">History</a>
-                        </li>
-                        <li class="nav-item mt-1 px-1">
-                            <a class="nav-link subnav-link d-flex align-items-start" id="v-pills-notifications-tab" data-toggle="pill" href="#v-pills-notifications" role="tab" aria-controls="v-pills-notifications" aria-selected="false">Notifications</a>
-                        </li>
-                        <li class="nav-item mt-1 px-1">
-                            <a class="nav-link subnav-link d-flex align-items-start" id="v-pills-pellets-tab" data-toggle="pill" href="#v-pills-pellets" role="tab" aria-controls="v-pills-pellets" aria-selected="false">Pellets</a>
-                        </li>
-                        <li class="nav-item mt-1 px-1">
-                            <a class="nav-link subnav-link d-flex align-items-start" id="v-pills-probes-tab" data-toggle="pill" href="#v-pills-probes" role="tab" aria-controls="v-pills-probes" aria-selected="false">Probes</a>
-                        </li>
-                            {% if settings['globals']['dc_fan'] %}
-                        <li class="nav-item mt-1 px-1">
-                            <a class="nav-link subnav-link d-flex align-items-start" id="v-pills-pwm-tab" data-toggle="pill" href="#v-pills-pwm" role="tab" aria-controls="v-pills-pwm" aria-selected="false">PWM Settings</a>
-                        </li>
+        <!-- Navigation -->
+        <div class="col-lg-3 nav-settings-fixed">
+            <nav class="navbar navbar-expand-lg navbar-dark flex-lg-column">
+                <a class="navbar d-lg-none dropdown-toggle btn btn-primary settings-button" href="#" id="navbarDropdown" role="button" data-toggle="collapse" data-target="#settingsNav" aria-haspopup="true" aria-expanded="false">
+                    Settings
+                </a>
+                <div class="collapse navbar-collapse" id="settingsNav">
+                    <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                        <a class="nav-link active" id="v-pills-probes-tab" data-toggle="pill" href="#v-pills-probes" role="tab" aria-controls="v-pills-probes" aria-selected="true">Probe Settings</a>
+                        <a class="nav-link" id="v-pills-probe-profiles-tab" data-toggle="pill" href="#v-pills-probe-profiles" role="tab" aria-controls="v-pills-probe-profiles" aria-selected="false">Probe Profiles</a>
+                        <a class="nav-link" id="v-pills-units-tab" data-toggle="pill" href="#v-pills-units" role="tab" aria-controls="v-pills-units" aria-selected="false">Units</a>
+                        <a class="nav-link" id="v-pills-name-tab" data-toggle="pill" href="#v-pills-name" role="tab" aria-controls="v-pills-name" aria-selected="false">Grill Name</a>
+                        <a class="nav-link" id="v-pills-work-mode-tab" data-toggle="pill" href="#v-pills-work-mode" role="tab" aria-controls="v-pills-work-mode" aria-selected="false">Work Mode</a>
+                        {% if settings['globals']['dc_fan'] %}
+                        <a class="nav-link" id="v-pills-pwm-tab" data-toggle="pill" href="#v-pills-pwm" role="tab" aria-controls="v-pills-pwm" aria-selected="false">PWM Settings</a>
                         {% endif %}
                         <li class="nav-item mt-1 px-1">
                             <a class="nav-link subnav-link d-flex align-items-center" id="v-pills-safety-tab" data-toggle="pill" href="#v-pills-safety" role="tab" aria-controls="v-pills-safety" aria-selected="false">
@@ -1100,150 +1084,127 @@
                                     </h5>
                                 </div>
                                 <div class="card-body">
-                                    <div class="list-group mb-1 shadow">
-                                        <div class="card shadow-sm mt-2 mb-2">
-                                            <div class="btn bg-secondary section-header justify-content-between align-items-center">
-                                                <h5 class="mb-0 d-flex justify-content-between align-items-center">
-                                                    <div class="d-flex align-items-start">
-                                                        Pellet Level Warnings
-                                                    </div>
-                                                    {% if settings['pelletlevel']['warning_enabled'] %}
-                                                    <span class="badge badge-success">ON</span>
-                                                    {% else %}
-                                                    <span class="badge badge-danger">OFF</span>
-                                                    {% endif %}
-                                                </h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="list-group-item border rounded border-success">
-                                                    <div class="d-flex align-items-center justify-content-between">
-                                                        <div>
-                                                            <strong class="mb-0"><i class="fas fa-exclamation-triangle mr-2"></i>Pellet Level Warning</strong>
-                                                        </div>
-                                                        <div class="custom-control custom-switch d-flex justify-content-end">
-                                                            <input type="checkbox" class="custom-control-input" id="pellet_warning" name="pellet_warning" {% if settings['pelletlevel']['warning_enabled'] %}checked{% endif %}>
-                                                            <label class="custom-control-label" for="pellet_warning"></label>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <!-- Check Time -->
-                                                <div class="list-group-item">
-                                                    <div class="d-flex align-items-center justify-content-between">
-                                                        <div>
-                                                            <strong><i class="far fa-clock mr-2"></i>Check Time (mins)</strong>
-                                                        </div>
-                                                        <div class="col-3 col-lg-2 ml-auto mr-0 pr-0 d-flex justify-content-end">
-                                                            <input id="warning_time" type="number" inputmode="numeric" min="5" max="240" class="form-control" placeholder="{{ settings['pelletlevel']['warning_time'] }}" value="{{ settings['pelletlevel']['warning_time'] }}" name="warning_time" style="min-width: 4ch;">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <!-- Level Warning -->
-                                                <div class="list-group-item">
-                                                    <div class="d-flex align-items-center justify-content-between">
-                                                        <div>
-                                                            <strong><i class="fas fa-exclamation-triangle mr-2"></i>Level Warning (%)</strong>
-                                                        </div>
-                                                        <div class="col-3 col-lg-2 ml-auto mr-0 pr-0 d-flex justify-content-end">
-                                                            <input id="warning_level" type="number" inputmode="numeric" min="0" max="100" class="form-control" placeholder="{{ settings['pelletlevel']['warning_level'] }}" value="{{ settings['pelletlevel']['warning_level'] }}" name="warning_level" style="min-width: 4ch;">
-                                                        </div>
-                                                    </div>
-                                                    <div class="row">
-                                                        <div class="col">
-                                                            <p class="text-muted mb-0 ml-2 p-2">
-                                                                <span class="badge badge-note mr-2">NOTE</span>
-                                                                Pellet levels below the input percent will receive notifications every {{ settings['pelletlevel']['warning_time'] }} minutes during a cook.
-                                                            </p>
-                                                        </div>
-                                                    </div>  
-                                                </div>
-                                            </div><!-- End of card body -->
-                                        </div><!-- End of Card -->
-                                    </div><!-- End of List Group -->
-                                    <div class="list-group mb-1 shadow">
-                                        <div class="card shadow-sm mt-2 mb-2">
-                                            <div class="btn bg-secondary section-header justify-content-between align-items-center" style="cursor: pointer;">
-                                                <h5 class="mb-0 d-flex justify-content-between align-items-center">
-                                                    <div class="d-flex align-items-start">
-                                                        Hopper Sensor Configuration
-                                                    </div>
-                                                </h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="list-group-item">
-                                                    <div class="d-flex align-items-center justify-content-between">
-                                                        <div>
-                                                            <strong><i class="fas fa-level-up-alt mr-2"></i>Hopper Full Distance (cm)</strong>
-                                                        </div>
-                                                        <div class="col-3 col-lg-2 ml-auto mr-0 pr-0 d-flex justify-content-end">
-                                                            <input id="full" type="number" inputmode="numeric" min="0" max="100" class="form-control" placeholder="{{ settings['pelletlevel']['full'] }}" value="{{ settings['pelletlevel']['full'] }}" name="full" style="min-width: 4ch;">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="list-group-item">
-                                                    <div class="d-flex align-items-center justify-content-between">
-                                                        <div>
-                                                            <strong><i class="fas fa-level-down-alt mr-2"></i>Hopper Empty Distance (cm)</strong>
-                                                        </div>
-                                                        <div class="col-3 col-lg-2 ml-auto mr-0 pr-0 d-flex justify-content-end">
-                                                            <input id="empty" type="number" inputmode="numeric" min="1" max="100" class="form-control" placeholder="{{ settings['pelletlevel']['empty'] }}" value="{{ settings['pelletlevel']['empty'] }}" name="empty" style="min-width: 4ch;">
-                                                        </div>
-                                                    </div>
-                                                    <div class="row">
-                                                        <div class="col">
-                                                            <p class="text-muted mb-0 ml-2 p-2">
-                                                                <span class="badge badge-note mr-2">NOTE</span>
-                                                                The distance value for full must be smaller than the value for empty.
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div><!-- End of card body -->
-                                        </div><!-- End of Card -->
-                                    </div><!-- End of List Group -->
-                                    <div class="list-group mb-1 shadow">
-                                        <div class="card shadow-sm mt-2 mb-2">
-                                            <div class="btn bg-secondary section-header justify-content-between align-items-center" style="cursor: pointer;">
-                                                <h5 class="mb-0 d-flex justify-content-between align-items-center">
-                                                    <div class="d-flex align-items-start">
-                                                        Auger Feed Rate
-                                                    </div>
-                                                </h5>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="list-group-item">
-                                                    <div class="d-flex align-items-center justify-content-between">
-                                                        <div>
-                                                            <strong class="mb-0"><i class="fas fa-angle-double-right mr-2"></i>Auger Rate (g/s)</strong>
-                                                        </div>
-                                                        <div class="col-3 col-lg-2 ml-auto mr-0 pr-0 d-flex justify-content-end">
-                                                            <input id="auger_rate" type="number" inputmode="numeric" min="0" step="0.05" class="form-control" placeholder="{{ settings['globals']['augerrate'] }}" value="{{ settings['globals']['augerrate'] }}" name="auger_rate" style="min-width: 4ch;">
-                                                        </div>
-                                                    </div>
-                                                    <div class="row">
-                                                        <div class="col">
-                                                            <p class="text-muted mb-0 ml-2 p-2">
-                                                                <b>Value used to:</b>
-                                                                    <ul>
-                                                                        <li class="text-muted">Calculate how long to run auger during priming.</li>
-                                                                        <li class="text-muted">Calculate estimated pellet usage.</li>
-                                                                    </ul>
-                                                            </p>
-                                                            <p class="text-muted mb-0 ml-2 p-2">
-                                                                This value can be tuned for your auger speed, by going into manual mode and running the auger for 10 seconds, then weighing the pellets
-                                                                that have been dispensed into the firepot.  
-                                                            </p>
-                                                            <p class="text-muted mb-0 ml-2 p-2">
-                                                                <i><b>Example:</b> If you run the auger for 10 seconds and 3 grams of pellets are dispensed, then
-                                                                the calculation would be 3g / 10s = 0.3.  That means 0.3 grams are dispensed per second of auger on time.
-                                                                </i>
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div><!-- End of card body -->
-                                        </div><!-- End of Card -->
-                                    </div><!-- End of List Group -->
-                                    
+                                    <span class="badge badge-warning">NOTE:</span>
+                                    <i class="small">Smoke Plus Mode can be toggled on/off by tapping the fan icon button on the dashboard. 
+                                        The icon will be highlighted blue indicating that smoke plus is enabled. Smoke Plus will cycle the fan on and off 
+                                        during smoke and hold mode to promote additional smoke generation. Fan cycling will only occur between the below 
+                                        min/max temperatures.</i>
+                                    <br>
+                                    <br>
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="default_smoke_plus" name="default_smoke_plus" {% if settings['smoke_plus']['enabled'] %}checked{% endif %}>
+                                        <label class="custom-control-label" for="default_smoke_plus">Smoke Plus Enabled by Default</label>
+                                    </div>
+                                    <br>
+                                    {% if settings['globals']['dc_fan'] %}
+                                    <span class="badge badge-warning">NOTE:</span>
+                                    <i class="small">Fan Ramping will ramp the fan from off to the desired duty cycle instead of just turning on to full speed during Smoke Plus cycling. You can control the ramp duration by setting the Fan ON Time below. The desired duty cycle can also be set below.</i>
+                                    <br>
+                                    <br>
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="sp_fan_ramp" name="sp_fan_ramp" {% if settings['smoke_plus']['fan_ramp'] %}checked{% endif %}>
+                                        <label class="custom-control-label" for="sp_fan_ramp">Fan Ramping Enabled</label>
+                                    </div>
+                                    <br>
+                                    <div class="input-group mb-3">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text" data-toggle="tooltip" title="Duty cycle that will be used during fan ramping (percent) [Default: 75]">
+                                                <i class="far fa-clock"></i>&nbsp; Ramp Duty Cycle (%)
+                                            </span>
+                                        </div>
+                                        <input id="sp_duty_cycle" type="number" inputmode="numeric" min="20" max="100" class="form-control" placeholder="{{ settings['smoke_plus']['duty_cycle'] }}" value="{{ settings['smoke_plus']['duty_cycle'] }}" name="sp_duty_cycle" style="min-width: 5ch;">
+                                    </div>
+                                    {% endif %}
+                                    <div class="input-group mb-3">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text" data-toggle="tooltip" title="Number of seconds the fan will remain ON during fan cycling (seconds) [Default: 5]">
+                                                <i class="far fa-clock"></i>&nbsp; Fan ON Time (s)
+                                            </span>
+                                        </div>
+                                        <input id="sp_on_time" type="number" inputmode="numeric" min="sp_fade_in.value" class="form-control" placeholder="{{ settings['smoke_plus']['on_time'] }}" value="{{ settings['smoke_plus']['on_time'] }}" name="sp_on_time" style="min-width: 5ch;">
+                                    </div>
+                                    <div class="input-group mb-3">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text" data-toggle="tooltip" title="Number of seconds the fan will remain OFF during fan cycling (seconds) [Default: 5]">
+                                                <i class="far fa-clock"></i>&nbsp; Fan OFF Time (s)
+                                            </span>
+                                        </div>
+                                        <input id="sp_off_time" type="number" inputmode="numeric" min="1" class="form-control" placeholder="{{ settings['smoke_plus']['off_time'] }}" value="{{ settings['smoke_plus']['off_time'] }}" name="sp_off_time" style="min-width: 5ch;">
+                                    </div>
+                                    <div class="input-group mb-3">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text" data-toggle="tooltip" title="Lowest temperature for Smoke Plus to operate. ({{settings['globals']['units']}}) [Default: 160F/71C]">
+                                                <i class="fas fa-temperature-high"></i>&nbsp; Min Operational Temp ({{settings['globals']['units']}})
+                                            </span>
+                                        </div>
+                                        <input id="sp_min_temp" type="number" inputmode="numeric" min="1" class="form-control" placeholder="{{ settings['smoke_plus']['min_temp'] }}" value="{{ settings['smoke_plus']['min_temp'] }}" name="sp_min_temp" style="min-width: 5ch;">
+                                    </div>
+                                    <div class="input-group mb-3">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text" data-toggle="tooltip" title="Highest temperature for Smoke Plus to operate. ({{settings['globals']['units']}}) [Default: 220F/104C]">
+                                                <i class="fas fa-temperature-high"></i>&nbsp; Max Operational Temp ({{settings['globals']['units']}})
+                                            </span>
+                                        </div>
+                                        <input id="sp_max_temp" type="number" inputmode="numeric" min="1" class="form-control" placeholder="{{ settings['smoke_plus']['max_temp'] }}" value="{{ settings['smoke_plus']['max_temp'] }}" name="sp_max_temp" style="min-width: 5ch;">
+                                    </div>
+                                </div><!-- End of card body -->
+                            </div><!-- End of Card -->
+                            <br>
+                            <div class="card shadow">
+                                <div class="card-header">
+                                    <h5>
+                                        <i class="fas fa-microchip"></i>&nbsp; Controller Configuration (HOLD Mode)
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group">
+                                        <label for="selectController"><i>Selected Controller Type:</i></label>
+                                        <select class="form-control" id="selectController" name="selectController">
+                                            {% for controller in controller_metadata %}
+                                                <option value="{{ controller }}" {% if settings['controller']['selected'] == controller %}selected{% endif %}>{{ controller_metadata[controller]['friendly_name'] }}</option>
+                                            {% endfor %}    
+                                        </select>
+                                    </div>
+                                    <div id="controller_config">
+                                        {{ render_controller_config(settings['controller']['selected'], controller_metadata, settings['controller'], settings['cycle_data']) }}
+                                    </div>
+                                </div><!-- End of card body -->
+                            </div><!-- End of Card -->
+                            <br>
+
+                            <div class="card shadow">
+                                <div class="card-header">
+                                    <h5>
+                                        <i class="fas fa-door-open"></i>&nbsp; Lid Open Detection Settings (HOLD Mode)
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    If enabled, the system will attempt to determine if the lid was opened and temporarily suspend the controller.  
+                                    If the temperature drops below the threshold (percentage of the hold temperature), a lid open event is triggered.  
+                                    Once lid open is detected, it will pause the controller calculations for the specified amount of seconds. <br>
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="lid_open_detect_enable" name="lid_open_detect_enable" {% if settings['cycle_data']['LidOpenDetectEnabled'] %}checked{% endif %}>
+                                        <label class="custom-control-label" for="lid_open_detect_enable">Auto Lid Open Detection</label>
+                                    </div>
+                                    <br>
+                                    <div class="input-group mb-3">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text" data-toggle="tooltip" title="Percentage of hold set temperature threshold to trigger lid open detection.">
+                                                <i class="fas fa-percent"></i>&nbsp; Lid Open Threshold Percentage
+                                            </span>
+                                        </div>
+                                        <input id="lid_open_threshold" type="number" inputmode="numeric" min="1" step="1" max="80" class="form-control" placeholder="{{ settings['cycle_data']['LidOpenThreshold'] }}" value="{{ settings['cycle_data']['LidOpenThreshold'] }}" name="lid_open_threshold" style="min-width: 4ch;">
+                                    </div>
+
+                                    <div class="input-group mb-3">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text" data-toggle="tooltip" title="Time in seconds to pause the controller when lid open detected.">
+                                                <i class="fas fa-clock"></i>&nbsp; Lid Open Pause Time (s)
+                                            </span>
+                                        </div>
+                                        <input id="lid_open_pausetime" inputmode="numeric" type="number" min="10" step="1" max="1000" class="form-control" placeholder="{{ settings['cycle_data']['LidOpenPauseTime'] }}" value="{{ settings['cycle_data']['LidOpenPauseTime'] }}" name="lid_open_pausetime" style="min-width: 6ch;">
+                                    </div>
+
                                 </div><!-- End of card body -->
                                 <div class="card-footer bg-secondary rounded mb-1 mt-3 py-1">
                                     <div class="row">
@@ -1327,281 +1288,94 @@
                                         </div>
                                     </form>
                                 </div><!-- End of card body -->
-                            </div><!-- End of Probe Types Card -->
-                        </div><!-- End of Probe Settings Card body -->
-                        <div class="card shadow mt-4">
+                            </div><!-- End of Card -->
+                        </div><!-- End of card body -->
+                        <div class="card-footer bg-light">
+                            <button type="submit" class="btn btn-outline-danger">Save</button>
+                        </div>
+                    </form>
+                    </div><!-- End of Card -->
+                    <br><br><br>
+                </div><!-- End of Tab -->
+                <!-- ============================ PWM Settings ========================== -->
+                {% if settings['globals']['dc_fan'] %}
+                <div class="tab-pane fade" id="v-pills-pwm" role="tabpanel" aria-labelledby="v-pills-pwm-tab">
+                    <div class="card shadow">
+                        <form name="pwm" action="/settings/pwm" method="POST">
                             <div class="card-header bg-primary text-white">
                                 <h5>
-                                    <i class="fa-solid fa-file-circle-plus mr-2"></i>Probe Profile Manager
+                                    <i class="fas fa-tools"></i>&nbsp; PWM Settings
                                 </h5>
                             </div>
-                            <div class="card-body">
-                                <div class="card shadow">
-                                    <form name="addprofile" action="/settings/addprofile" method="POST">
-                                        <div class="d-flex flex-column flex-lg-row justify-content-between bg-secondary rounded p-2">
-                                            <div class="btn btn-primary col-12 col-lg-5 ml-lg-4 order-lg-1 order-2 d-flex justify-content-center align-items-center mt-2 mt-lg-1 mb-lg-1" data-toggle="collapse" data-target="#addprofile" aria-expanded="false" aria-controls="addprofile" style="cursor: pointer;">
-                                                <h5 class="mb-0 d-flex justify-content-center align-items-center">
-                                                    <i class="fas fa-plus-circle mr-2"></i>Add Profile
-                                                    <i class="fas fa-chevron-down ml-2"></i>
-                                                </h5>
-                                            </div>
-                                            <a href="/tuner" class="btn btn-warning col-12 col-lg-5 mr-lg-4 order-lg-2 order-1 d-flex justify-content-center align-items-center mt-2 mt-lg-1 mb-lg-1" role="button">
-                                                <h5 class="mb-0 d-flex justify-content-center align-items-center">
-                                                    <i class="fa-solid fa-tools mr-2"></i>Tuner Tools
-                                                </h5>
-                                            </a>
-                                        </div>
-                                        <div id="addprofile" class="collapse">
-                                            <div class="list-group mb-1 shadow">
-                                                <!-- Name -->
-                                                <div class="list-group-item">
-                                                    <div class="row">
-                                                        <div class="col-12 col-lg-3 mb-1 mb-lg-0">
-                                                            <strong><i class="fas fa-user-circle mr-2"></i>Name</strong>
-                                                        </div>
-                                                        <div class="col-12 col-lg-9">
-                                                            <input id="Name" type="text" inputmode="text" class="form-control" placeholder="Name" name="Name" required style="min-width: 11ch;">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <!-- CoEff A -->
-                                                <div class="list-group-item">
-                                                    <div class="row">
-                                                        <div class="col-12 col-lg-3 mb-1 mb-lg-0">
-                                                            <strong><i class="fas fa-calculator mr-2"></i>CoEff A</strong>
-                                                        </div>
-                                                        <div class="col-12 col-lg-9">
-                                                            <input id="A" type="text" inputmode="numeric" class="form-control" name="A" required style="min-width: 11ch;">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <!-- CoEff B -->
-                                                <div class="list-group-item">
-                                                    <div class="row">
-                                                        <div class="col-12 col-lg-3 mb-1 mb-lg-0">
-                                                            <strong><i class="fas fa-calculator mr-2"></i>CoEff B</strong>
-                                                        </div>
-                                                        <div class="col-12 col-lg-9">
-                                                            <input id="B" type="text" inputmode="numeric" class="form-control" name="B" required style="min-width: 11ch;">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <!-- CoEff C -->
-                                                <div class="list-group-item">
-                                                    <div class="row">
-                                                        <div class="col-12 col-lg-3 mb-1 mb-lg-0">
-                                                            <strong><i class="fas fa-calculator mr-2"></i>CoEff C</strong>
-                                                        </div>
-                                                        <div class="col-12 col-lg-9">
-                                                            <input id="C" type="text" inputmode="numeric" class="form-control" name="C" required style="min-width: 11ch;">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="list-group-item bg-light pl-2 pt-1 pb-1">
-                                                <button type="submit" class="btn btn-danger">Save</button>
-                                            </div>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                            {% for index, data in settings['probe_settings']['probe_profiles'].items()|sort %}
-                                <div class="card shadow-sm mt-1 mb-1">
-                                    <form name="editprofile" action="/settings/editprofile" method="POST">
-                                        <div class="btn bg-secondary col-12 justify-content-between align-items-center" data-toggle="collapse" data-target="#edit{{ index }}" aria-expanded="false" aria-controls="edit{{ index }}" style="cursor: pointer;">
-                                            <h5 class="mb-0 d-flex justify-content-between align-items-center">
-                                                <div class="d-flex align-items-start" style="max-width: 80%;">
-                                                    <div class="text-primary text-truncate">
-                                                        {{ data['name'] }}
-                                                    </div>
-                                                    <i class="fas fa-chevron-down ml-2 text-primary"></i>
-                                                </div>
-                                                <div class="ml-auto mr-1">
-                                                    {% for probe in settings['probe_settings']['probe_map']['probe_info'] %}
-                                                        {% if data['name'] == probe['profile']['name'] %}
-                                                            <span class="badge badge-success ml-1">{{ probe['label'] }}</span>
-                                                        {% endif %}
-                                                    {% endfor %}
-                                                </div>
-                                            </h5>
-                                        </div>
-                                        <div id="edit{{ index }}" class="collapse">
-                                            <div class="list-group mb-1 shadow">
-                                                <!-- Name -->
-                                                <div class="list-group-item">
-                                                    <div class="row">
-                                                        <div class="col-12 col-lg-3 mb-1 mb-lg-0">
-                                                            <strong><i class="fas fa-user-circle mr-2"></i>Name</strong>
-                                                        </div>
-                                                        <div class="col-12 col-lg-9">
-                                                            <input id="Name_{{ index }}" type="text" inputmode="text" class="form-control" value="{{ data['name'] }}" name="Name_{{ index }}">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <!-- CoEff A -->
-                                                <div class="list-group-item">
-                                                    <div class="row">
-                                                        <div class="col-12 col-lg-3 mb-1 mb-lg-0">
-                                                            <strong><i class="fas fa-calculator mr-2"></i>CoEff A</strong>
-                                                        </div>
-                                                        <div class="col-12 col-lg-9">
-                                                            <input id="A_{{ index }}" type="text" inputmode="numeric" class="form-control" value="{{ data['A'] }}" name="A_{{ index }}">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <!-- CoEff B -->
-                                                <div class="list-group-item">
-                                                    <div class="row">
-                                                        <div class="col-12 col-lg-3 mb-1 mb-lg-0">
-                                                            <strong><i class="fas fa-calculator mr-2"></i>CoEff B</strong>
-                                                        </div>
-                                                        <div class="col-12 col-lg-9">
-                                                            <input id="B_{{ index }}" type="text" inputmode="numeric" class="form-control" value="{{ data['B'] }}" name="B_{{ index }}">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <!-- CoEff C -->
-                                                <div class="list-group-item">
-                                                    <div class="row">
-                                                        <div class="col-12 col-lg-3 mb-1 mb-lg-0">
-                                                            <strong><i class="fas fa-calculator mr-2"></i>CoEff C</strong>
-                                                        </div>
-                                                        <div class="col-12 col-lg-9">
-                                                            <input id="C_{{ index }}" type="text" inputmode="numeric" class="form-control" value="{{ data['C'] }}" name="C_{{ index }}">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="list-group-item bg-light pl-2 pt-1 pb-1">
-                                                <button type="submit" class="btn btn-danger" name="editprofile" value="{{ index }}">Save</button>
-                                                <!-- Button to Open the Modal -->
-                                                <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#DeleteProfileModal{{ index }}">Delete</button>
-                                                <!-- The Modal -->
-                                                <div class="modal fade" id="DeleteProfileModal{{ index }}" data-backdrop="false">
-                                                    <div class="modal-dialog modal-dialog-centered col-12 col-lg-6 mx-auto">
-                                                        <div class="modal-content shadow-lg border rounded border-danger">
-                                                            <!-- Modal Header -->
-                                                            <div class="modal-header bg-danger">
-                                                                <h4 class="modal-title">Delete Profile {{ data['name'] }}</h4>
-                                                                <button type="button" class="close" data-dismiss="modal">&times;</button>
-                                                            </div>
-                                                            <!-- Modal body -->
-                                                            <div class="modal-body"> Are you sure you want to delete the {{ data['name'] }} profile?</div>
-                                                            <!-- Modal footer -->
-                                                            <div class="modal-footer list-group-item bg-light pl-2 pt-1 pb-1">
-                                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                                                <button type="submit" class="btn btn-danger" name="delete" value="{{ index }}">Delete</button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </form>
-                                </div>
-                                {% endfor %}
-                            </div><!-- End of card body -->
-                        </div><!-- End of Card -->
-                    </div><!-- End of Probe Profiles Tab -->
-                    <!-- ============================ PWM Settings ========================== -->
-                    {% if settings['globals']['dc_fan'] %}
-                    <div class="tab-pane fade" id="v-pills-pwm" role="tabpanel" aria-labelledby="v-pills-pwm-tab">
-                        <div class="card shadow">
-                            <form name="pwm" action="/settings/pwm#v-pills-pwm" method="POST">
-                                <div class="card-header bg-primary text-white">
+                        <div class="card-body">
+                            <!-- Temp Fan Control Settings -->
+                            <div class="card shadow">
+                                <div class="card-header">
                                     <h5>
-                                        <i class="fas fa-tools mr-2"></i>PWM Settings
+                                        <i class="fas fa-tachometer-alt"></i>&nbsp; PWM Temp Control Settings
                                     </h5>
                                 </div>
-                                <div class="card shadow-sm mt-2 mb-2">
-                                    <div class="p-2 rounded bg-secondary justify-content-between align-items-center">
-                                        <h5 class="mb-0 d-flex justify-content-between align-items-center">
-                                            <div class="d-flex align-items-start">
-                                                PWM Temp Control Settings
-                                            </div>
-                                            {% if settings['pwm']['pwm_control'] %}
-                                            <div class="d-flex justify-content-end">
-                                                <span class="badge badge-warning">ON</span>
-                                            </div>
-                                            {% else %}
-                                            <span class="badge badge-danger">OFF</span>
-                                            {% endif %}
-                                        </h5>
+                                <div class="card-body">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="pwm_control" name="pwm_control" {% if settings['pwm']['pwm_control'] %}checked{% endif %}>
+                                        <label class="custom-control-label" for="pwm_control">Temp Control Enabled by Default</label>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="list-group-item border border-success rounded">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <div>
-                                                    <strong class="mb-0"><i class="fas fa-angle-double-right mr-2"></i>Temp Control Enabled by Default</strong>
-                                                </div>
-                                                <div class="custom-control custom-switch d-flex justify-content-end">
-                                                    <input type="checkbox" class="custom-control-input" id="pwm_control" name="pwm_control" {% if settings['pwm']['pwm_control'] %}checked{% endif %}>
-                                                    <label class="custom-control-label" for="pwm_control"></label>
-                                                </div>
-                                            </div>
-                                            <p class="text-muted mb-0 ml-2 p-2">
-                                                <span class="badge badge-primary badge-note mr-2">NOTE</span>
-                                                If enabled, PWM Temp Control will override Smoke Plus fan ramping. The fan will adjust with temperature and cycle on and off but will not ramp up to speed.
-                                            </p>
+                                    <br>
+                                    <span class="badge badge-warning">NOTE:</span>
+                                    <i class="small">If enabled PWM Temp Control will override Smoke Plus fan ramping. The fan will adjust with temperature and cycle on and off but will not ramp up to speed.</i>
+                                    <br>
+                                    <br>
+                                    <div class="input-group mb-3">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text" data-toggle="tooltip" title="How often the Fan Speed will be updated based on Temperature (seconds) [Default=10]">
+                                                <i class="far fa-clock"></i>&nbsp; Update Time (s)
+                                            </span>
                                         </div>
-                                        <div class="list-group-item">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <div>
-                                                    <strong><i class="far fa-clock mr-2"></i>Update Time (s)</strong>
+                                        <input id="pwm_update" type="number" inputmode="numeric" min="1" class="form-control" placeholder="{{ settings['pwm']['update_time'] }}" value="{{ settings['pwm']['update_time'] }}" name="pwm_update" style="min-width: 4ch;">
+                                    </div>
+                                    <br>
+                                    <span class="badge badge-warning">NOTE:</span>
+                                    <i class="small">If Current Grill Temp is over Set Temp Fan will be set to Minimum Duty Cycle. If the Grill temp is below the Set Temp the Duty Cycles below will be used. Example: If Current Grill Temp drops below Set Temp by 1-3 ° a 20% PWM will be set. If the Grill Temp drops below the Set Temp by 15° a 75% Duty Cycle will be set. </i>
+                                    <br>
+                                    <br>
+                                    <table class="table table-sm" id="duty_cycle_table">
+                                        <thead>
+                                        <tr>
+                                            <th scope="col">Action</th>
+                                            <th scope="col">Temp Range</th>
+                                            <th scope="col">Duty Cycle</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        </tbody>
+                                        <tfoot>
+                                        <tr>
+                                            <td>
+                                                <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#dc_add_modal"><i class="fas fa-plus"></i></button>
+                                            </td>
+                                            <td></td>
+                                            <td></td>
+                                        </tr>
+                                        </tfoot>
+                                    </table>
+                                    <!-- Temp Fan Control Profile modal -->
+                                    <div class="modal fade" id="dc_add_modal" tabindex="-1" aria-labelledby="dc_add_modal_label" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="dc_add_modal_label">Add PWM Temp Profile</h5>
+                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                        <span aria-hidden="true">&times;</span>
+                                                    </button>
                                                 </div>
-                                                <div class="col-3 col-lg-2 ml-auto mr-0 pr-0 d-flex justify-content-end">
-                                                    <input id="pwm_update" type="number" inputmode="numeric" min="1" class="form-control" placeholder="{{ settings['pwm']['update_time'] }}" value="{{ settings['pwm']['update_time'] }}" name="pwm_update">
-                                                </div>
-                                            </div>
-                                            <p class="text-muted mb-0 ml-2 p-2">
-                                                <span class="badge badge-primary badge-note mr-2">NOTE</span>
-                                                If Current Grill Temp is over Set Temp Fan will be set to Minimum Duty Cycle. If the Grill temp is below the Set Temp the Duty Cycles below will be used. Example: If Current Grill Temp drops below Set Temp by 1-3 ° a 20% PWM will be set. If the Grill Temp drops below the Set Temp by 15° a 75% Duty Cycle will be set.
-                                            </p>
-                                        </div>
-                                        <div class="list-group-item">
-                                            <div class="col-lg-8 col-md-10 col-sm-12 mr-auto p-0 ">
-                                                <div class="mb-3">
-                                                    <strong><i class="fas fa-history mr-2"></i>Duty Cycle Settings</strong>
-                                                </div>
-                                                <table class="table table-sm border border-secondary rounded ml-lg-3" id="duty_cycle_table">
-                                                    <thead>
-                                                        <tr>
-                                                            <th scope="col">Action</th>
-                                                            <th scope="col">Temp Range</th>
-                                                            <th scope="col">Duty Cycle</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                    </tbody>
-                                                    <tfoot>
-                                                        <tr>
-                                                            <td>
-                                                                <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#dc_add_modal"><i class="fas fa-plus"></i></button>
-                                                            </td>
-                                                            <td></td>
-                                                            <td></td>
-                                                        </tr>
-                                                    </tfoot>
-                                                </table>
-                                            </div>
-                                        </div>
-                                        <!-- Temp Fan Control Profile modal -->
-                                        <div class="modal fade" id="dc_add_modal" data-backdrop="false" tabindex="-1" aria-labelledby="dc_add_modal_label" aria-hidden="true">
-                                            <div class="modal-dialog modal-dialog-centered" role="document">
-                                                <div class="modal-content shadow-lg border rounded border-warning">
-                                                    <div class="modal-header bg-warning">
-                                                        <h5 class="modal-title" id="dc_add_modal_label">Add PWM Temp Profile</h5>
-                                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                            <span aria-hidden="true">&times;</span>
-                                                        </button>
-                                                    </div>
-                                                    <div class="list-group">
-                                                        <div class="list-group-item">
-                                                            <p class="mt-1 mb-0 p-2">
-                                                                <span class="badge badge-note mr-2">NOTE</span>
-                                                                Enter a Temp Range Value > <span id="dc_add_temp">0</span>{{ settings['globals']['units'] }}
-                                                            </p>
+                                                <div class="modal-body">
+                                                    <span class="badge badge-warning">NOTE:</span>
+                                                    <i class="small">Enter a value greater than <span id="dc_add_temp">0</span>{{ settings['globals']['units'] }}</i>
+                                                    <br>
+                                                    <br>
+                                                    <div class="input-group mb-3">
+                                                        <div class="input-group-prepend">
+                                                            <span class="input-group-text" id="dc_temp_label">Temp Range ({{ settings['globals']['units'] }})</span>
                                                         </div>
                                                         <div class="list-group-item">
                                                             <div class="d-flex align-items-center justify-content-between">
@@ -2821,17 +2595,8 @@
 {% block scripts %}
 <script>
     var dc_fan_enabled = "{{ settings['globals']['dc_fan'] }}";
-    var currentPage = 'settings';
-
-    function toggleHoldTemp() {
-        var mode = document.getElementById('after_startup_mode').value;
-        if (mode === 'Hold') {
-            $('#holdTemp').slideDown();
-        } else {
-            $('#holdTemp').slideUp();
-        }
-    }
-
+</script>
+<script>
     $(document).ready(function() {
         toggleHoldTemp();  // Call the function on page load
 
