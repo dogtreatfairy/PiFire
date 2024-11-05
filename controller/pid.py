@@ -40,111 +40,87 @@ from controller.base import ControllerBase
 Class Definition
 '''
 class Controller(ControllerBase):
-    def __init__(self, config, units, cycle_data):
-        super().__init__(config, units, cycle_data)
+	def __init__(self, config, units, cycle_data):
+		super().__init__(config, units, cycle_data)
 
-        self._calculate_gains(config['PB'], config['Ti'], config['Td'])
+		self._calculate_gains(config['PB'], config['Ti'], config['Td'])
 
-        self.p = 0.0
-        self.i = 0.0
-        self.d = 0.0
-        self.u = 0
+		self.p = 0.0
+		self.i = 0.0
+		self.d = 0.0
+		self.u = 0
 
-        self.last_update = time.time()
-        self.error = 0.0
-        self.set_point = 0
+		self.last_update = time.time()
+		self.error = 0.0
+		self.set_point = 0
 
-        self.center = config['center']
+		self.center = config['center']
 
-        self.derv = 0.0
-        self.inter = 0.0
-        self.inter_max = abs(self.center / self.ki)
+		self.derv = 0.0
+		self.inter = 0.0
+		self.inter_max = abs(self.center / self.ki)
 
-        self.last = 150
+		self.last = 150
 
-        self.set_target(0.0)
+		self.set_target(0.0)
 
-        # Deadzone tracking
-        self.deadzone_start_time = None
-        self.deadzone_duration = 60  # 1 minute
+	def _calculate_gains(self, pb, ti, td):
+		self.kp = -1 / pb
+		self.ki = self.kp / ti
+		self.kd = self.kp * td
 
-    def _calculate_gains(self, pb, ti, td):
-        self.kp = -1 / pb
-        self.ki = self.kp / ti
-        self.kd = self.kp * td
+	def update(self, current):
+		# P
+		error = current - self.set_point
+		self.p = self.kp * error + self.center  # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
+	
+		# I
+		dt = time.time() - self.last_update
+		if 0 < self.p <= 1:  # Ensure we are in the pb, otherwise do not calculate i to avoid windup
+			self.inter += error * dt
+			self.inter = max(self.inter, -self.inter_max)
+			self.inter = min(self.inter, self.inter_max)
+	
+		self.i = self.ki * self.inter
+	
+		# D
+		self.derv = (current - self.last) / dt
+		self.d = self.kd * self.derv
+	
+		# PID
+		self.u = self.p + self.i + self.d
+	
+		# Adjust CycleRatio based on derivative term to prevent overshoot
+		if self.derv > 0 and abs(error) < self.set_point / 2:
+			self.u *= (1 - min(self.derv / 10, 1))  # Scale down u based on derivative
+	
+		# Update for next cycle
+		self.error = error
+		self.last = current
+		self.last_update = time.time()
+	
+		return self.u
 
-    def update(self, current):
-        # P
-        error = current - self.set_point
-        self.p = self.kp * error + self.center  # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
+	def set_target(self, set_point):
+		self.set_point = set_point
+		self.error = 0.0
+		self.inter = 0.0
+		self.derv = 0.0
+		self.last_update = time.time()
 
-        # I
-        dt = time.time() - self.last_update
-        if 0 < self.p <= 1:  # Ensure we are in the pb, otherwise do not calculate i to avoid windup
-            self.inter += error * dt
-            self.inter = max(self.inter, -self.inter_max)
-            self.inter = min(self.inter, self.inter_max)
+	def set_gains(self, pb, ti, td):
+		self._calculate_gains(pb,ti,td)
+		self.inter_max = abs(self.center / self.ki)
 
-        self.i = self.ki * self.inter
-
-        # D
-        self.derv = (current - self.last) / dt
-        self.d = self.kd * self.derv
-
-        # Deadzone logic
-        deadzone = 7  # ±7 degrees
-        if abs(error) <= deadzone:
-            if self.deadzone_start_time is None:
-                self.deadzone_start_time = time.time()
-            elif time.time() - self.deadzone_start_time >= self.deadzone_duration:
-                # Temperature has stabilized within the deadzone for 1 minute
-                self.u = 0  # Adjust control output to maintain stability
-                self.error = error
-                self.last = current
-                self.last_update = time.time()
-                return self.u
-        else:
-            self.deadzone_start_time = None
-
-        # Predictive Adjustment
-        if abs(error) < (self.set_point / 2):
-            # Predict potential overshoot
-            predicted_temp = current + self.derv * dt
-            if predicted_temp > self.set_point:
-                # Reduce control output to avoid overshoot
-                self.u = (self.p + self.i + self.d) * 0.5
-            else:
-                self.u = self.p + self.i + self.d
-        else:
-            self.u = self.p + self.i + self.d
-
-        # Update for next cycle
-        self.error = error
-        self.last = current
-        self.last_update = time.time()
-
-        return self.u
-
-    def set_target(self, set_point):
-        self.set_point = set_point
-        self.error = 0.0
-        self.inter = 0.0
-        self.derv = 0.0
-        self.last_update = time.time()
-
-    def set_gains(self, pb, ti, td):
-        self._calculate_gains(pb, ti, td)
-        self.inter_max = abs(self.center / self.ki)
-
-    def get_k(self):
-        return self.kp, self.ki, self.kd
-    
-    def supported_functions(self):
-        function_list = [
-            'update', 
-            'set_target', 
-            'get_config', 
-            'set_gains', 
-            'get_k'
+	def get_k(self):
+		return self.kp, self.ki, self.kd
+	
+	def supported_functions(self):
+		function_list = [
+			'update', 
+	        'set_target', 
+	        'get_config', 
+			'set_gains', 
+			'get_k'
         ]
-        return function_list
+		return function_list
