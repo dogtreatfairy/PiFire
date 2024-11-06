@@ -616,9 +616,10 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 
 		# Change Auger State based on Cycle Time
 		if mode in ('Startup', 'Reignite', 'Smoke', 'Hold', 'Prime'):	
+			CycleRatioPrecalc = 0.0
 			# Calculate CycleRatio regardless of auger status
 			if mode== 'Hold':
-				CycleRatio = RawCycleRatio = settings['cycle_data']['u_min'] if LidOpenDetect else controllerCore.update(ptemp)
+				CycleRatioPrecalc = controllerCore.update(ptemp)
 			# If Auger is OFF and time since toggle is greater than Off Time
 			if not current_output_status['auger'] and (now - auger_toggle_time) > (CycleTime * (1 - CycleRatio)):
 				grill_platform.auger_on()
@@ -626,6 +627,7 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 				eventLogger.debug('Cycle Event: Auger On')
 				# Reset Cycle Time for HOLD Mode
 				if mode == 'Hold':
+					CycleRatio = RawCycleRatio = settings['cycle_data']['u_min'] if LidOpenDetect else CycleRatioPrecalc
 					CycleRatio = max(CycleRatio, settings['cycle_data']['u_min'])
 					CycleRatio = min(CycleRatio, settings['cycle_data']['u_max'])
 					OnTime = settings['cycle_data']['HoldCycleTime'] * CycleRatio
