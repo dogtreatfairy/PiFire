@@ -99,7 +99,7 @@ class Controller(ControllerBase):
             self.inter -= error * dt
         if self.u <= 0 and error < 0:
             self.inter -= error * dt
-            
+        
         # D with low-pass filter
         alpha = 0.1  # Filter parameter, adjust as needed
         self.derv = alpha * self.derv + (1 - alpha) * ((current - self.last) / dt)
@@ -128,7 +128,7 @@ class Controller(ControllerBase):
                 X = np.array(self.time_history).reshape(-1, 1)
                 y = np.array(self.temperature_history)
                 self.regression_model.fit(X, y)
-                predicted_temperature = self.regression_model.predict([[time.time() + self.prediction_window]])
+                predicted_temperature = self.regression_model.predict([[time.time() + self.prediction_window]])[0]
         
             # If the predicted temperature exceeds the set point, reduce u
             if predicted_temperature > self.set_point:
@@ -139,6 +139,12 @@ class Controller(ControllerBase):
         self.u = max(0, min(self.u, 1))
         
         return self.u
+        
+        def set_target(self, set_point):
+            self.set_point = set_point
+            self.error = 0.0
+            self.inter = 0.0
+            self.derv = 0.0
 
     def set_target(self, set_point):
         self.set_point = set_point
