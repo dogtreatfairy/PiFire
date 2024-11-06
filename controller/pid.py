@@ -99,42 +99,45 @@ class Controller(ControllerBase):
             self.inter -= error * dt
         if self.u <= 0 and error < 0:
             self.inter -= error * dt
-
+            
         # D with low-pass filter
         alpha = 0.1  # Filter parameter, adjust as needed
         self.derv = alpha * self.derv + (1 - alpha) * ((current - self.last) / dt)
         self.d = self.kd * self.derv
-
+        
         # PID
         self.u = self.p + self.i + self.d
         self.u = max(0, min(self.u, 1))  # Ensure u is within [0, 1]
-
+        
         # Update for next cycle
         self.error = error
         self.last = current
         self.last_update = time.time()
-
+        
         # Add the current temperature and time to the history
         self.temperature_history.append(current)
         self.time_history.append(time.time())
-
+        
         # If we have enough data, fit the regression model and make a prediction
         if len(self.temperature_history) == self.temperature_history.maxlen:
+            # Initialize predicted_temperature with a default value
+            predicted_temperature = current
+        
             # If the current temperature is within the deadzone, skip the prediction
             if abs(current - self.set_point) > self.prediction_deadzone:
                 X = np.array(self.time_history).reshape(-1, 1)
                 y = np.array(self.temperature_history)
                 self.regression_model.fit(X, y)
                 predicted_temperature = self.regression_model.predict([[time.time() + self.prediction_window]])
-
+        
             # If the predicted temperature exceeds the set point, reduce u
             if predicted_temperature > self.set_point:
                 overshoot = predicted_temperature - self.set_point
                 self.u -= overshoot / self.set_point
-
+        
         # Ensure u is within [0, 1]
         self.u = max(0, min(self.u, 1))
-
+        
         return self.u
 
     def set_target(self, set_point):
