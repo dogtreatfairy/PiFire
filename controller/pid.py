@@ -72,11 +72,11 @@ class Controller(ControllerBase):
 	def update(self, current):
 		# P
 		error = current - self.set_point
-		self.p = self.kp * error + self.center  # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
+		self.p = self.kp * error + self.center
 	
-		# I
+		# I 
 		dt = time.time() - self.last_update
-		if 0 < self.p <= 1:  # Ensure we are in the pb, otherwise do not calculate i to avoid windup
+		if 0 < self.p <= 1:
 			self.inter += error * dt
 			self.inter = max(self.inter, -self.inter_max)
 			self.inter = min(self.inter, self.inter_max)
@@ -87,19 +87,35 @@ class Controller(ControllerBase):
 		self.derv = (current - self.last) / dt
 		self.d = self.kd * self.derv
 	
-		# PID
-		self.u = self.p + self.i + self.d
-	
-		# Adjust CycleRatio based on derivative term to prevent overshoot
-		if self.derv > 0 and abs(error) < self.set_point / 2:
-			self.u *= (1 - min(self.derv / 10, 1))  # Scale down u based on derivative
-	
-		# Update for next cycle
-		self.error = error
-		self.last = current
-		self.last_update = time.time()
-	
-		return self.u
+		# Add moving average for derivative
+		if not hasattr(self, 'derv_history'):
+			self.derv_history = []
+		self.derv_history.append(self.derv)
+		if len(self.derv_history) > 5:
+			self.derv_history.pop(0)
+		smooth_derv = sum(self.derv_history) / len(self.derv_history)
+
+		# Calculate predicted temperature using smoothed derivative
+		predicted_temp = current + (smooth_derv * 5)
+		predicted_error = predicted_temp - self.set_point
+
+		# Add minimum time between interrupts
+		now = time.time()
+		if not hasattr(self, 'last_interrupt'):
+			self.last_interrupt = 0
+
+		# More conservative interrupt conditions
+		cycle_interrupt = (
+			smooth_derv > 0.5 and  # Significant temperature rise
+			predicted_error > 2 and  # Will overshoot by more than 2 degrees
+			abs(error) < self.set_point * 0.15 and  # Within 15% of target
+			(now - self.last_interrupt) > 30  # At least 30s since last interrupt
+		)
+
+		if cycle_interrupt:
+			self.last_interrupt = now
+
+		return (self.u, cycle_interrupt)
 
 	def set_target(self, set_point):
 		self.set_point = set_point

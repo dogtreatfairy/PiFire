@@ -553,8 +553,8 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 			control['distance_update'] = False
 			write_control(control, direct_write=True, origin='control')
 
-		# Check hopper level when requested or every 300 seconds
-		if control['hopper_check'] or (now - hopper_toggle_time) > 300:
+		# Check hopper level when requested or every 60 seconds
+		if control['hopper_check'] or (now - hopper_toggle_time) > 60:
 			pelletdb = read_pellet_db()
 			override = False 
 			if control['hopper_check']:
@@ -616,31 +616,32 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 
 		# Change Auger State based on Cycle Time
 		if mode in ('Startup', 'Reignite', 'Smoke', 'Hold', 'Prime'):
+			# Update PID calculations every loop in Hold mode
+			if mode == 'Hold':
+				CycleRatio, cycle_interrupt = controllerCore.update(ptemp) if not LidOpenDetect else (settings['cycle_data']['u_min'], False)
+				CycleRatio = max(CycleRatio, settings['cycle_data']['u_min'])
+				CycleRatio = min(CycleRatio, settings['cycle_data']['u_max'])
+				OnTime = settings['cycle_data']['HoldCycleTime'] * CycleRatio
+				OffTime = settings['cycle_data']['HoldCycleTime'] * (1 - CycleRatio)
+				CycleTime = OnTime + OffTime
+				eventLogger.debug(f'On Time = {OnTime}, OffTime = {OffTime}, CycleTime = {CycleTime}, CycleRatio = {CycleRatio}')
+		
 			# If Auger is OFF and time since toggle is greater than Off Time
 			if not current_output_status['auger'] and (now - auger_toggle_time) > (CycleTime * (1 - CycleRatio)):
 				grill_platform.auger_on()
 				auger_toggle_time = now
 				eventLogger.debug('Cycle Event: Auger On')
-				# Reset Cycle Time for HOLD Mode
-				if mode == 'Hold':
-					CycleRatio = RawCycleRatio = settings['cycle_data']['u_min'] if LidOpenDetect else controllerCore.update(ptemp)
-					CycleRatio = max(CycleRatio, settings['cycle_data']['u_min'])
-					CycleRatio = min(CycleRatio, settings['cycle_data']['u_max'])
-					OnTime = settings['cycle_data']['HoldCycleTime'] * CycleRatio
-					OffTime = settings['cycle_data']['HoldCycleTime'] * (1 - CycleRatio)
-					CycleTime = OnTime + OffTime
-					eventLogger.debug('On Time = ' + str(OnTime) + ', OffTime = ' + str(
-						OffTime) + ', CycleTime = ' + str(CycleTime) + ', CycleRatio = ' + str(CycleRatio))
-
-			# If Auger is ON and time since toggle is greater than On Time
-			if current_output_status['auger'] and (now - auger_toggle_time) > (CycleTime * CycleRatio):
+		
+			# If Auger is ON and (normal cycle complete OR cycle_interrupt)
+			if current_output_status['auger'] and ((now - auger_toggle_time) > (CycleTime * CycleRatio) or cycle_interrupt):
 				grill_platform.auger_off()
-				# Add auger ON time to the metrics
 				metrics['augerontime'] += now - auger_toggle_time
 				write_metrics(metrics)
-				# Set current last toggle time to now
 				auger_toggle_time = now
-				eventLogger.debug('Cycle Event: Auger Off')
+				if cycle_interrupt:
+					eventLogger.debug('Cycle Event: Auger Off (Interrupted)')
+				else:
+					eventLogger.debug('Cycle Event: Auger Off')
 
 		# Grab current probe profiles if they have changed since the last loop.
 		if control['probe_profile_update']:
