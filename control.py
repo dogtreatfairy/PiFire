@@ -617,7 +617,7 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 		# Change Auger State based on Cycle Time
 		if mode in ('Startup', 'Reignite', 'Smoke', 'Hold', 'Prime'):
 			# If Auger is OFF and time since toggle is greater than Off Time
-			new_setpoint_up = controllerCore.get_new_setpoint_up()
+			new_setpoint_up = controllerCore.get_new_setpoint_up
 			if not current_output_status['auger'] and (now - auger_toggle_time) > (CycleTime * (1 - CycleRatio)):
 				grill_platform.auger_on()
 				auger_toggle_time = now
