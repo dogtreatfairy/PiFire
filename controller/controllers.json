@@ -62,17 +62,6 @@
                     "hidden" : false
                 },
                 {
-                    "option_name" : "anti_windup",
-                    "option_friendly_name" : "Anti Windup", 
-                    "option_description" : "Maximum integral portion of PID calclulation [Default=0.7]",
-                    "option_type" : "float",
-                    "option_default" : 0.7,
-                    "option_min" : null,
-                    "option_max" : null, 
-                    "option_step" : 0.01, 
-                    "hidden" : false
-                },
-                {
                     "option_name" : "prediction_window",
                     "option_friendly_name" : "Prediction Window (s)", 
                     "option_description" : "Prediction Window to look ahead [Default=25]",

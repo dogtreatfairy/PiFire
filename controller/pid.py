@@ -60,7 +60,6 @@ class Controller(ControllerBase):
         self.original_set_point = 0
 
         self.center = config['center']
-        self.anti_windup = config['anti_windup']
 
         self.derv = 0.0
         self.inter = 0.0
@@ -87,18 +86,12 @@ class Controller(ControllerBase):
         error = current - self.set_point
         self.p = self.kp * error + self.center # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
 
-        # I
+		# I
         dt = time.time() - self.last_update
-        self.inter += error * dt
-        self.inter = max(self.inter, -self.inter_max)
-        self.inter = min(self.inter, self.inter_max)
-        self.i = self.ki * self.inter
-
-        # Anti-windup: Don't accumulate if we're at the output limits
-        if self.u >= self.anti_windup and error > 0:
-            self.inter -= error * dt
-        if self.u <= 0 and error < 0:
-            self.inter -= error * dt
+        if self.p > 0 and self.p < 1: # Ensure we are in the pb, otherwise do not calculate i to avoid windup
+            self.inter += error * dt
+            self.inter = max(self.inter, -self.inter_max)
+            self.inter = min(self.inter, self.inter_max)
         
         # D with low-pass filter
         alpha = 0.1  # Filter parameter, adjust as needed
@@ -139,12 +132,6 @@ class Controller(ControllerBase):
         self.u = max(0, min(self.u, 1))
         
         return self.u
-        
-        def set_target(self, set_point):
-            self.set_point = set_point
-            self.error = 0.0
-            self.inter = 0.0
-            self.derv = 0.0
 
     def set_target(self, set_point):
         self.set_point = set_point
@@ -152,6 +139,8 @@ class Controller(ControllerBase):
         self.inter = 0.0
         self.derv = 0.0
         self.last_update = time.time()
+        self.temperature_history.clear()
+        self.time_history.clear()
 
     def set_gains(self, pb, ti, td):
         self._calculate_gains(pb, ti, td)
