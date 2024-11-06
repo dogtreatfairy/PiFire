@@ -622,13 +622,23 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 			CycleRatioPrecalc = 0.0
 			# Calculate CycleRatio regardless of auger status
 			if mode == 'Hold':
-				CycleRatio = RawCycleRatio = settings['cycle_data']['u_min'] if LidOpenDetect else controllerCore.update(ptemp)
+				CycleRatioPrecalc = controllerCore.update(ptemp)
+			
+			# Calculate CycleRatio, OnTime, and OffTime once per cycle
+			if mode == 'Hold':
+				CycleRatio = RawCycleRatio = settings['cycle_data']['u_min'] if LidOpenDetect else CycleRatioPrecalc
 				CycleRatio = max(CycleRatio, settings['cycle_data']['u_min'])
 				CycleRatio = min(CycleRatio, settings['cycle_data']['u_max'])
 				OnTime = settings['cycle_data']['HoldCycleTime'] * CycleRatio
 				OffTime = settings['cycle_data']['HoldCycleTime'] * (1 - CycleRatio)
 				CycleTime = OnTime + OffTime
 				eventLogger.debug('On Time = ' + str(OnTime) + ', OffTime = ' + str(OffTime) + ', CycleTime = ' + str(CycleTime) + ', CycleRatio = ' + str(CycleRatio))
+		
+			# Ensure controllerCore.last and controllerCore.last_update are initialized
+			if not hasattr(controllerCore, 'last'):
+				controllerCore.last = ptemp
+			if not hasattr(controllerCore, 'last_update'):
+				controllerCore.last_update = now
 		
 			# Check if ptemp is greater than set_point and increasing too quickly
 			if ptemp > controllerCore.set_point and (ptemp - controllerCore.last) / (now - controllerCore.last_update) >= (1 / 5):
@@ -663,7 +673,6 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 				pid_data = controllerCore.__dict__
 				pid_data['cycle_ratio'] = round(CycleRatio, 2)
 				check_notify(settings, control, pid_data=pid_data)
-
 		# Grab current probe profiles if they have changed since the last loop.
 		if control['probe_profile_update']:
 			settings = read_settings()
