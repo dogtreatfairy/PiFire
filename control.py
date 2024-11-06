@@ -614,22 +614,38 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 				control['manual']['change'] = False
 				write_control(control, direct_write=True, origin='control')
 
+		# Initialize variables outside the loop
+		last_temp = 150
+		last_temp_time = time.time()
+		overshoot = False
+		
 		# Change Auger State based on Cycle Time
 		if mode in ('Startup', 'Reignite', 'Smoke', 'Hold', 'Prime'):
+			# Update last temperature and time
+			current_time = time.time()
+			temp_rateofchange = (ptemp - last_temp) / (current_time - last_temp_time)
+			if temp_rateofchange > (1 / 3):
+				overshoot = True
+		
+			last_temp = ptemp
+			last_temp_time = current_time
+		
 			# If Auger is ON and Overshoot is Detected
 			if mode == 'Hold' and ptemp > control['primary_setpoint'] and (now - auger_toggle_time) > (CycleTime * settings['cycle_data']['u_min']):
-				grill_platform.auger_off()
-				auger_toggle_time = now
-				write_metrics(metrics)
-				eventLogger.debug('Cycle Event: Auger Off (Overshoot)')
-			
+				if overshoot:
+					grill_platform.auger_off()
+					auger_toggle_time = now
+					write_metrics(metrics)
+					eventLogger.debug('Cycle Event: Auger Off (Overshoot)')
+					overshoot = False  # Reset overshoot after turning off the auger for one cycle
+		
 				# Force CycleRatio to be the maximum of u_min
 				CycleRatio = max(CycleRatio, settings['cycle_data']['u_min'])
 				OnTime = settings['cycle_data']['HoldCycleTime'] * CycleRatio
 				OffTime = settings['cycle_data']['HoldCycleTime'] * (1 - CycleRatio)
 				CycleTime = OnTime + OffTime
 				eventLogger.debug('Forced CycleRatio = ' + str(CycleRatio) + ', On Time = ' + str(OnTime) + ', OffTime = ' + str(OffTime) + ', CycleTime = ' + str(CycleTime))
-			
+		
 			# If Auger is OFF and time since toggle is greater than Off Time
 			elif not current_output_status['auger'] and (now - auger_toggle_time) > (CycleTime * (1 - CycleRatio)):
 				grill_platform.auger_on()
