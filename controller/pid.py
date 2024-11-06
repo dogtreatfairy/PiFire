@@ -92,7 +92,7 @@ class Controller(ControllerBase):
 		# PID
 		self.u = self.p + self.i + self.d
 		
-		if self.new_target and abs(error) >= 5:
+		if self.new_target and abs(error) <= 15:
 			self.u = self.u * 0.5
 
 		# Update for next cycle
