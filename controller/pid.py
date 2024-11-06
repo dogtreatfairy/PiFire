@@ -64,6 +64,7 @@ class Controller(ControllerBase):
 		self.last = 150
 
 		self.set_target(0.0)
+		self.new_target = False
 
 	def _calculate_gains(self, pb, ti, td):
 		self.kp = -1 / pb
@@ -90,11 +91,23 @@ class Controller(ControllerBase):
 
 		# PID
 		self.u = self.p + self.i + self.d
+		
+		if self.new_target and abs(error) >= 5:
+			self.u = self.u * 0.5
 
 		# Update for next cycle
 		self.error = error
 		self.last = current
-		self.last_update = time.time()			
+		self.last_update = time.time()	
+		
+		# Check if current is within +/-10 of set_point
+		if abs(error) <= 10:
+			if not hasattr(self, 'within_range_start'):
+				self.within_range_start = time.time()
+			elif time.time() - self.within_range_start >= 20:
+				self.new_target = False
+		else:
+			self.within_range_start = None
 
 		return self.u
 
@@ -104,6 +117,7 @@ class Controller(ControllerBase):
 		self.inter = 0.0
 		self.derv = 0.0
 		self.last_update = time.time()
+		self.new_target = True
     
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)

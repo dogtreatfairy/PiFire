@@ -613,45 +613,11 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 					grill_platform.set_duty_cycle(speed)
 				control['manual']['change'] = False
 				write_control(control, direct_write=True, origin='control')
-
-		# Initialize variables outside the loop
-		last_set_point = 150
-		new_set_point = False
-		overshoot = False
 		
 		# Change Auger State based on Cycle Time
 		if mode in ('Startup', 'Reignite', 'Smoke', 'Hold', 'Prime'):
-			# If Auger is ON and Overshoot is Detected
-			if mode == 'Hold' and new_set_point and ptemp >= control['primary_setpoint'] and (now - auger_toggle_time) > (CycleTime * settings['cycle_data']['u_min']):
-							# Update last temperature and time
-				if last_set_point < control['primary_setpoint']:
-					new_set_point = True
-					last_set_point = control['primary_setpoint']
-				
-				if last_set_point == ptemp <= last_set_point + 3:
-					new_set_point = False
-					last_set_point = control['primary_setpoint']
-
-				if ptemp > control['primary_setpoint'] + 10:
-					overshoot = True
-					controllerCore.set_target(last_set_point)
-				
-				if overshoot:
-					grill_platform.auger_off()
-					auger_toggle_time = now
-					write_metrics(metrics)
-					eventLogger.debug('Cycle Event: Auger Off (Overshoot)')
-					overshoot = False  # Reset overshoot after turning off the auger for one cycle
-		
-				# Force CycleRatio to be the maximum of u_min
-				CycleRatio = max(CycleRatio, settings['cycle_data']['u_min'])
-				OnTime = settings['cycle_data']['HoldCycleTime'] * CycleRatio
-				OffTime = settings['cycle_data']['HoldCycleTime'] * (1 - CycleRatio)
-				CycleTime = OnTime + OffTime
-				eventLogger.debug('Forced CycleRatio = ' + str(CycleRatio) + ', On Time = ' + str(OnTime) + ', OffTime = ' + str(OffTime) + ', CycleTime = ' + str(CycleTime))
-		
 			# If Auger is OFF and time since toggle is greater than Off Time
-			elif not current_output_status['auger'] and (now - auger_toggle_time) > (CycleTime * (1 - CycleRatio)):
+			if not current_output_status['auger'] and (now - auger_toggle_time) > (CycleTime * (1 - CycleRatio)):
 				grill_platform.auger_on()
 				auger_toggle_time = now
 				eventLogger.debug('Cycle Event: Auger On')
@@ -660,19 +626,22 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 					CycleRatio = RawCycleRatio = settings['cycle_data']['u_min'] if LidOpenDetect else controllerCore.update(ptemp)
 					CycleRatio = max(CycleRatio, settings['cycle_data']['u_min'])
 					CycleRatio = min(CycleRatio, settings['cycle_data']['u_max'])
+					if ptemp > (control['primary_setpoint'] + 10):
+						CycleRatio = settings['cycle_data']['u_min']
 					OnTime = settings['cycle_data']['HoldCycleTime'] * CycleRatio
 					OffTime = settings['cycle_data']['HoldCycleTime'] * (1 - CycleRatio)
 					CycleTime = OnTime + OffTime
-					eventLogger.debug('On Time = ' + str(OnTime) + ', OffTime = ' + str(OffTime) + ', CycleTime = ' + str(CycleTime) + ', CycleRatio = ' + str(CycleRatio))
-		
-					# Publish pid info to mqtt if enabled
-					if settings['notify_services'].get('mqtt') is not None and settings['notify_services']['mqtt']['enabled']:
+					eventLogger.debug('On Time = ' + str(OnTime) + ', OffTime = ' + str(
+						OffTime) + ', CycleTime = ' + str(CycleTime) + ', CycleRatio = ' + str(CycleRatio))
+
+					#publish pid info to mqtt if enabled				
+					if settings['notify_services'].get('mqtt') != None and settings['notify_services']['mqtt']['enabled']:
 						pid_data = controllerCore.__dict__
 						pid_data['cycle_ratio'] = round(CycleRatio, 2)
 						check_notify(settings, control, pid_data=pid_data)
-		
+
 			# If Auger is ON and time since toggle is greater than On Time
-			elif current_output_status['auger'] and (now - auger_toggle_time) > (CycleTime * CycleRatio):
+			if current_output_status['auger'] and (now - auger_toggle_time) > (CycleTime * CycleRatio):
 				grill_platform.auger_off()
 				# Add auger ON time to the metrics
 				metrics['augerontime'] += now - auger_toggle_time
