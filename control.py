@@ -623,6 +623,13 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 				write_metrics(metrics)
 				eventLogger.debug('Cycle Event: Auger Off (Overshoot)')
 			
+				# Force CycleRatio to be the maximum of u_min
+				CycleRatio = max(CycleRatio, settings['cycle_data']['u_min'])
+				OnTime = settings['cycle_data']['HoldCycleTime'] * CycleRatio
+				OffTime = settings['cycle_data']['HoldCycleTime'] * (1 - CycleRatio)
+				CycleTime = OnTime + OffTime
+				eventLogger.debug('Forced CycleRatio = ' + str(CycleRatio) + ', On Time = ' + str(OnTime) + ', OffTime = ' + str(OffTime) + ', CycleTime = ' + str(CycleTime))
+			
 			# If Auger is OFF and time since toggle is greater than Off Time
 			elif not current_output_status['auger'] and (now - auger_toggle_time) > (CycleTime * (1 - CycleRatio)):
 				grill_platform.auger_on()
