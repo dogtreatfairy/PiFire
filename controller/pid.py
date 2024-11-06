@@ -104,7 +104,7 @@ class Controller(ControllerBase):
 		if abs(error) <= 10:
 			if not hasattr(self, 'within_range_start') or self.within_range_start is None:
 				self.within_range_start = time.time()
-			elif time.time() - self.within_range_start >= 20:
+			elif time.time() - self.within_range_start >= 120:
 				self.new_target = False
 		else:
 			self.within_range_start = None
