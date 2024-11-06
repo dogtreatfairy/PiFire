@@ -648,7 +648,7 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 				eventLogger.debug('Cycle Event: Auger Off')
 			
 			# If Auger is ON and Overshoot is Detected
-			if current_output_status ['auger'] and ptemp > control['primary_setpoint'] and (now - auger_toggle_time) > (CycleTime * max(CycleRatio, settings['cycle_data']['u_min'])):
+			if current_output_status ['auger'] and controllerCore.get_new_setpoint_up and ptemp > control['primary_setpoint'] and (now - auger_toggle_time) > (CycleTime * max(CycleRatio, settings['cycle_data']['u_min'])):
 				grill_platform.auger_off()
 				auger_toggle_time = now
 				write_metrics(metrics)

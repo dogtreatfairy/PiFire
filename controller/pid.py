@@ -114,6 +114,9 @@ class Controller(ControllerBase):
 		self.last_update = time.time()
 		if self.last < self.set_point:
 			self.new_setpoint_up = True
+			
+	def get_new_setpoint_up(self):
+		return self.new_setpoint_up
 		
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)
@@ -129,5 +132,6 @@ class Controller(ControllerBase):
 	        'get_config', 
 			'set_gains', 
 			'get_k'
+			'get_new_setpoint_up'
         ]
 		return function_list
