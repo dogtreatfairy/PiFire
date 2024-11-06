@@ -75,40 +75,40 @@ class Controller(ControllerBase):
 		# P
 		error = current - self.set_point
 		self.p = self.kp * error + self.center # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
-
+	
 		# I
 		dt = time.time() - self.last_update
 		if self.p > 0 and self.p < 1: # Ensure we are in the pb, otherwise do not calculate i to avoid windup
 			self.inter += error * dt
 			self.inter = max(self.inter, -self.inter_max)
 			self.inter = min(self.inter, self.inter_max)
-
+	
 		self.i = self.ki * self.inter
-
+	
 		# D
 		self.derv = (current - self.last) / dt
 		self.d = self.kd * self.derv
-
+	
 		# PID
 		self.u = self.p + self.i + self.d
-		
+	
 		if self.new_target and abs(error) <= 15:
-			self.u = self.u * 0.5
-
+			self.u = self.u * 0.65
+	
 		# Update for next cycle
 		self.error = error
 		self.last = current
-		self.last_update = time.time()	
-		
+		self.last_update = time.time()
+	
 		# Check if current is within +/-10 of set_point
 		if abs(error) <= 10:
-			if not hasattr(self, 'within_range_start'):
+			if not hasattr(self, 'within_range_start') or self.within_range_start is None:
 				self.within_range_start = time.time()
 			elif time.time() - self.within_range_start >= 20:
 				self.new_target = False
 		else:
 			self.within_range_start = None
-
+	
 		return self.u
 
 	def set_target(self, set_point):
