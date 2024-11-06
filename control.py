@@ -615,23 +615,22 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 				write_control(control, direct_write=True, origin='control')
 
 		# Initialize variables outside the loop
-		last_temp = 150
-		last_temp_time = time.time()
+		last_set_point = 150
+		new_set_point = False
 		overshoot = False
 		
 		# Change Auger State based on Cycle Time
 		if mode in ('Startup', 'Reignite', 'Smoke', 'Hold', 'Prime'):
 			# Update last temperature and time
-			current_time = time.time()
-			temp_rateofchange = (ptemp - last_temp) / (current_time - last_temp_time)
-			if temp_rateofchange > (1 / 3):
-				overshoot = True
-		
-			last_temp = ptemp
-			last_temp_time = current_time
+			if last_set_point < control['primary_setpoint']:
+				new_set_point = True
+			
+			if last_set_point <= ptemp <= last_set_point + 3:
+				new_set_point = False
+				last_set_point = control['primary_setpoint']
 		
 			# If Auger is ON and Overshoot is Detected
-			if mode == 'Hold' and ptemp > control['primary_setpoint'] and (now - auger_toggle_time) > (CycleTime * settings['cycle_data']['u_min']):
+			if mode == 'Hold' and new_set_point and ptemp >= control['primary_setpoint'] and (now - auger_toggle_time) > (CycleTime * settings['cycle_data']['u_min']):
 				if overshoot:
 					grill_platform.auger_off()
 					auger_toggle_time = now

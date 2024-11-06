@@ -55,6 +55,7 @@ class Controller(ControllerBase):
 		self.set_point = 0
 
 		self.center = config['center']
+		self.PB = config['PB']
 
 		self.derv = 0.0
 		self.inter = 0.0
@@ -63,8 +64,7 @@ class Controller(ControllerBase):
 		self.last = 150
 
 		self.set_target(0.0)
-		
-		self.new_setpoint_up = False
+		self.new_target = False
 
 	def _calculate_gains(self, pb, ti, td):
 		self.kp = -1 / pb
@@ -91,33 +91,30 @@ class Controller(ControllerBase):
 
 		# PID
 		self.u = self.p + self.i + self.d
-		
-		rate_of_change = abs(self.u - self.last) / dt
-		if rate_of_change > 1 and current < self.set_point - 10 and self.new_setpoint_up:
-			self.u = self.u / 2
 
 		# Update for next cycle
 		self.error = error
 		self.last = current
 		self.last_update = time.time()
 		
-		if self.new_setpoint_up and current >= self.set_point:
-			self.new_setpoint_up = False
+		if self.new_target and self.set_point-10 <= current <= self.set_point:
+			self.u = self.u * 0.7
+		
+		if self.new_target and current >= self.set_point:
+			self.new_target = False
+			
 
 		return self.u
 
 	def set_target(self, set_point):
+		if set_point > self.set_point and (set_point - self.set_point) < (self.PB / 2):
+			self.new_target = True
 		self.set_point = set_point
 		self.error = 0.0
 		self.inter = 0.0
 		self.derv = 0.0
 		self.last_update = time.time()
-		if self.last < self.set_point:
-			self.new_setpoint_up = True
-			
-	def get_new_setpoint_up(self):
-		return self.new_setpoint_up
-		
+    
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)
 		self.inter_max = abs(self.center / self.ki)
@@ -132,6 +129,5 @@ class Controller(ControllerBase):
 	        'get_config', 
 			'set_gains', 
 			'get_k'
-			'get_new_setpoint_up'
         ]
 		return function_list
