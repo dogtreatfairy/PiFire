@@ -93,8 +93,8 @@ class Controller(ControllerBase):
 		self.u = self.p + self.i + self.d
 		
 		rate_of_change = abs(self.u - self.last) / dt
-		if rate_of_change > 1 and current < self.controller.set_point - 10:
-			self.u = self.u/2
+		if rate_of_change > 1 and current < self.set_point - 10:
+			self.u = self.u / 2
 
 		# Update for next cycle
 		self.error = error
