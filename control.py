@@ -616,22 +616,28 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 
 		# Change Auger State based on Cycle Time
 		if mode in ('Startup', 'Reignite', 'Smoke', 'Hold', 'Prime'):
+			# Update controllerCore more frequently in Hold mode
+			if mode == 'Hold':
+				CycleRatio = RawCycleRatio = settings['cycle_data']['u_min'] if LidOpenDetect else controllerCore.update(ptemp)
+				CycleRatio = max(CycleRatio, settings['cycle_data']['u_min'])
+				CycleRatio = min(CycleRatio, settings['cycle_data']['u_max'])
+				OnTime = settings['cycle_data']['HoldCycleTime'] * CycleRatio
+				OffTime = settings['cycle_data']['HoldCycleTime'] * (1 - CycleRatio)
+				CycleTime = OnTime + OffTime
+				eventLogger.debug('On Time = ' + str(OnTime) + ', OffTime = ' + str(OffTime) + ', CycleTime = ' + str(CycleTime) + ', CycleRatio = ' + str(CycleRatio))
+		
+				# Publish PID info to MQTT if enabled
+				if settings['notify_services'].get('mqtt') != None and settings['notify_services']['mqtt']['enabled']:
+					pid_data = controllerCore.__dict__
+					pid_data['cycle_ratio'] = round(CycleRatio, 2)
+					check_notify(settings, control, pid_data=pid_data)
+		
 			# If Auger is OFF and time since toggle is greater than Off Time
 			if not current_output_status['auger'] and (now - auger_toggle_time) > (CycleTime * (1 - CycleRatio)):
 				grill_platform.auger_on()
 				auger_toggle_time = now
 				eventLogger.debug('Cycle Event: Auger On')
-				# Reset Cycle Time for HOLD Mode
-				if mode == 'Hold':
-					CycleRatio = RawCycleRatio = settings['cycle_data']['u_min'] if LidOpenDetect else controllerCore.update(ptemp)
-					CycleRatio = max(CycleRatio, settings['cycle_data']['u_min'])
-					CycleRatio = min(CycleRatio, settings['cycle_data']['u_max'])
-					OnTime = settings['cycle_data']['HoldCycleTime'] * CycleRatio
-					OffTime = settings['cycle_data']['HoldCycleTime'] * (1 - CycleRatio)
-					CycleTime = OnTime + OffTime
-					eventLogger.debug('On Time = ' + str(OnTime) + ', OffTime = ' + str(
-						OffTime) + ', CycleTime = ' + str(CycleTime) + ', CycleRatio = ' + str(CycleRatio))
-
+		
 			# If Auger is ON and time since toggle is greater than On Time
 			if current_output_status['auger'] and (now - auger_toggle_time) > (CycleTime * CycleRatio):
 				grill_platform.auger_off()
