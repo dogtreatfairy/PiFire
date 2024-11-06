@@ -628,6 +628,10 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 			if last_set_point <= ptemp <= last_set_point + 3:
 				new_set_point = False
 				last_set_point = control['primary_setpoint']
+
+			if ptemp > control['primary_setpoint'] + 10:
+				overshoot = True
+				controllerCore.set_target(control['primary_setpoint'])
 		
 			# If Auger is ON and Overshoot is Detected
 			if mode == 'Hold' and new_set_point and ptemp >= control['primary_setpoint'] and (now - auger_toggle_time) > (CycleTime * settings['cycle_data']['u_min']):

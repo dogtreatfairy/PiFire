@@ -64,7 +64,6 @@ class Controller(ControllerBase):
 		self.last = 150
 
 		self.set_target(0.0)
-		self.new_target = False
 
 	def _calculate_gains(self, pb, ti, td):
 		self.kp = -1 / pb
@@ -95,20 +94,11 @@ class Controller(ControllerBase):
 		# Update for next cycle
 		self.error = error
 		self.last = current
-		self.last_update = time.time()
-		
-		if self.new_target and self.set_point-10 <= current <= self.set_point:
-			self.u = self.u * 0.7
-		
-		if self.new_target and current >= self.set_point:
-			self.new_target = False
-			
+		self.last_update = time.time()			
 
 		return self.u
 
 	def set_target(self, set_point):
-		if set_point > self.set_point and (set_point - self.set_point) < (self.PB / 2):
-			self.new_target = True
 		self.set_point = set_point
 		self.error = 0.0
 		self.inter = 0.0
