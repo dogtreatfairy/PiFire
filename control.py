@@ -617,8 +617,6 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 		# Change Auger State based on Cycle Time
 		if mode in ('Startup', 'Reignite', 'Smoke', 'Hold', 'Prime'):
 			# If Auger is OFF and time since toggle is greater than Off Time
-			new_setpoint_up = False
-			new_setpoint_up = controllerCore.get_new_setpoint_up
 			if not current_output_status['auger'] and (now - auger_toggle_time) > (CycleTime * (1 - CycleRatio)):
 				grill_platform.auger_on()
 				auger_toggle_time = now
@@ -650,7 +648,7 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 				eventLogger.debug('Cycle Event: Auger Off')
 			
 			# If Auger is ON and Overshoot is Detected
-			if current_output_status ['auger'] and new_setpoint_up and ptemp > control['primary_setpoint'] and (now - auger_toggle_time) > (CycleTime * max(CycleRatio, settings['cycle_data']['u_min'])):
+			if current_output_status ['auger'] and ptemp > control['primary_setpoint'] and (now - auger_toggle_time) > (CycleTime * max(CycleRatio, settings['cycle_data']['u_min'])):
 				grill_platform.auger_off()
 				auger_toggle_time = now
 				write_metrics(metrics)
