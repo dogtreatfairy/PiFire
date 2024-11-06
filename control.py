@@ -630,15 +630,22 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 					OffTime = settings['cycle_data']['HoldCycleTime'] * (1 - CycleRatio)
 					CycleTime = OnTime + OffTime
 					eventLogger.debug('On Time = ' + str(OnTime) + ', OffTime = ' + str(OffTime) + ', CycleTime = ' + str(CycleTime) + ', CycleRatio = ' + str(CycleRatio))
-		
+			
 					# Publish pid info to mqtt if enabled
 					if settings['notify_services'].get('mqtt') is not None and settings['notify_services']['mqtt']['enabled']:
 						pid_data = controllerCore.__dict__
 						pid_data['cycle_ratio'] = round(CycleRatio, 2)
 						check_notify(settings, control, pid_data=pid_data)
-		
+			
+			# If Auger is ON and Overshoot is Detected
+			elif current_output_status['auger'] and ptemp > control['primary_setpoint'] and (now - auger_toggle_time) > (CycleTime * max(CycleRatio, settings['cycle_data']['u_min'])):
+				grill_platform.auger_off()
+				auger_toggle_time = now
+				write_metrics(metrics)
+				eventLogger.debug('Cycle Event: Auger Off (Overshoot)')
+			
 			# If Auger is ON and time since toggle is greater than On Time
-			if current_output_status['auger'] and (now - auger_toggle_time) > (CycleTime * CycleRatio):
+			elif current_output_status['auger'] and (now - auger_toggle_time) > (CycleTime * CycleRatio):
 				grill_platform.auger_off()
 				# Add auger ON time to the metrics
 				metrics['augerontime'] += now - auger_toggle_time
@@ -646,13 +653,6 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 				# Set current last toggle time to now
 				auger_toggle_time = now
 				eventLogger.debug('Cycle Event: Auger Off')
-			
-			# If Auger is ON and Overshoot is Detected
-			if current_output_status ['auger'] and ptemp > control['primary_setpoint'] and (now - auger_toggle_time) > (CycleTime * max(CycleRatio, settings['cycle_data']['u_min'])):
-				grill_platform.auger_off()
-				auger_toggle_time = now
-				write_metrics(metrics)
-				eventLogger.debug('Cycle Event: Auger Off (Overshoot)')
 
 		# Grab current probe profiles if they have changed since the last loop.
 		if control['probe_profile_update']:
