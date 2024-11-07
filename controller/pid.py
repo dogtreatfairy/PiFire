@@ -122,12 +122,7 @@ class Controller(ControllerBase):
 		# If outisde stable window (high) consider this an overshoot and minimize output
 		if (current - self.set_point) >= self.stable_window:
 			self.u = 0.0
-			#If this is an overshoot as a result of a new, higher set-point, reset the PID controller
-			if self.new_target:
-				self.error = 0.0
-				self. inter = 0.0
-				self.derv = 0.0
-	
+      
 		# Check if current is within +/- Stable Window of set_point
 		if abs(error) <= self.stable_window and self.new_target:
 			if not hasattr(self, 'within_range_start') or self.within_range_start is None:
@@ -135,7 +130,10 @@ class Controller(ControllerBase):
 			elif time.time() - self.within_range_start >= self.stable_time:
 				self.new_target = False
 				self.derate = False
-		else:
+        self.error = 0.0
+        self. inter = 0.0
+        self.derv = 0.0
+    else:
 			self.within_range_start = None
 
 		# Update for next cycle
