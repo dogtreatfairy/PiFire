@@ -130,11 +130,11 @@ class Controller(ControllerBase):
 			elif time.time() - self.within_range_start >= self.stable_time:
 				self.new_target = False
 				self.derate = False
-        self.error = 0.0
-        self. inter = 0.0
-        self.derv = 0.0
-    else:
-			self.within_range_start = None
+				self.error = 0.0
+				self. inter = 0.0
+				self.derv = 0.0
+			else:
+				self.within_range_start = None
 
 		# Update for next cycle
 		self.error = error
