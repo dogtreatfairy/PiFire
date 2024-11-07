@@ -115,8 +115,9 @@ class Controller(ControllerBase):
 			self.u = self.u * self.derate_multiplier
 		
 		# If derated longer than the stable window, reset derate flag
-		if (time.time() - self.derate_start_time) >= self.stable_time:
-			self.derate = False
+		if not self.derate_start_time == None and not self.stable_time == None:
+			if (time.time() - self.derate_start_time) >= self.stable_time:
+				self.derate = False
 
 		# If outisde stable window (high) consider this an overshoot and minimize output
 		if (current - self.set_point) >= self.stable_window:
