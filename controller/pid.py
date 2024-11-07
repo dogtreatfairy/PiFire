@@ -55,7 +55,15 @@ class Controller(ControllerBase):
 		self.set_point = 0
 
 		self.center = config['center']
-		self.PB = config['PB']
+		
+		self.max_rate_of_change = config['max_rate_of_change']
+		self.rate_of_change = 0.0
+		
+		self.derate_window = config['derate_window']
+		self.derate_multiplier = config['derate_multiplier']
+		
+		self.stable_time = config['stable_time']
+		self.stable_window = config['stable_window']
 
 		self.derv = 0.0
 		self.inter = 0.0
@@ -65,6 +73,7 @@ class Controller(ControllerBase):
 
 		self.set_target(0.0)
 		self.new_target = False
+		self.within_range_start = None
 
 	def _calculate_gains(self, pb, ti, td):
 		self.kp = -1 / pb
@@ -72,12 +81,14 @@ class Controller(ControllerBase):
 		self.kd = self.kp * td
 
 	def update(self, current):
+		dt = time.time() - self.last_update
+		rate_of_change = (current - self.last) / dt if current and self.last and dt else 0
+		
 		# P
 		error = current - self.set_point
 		self.p = self.kp * error + self.center # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
 	
 		# I
-		dt = time.time() - self.last_update
 		if self.p > 0 and self.p < 1: # Ensure we are in the pb, otherwise do not calculate i to avoid windup
 			self.inter += error * dt
 			self.inter = max(self.inter, -self.inter_max)
@@ -92,22 +103,32 @@ class Controller(ControllerBase):
 		# PID
 		self.u = self.p + self.i + self.d
 	
-		if self.new_target and abs(error) <= 15:
-			self.u = self.u * 0.65
+		# If rate of change is too high within derate window during a set point change, derate output
+		if self.new_target and abs(error) <= self.derate_window and rate_of_change >= self.max_rate_of_change:
+			self.u = self.u * self.derate_multiplier
+		
+		# If outisde stable window (high) consider this an overshoot and minimize output
+		if (current - self.set_point) >= self.stable_window:
+			self.u = 0.0
+			#If this is an overshoot as a result of a new, higher set-point, reset the PID controller
+			if self.new_target:
+				self.error = 0.0
+				self. inter = 0.0
+				self.derv = 0.0
 	
+		# Check if current is within +/- Stable Window of set_point
+		if abs(error) <= self.stable_window and self.new_target:
+			if not hasattr(self, 'within_range_start') or self.within_range_start is None:
+				self.within_range_start = time.time()
+			elif time.time() - self.within_range_start >= self.stable_time:
+				self.new_target = False
+		else:
+			self.within_range_start = None
+
 		# Update for next cycle
 		self.error = error
 		self.last = current
 		self.last_update = time.time()
-	
-		# Check if current is within +/-10 of set_point
-		if abs(error) <= 10:
-			if not hasattr(self, 'within_range_start') or self.within_range_start is None:
-				self.within_range_start = time.time()
-			elif time.time() - self.within_range_start >= 120:
-				self.new_target = False
-		else:
-			self.within_range_start = None
 	
 		return self.u
 

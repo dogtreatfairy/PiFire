@@ -626,8 +626,8 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 					CycleRatio = RawCycleRatio = settings['cycle_data']['u_min'] if LidOpenDetect else controllerCore.update(ptemp)
 					CycleRatio = max(CycleRatio, settings['cycle_data']['u_min'])
 					CycleRatio = min(CycleRatio, settings['cycle_data']['u_max'])
-					if ptemp > (control['primary_setpoint'] + 10):
-						CycleRatio = settings['cycle_data']['u_min']
+					#if ptemp > (control['primary_setpoint'] + 10):
+						#CycleRatio = settings['cycle_data']['u_min']
 					OnTime = settings['cycle_data']['HoldCycleTime'] * CycleRatio
 					OffTime = settings['cycle_data']['HoldCycleTime'] * (1 - CycleRatio)
 					CycleTime = OnTime + OffTime
