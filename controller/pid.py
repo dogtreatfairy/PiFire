@@ -61,6 +61,8 @@ class Controller(ControllerBase):
 		
 		self.derate_window = config['derate_window']
 		self.derate_multiplier = config['derate_multiplier']
+		self.derate = False
+		self.derate_start_time = None
 		
 		self.stable_time = config['stable_time']
 		self.stable_window = config['stable_window']
@@ -105,8 +107,17 @@ class Controller(ControllerBase):
 	
 		# If rate of change is too high within derate window during a set point change, derate output
 		if self.new_target and abs(error) <= self.derate_window and rate_of_change >= self.max_rate_of_change:
+			self.derate = True
+			self.derate_start_time = time.time()
+		
+		# If derate is true, derate the output by the derate multiplier
+		if self.derate:
 			self.u = self.u * self.derate_multiplier
 		
+		# If derated longer than the stable window, reset derate flag
+		if (time.time() - self.derate_start_time) >= self.stable_time:
+			self.derate = False
+
 		# If outisde stable window (high) consider this an overshoot and minimize output
 		if (current - self.set_point) >= self.stable_window:
 			self.u = 0.0
@@ -122,6 +133,7 @@ class Controller(ControllerBase):
 				self.within_range_start = time.time()
 			elif time.time() - self.within_range_start >= self.stable_time:
 				self.new_target = False
+				self.derate = False
 		else:
 			self.within_range_start = None
 
