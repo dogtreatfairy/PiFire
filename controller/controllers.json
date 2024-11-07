@@ -51,7 +51,7 @@
                     "hidden" : false
                 },
                 {
-                    "option_name" : "Max_rate_of_change",
+                    "option_name" : "max_rate_of_change",
                     "option_friendly_name" : "Max Rate of Change (Temp)", 
                     "option_description" : "Maximum degree's per second change before reducing output. [Default=0.30]",
                     "option_type" : "float",
