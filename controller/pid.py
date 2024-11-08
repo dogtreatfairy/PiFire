@@ -71,7 +71,7 @@ class Controller(ControllerBase):
 		self.derate_multiplier = self.user_derate_multiplier
 		self.derate = False
 		self.derate_start_time = None
-		self.rerate_increment = 0.1
+		self.rerate_increment = 0.05
 		
 		self.stable_time = config['stable_time']
 		self.stable_window = config['stable_window']
@@ -106,10 +106,12 @@ class Controller(ControllerBase):
 			self.inter = min(self.inter, self.inter_max)
 	
 		self.i = self.ki * self.inter
+		self.i = max(0, min(self.i, 1))
 	
 		# D
 		self.derv = (current - self.last) / dt
 		self.d = self.kd * self.derv
+		self.d = max(0, min(self.d, 1))
 	
 		# PID
 		self.u = self.p + self.i + self.d
@@ -130,17 +132,16 @@ class Controller(ControllerBase):
 				if self.derate_multiplier < 1:
 					self.derate_multiplier += self.rerate_increment
 					self.derate_multiplier = min(self.derate_multiplier, 1)  # Ensure it does not exceed 1
-			else:
-				# Reset the derate multiplier if the rate of change exceeds the max rate of change
-				self.derate_multiplier = self.user_derate_multiplier
 	
-			# If derated longer than the stable window, reset derate flag
-			if self.derate_start_time is not None and self.stable_time is not None and self.derate_multiplier == 1:
-				if (time.time() - self.derate_start_time) >= self.stable_time:
-					self.derate = False
-					self.derate_start_time = None
-					self.derate_multiplier = self.user_derate_multiplier
-					self.eventLogger.info("System Derater - OFF")
+			# If derate multiplier reaches 1, reset derate flag
+			if self.derate_multiplier == 1:
+				self.derate = False
+				self.derate_start_time = None
+				self.eventLogger.info("System Derater - OFF")
+	
+			# Reset the derate multiplier if the rate of change exceeds the max rate of change
+			if rate_of_change >= self.max_rate_of_change:
+				self.derate_multiplier = self.user_derate_multiplier
 	
 		# If outside stable window (high) consider this an overshoot and minimize output
 		if (current - self.set_point) >= self.stable_window:
@@ -153,9 +154,6 @@ class Controller(ControllerBase):
 				self.within_range_start = time.time()
 			elif time.time() - self.within_range_start >= self.stable_time:
 				self.new_target = False
-				self.error = 0.0
-				self.inter = 0.0
-				self.derv = 0.0
 				self.eventLogger.info("System Stable")
 		else:
 			self.within_range_start = None
