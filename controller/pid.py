@@ -115,21 +115,25 @@ class Controller(ControllerBase):
 		self.u = self.p + self.i + self.d
 	
 		# If rate of change is too high within derate window during a set point change, derate output
-		if self.new_target and abs(error) <= self.derate_window and rate_of_change >= self.max_rate_of_change:
+		if self.new_target and abs(error) <= self.derate_window and rate_of_change >= self.max_rate_of_change and error < 0:
 			self.derate = True
 			self.derate_start_time = time.time()
 			self.derate_multiplier = self.user_derate_multiplier
-
+	
 		# If derate is true, derate the output by the derate multiplier
 		if self.derate:
 			self.u = self.u * self.derate_multiplier
-			self.eventLogger.info("System Derater - ON        Multiplier: " + str(self.derate_multiplier))
-		
-			# Gradually increase the derate multiplier until it reaches 1
-			if self.derate_multiplier < 1:
-				self.derate_multiplier += self.rerate_increment
-				self.derate_multiplier = min(self.derate_multiplier, 1)  # Ensure it does not exceed 1
-		
+			self.eventLogger.info(f"System Derater - ON        Multiplier: {self.derate_multiplier}")
+	
+			# Gradually increase the derate multiplier until it reaches 1, only if rate of change is below max
+			if rate_of_change < self.max_rate_of_change:
+				if self.derate_multiplier < 1:
+					self.derate_multiplier += self.rerate_increment
+					self.derate_multiplier = min(self.derate_multiplier, 1)  # Ensure it does not exceed 1
+			else:
+				# Reset the derate multiplier if the rate of change exceeds the max rate of change
+				self.derate_multiplier = self.user_derate_multiplier
+	
 			# If derated longer than the stable window, reset derate flag
 			if self.derate_start_time is not None and self.stable_time is not None and self.derate_multiplier == 1:
 				if (time.time() - self.derate_start_time) >= self.stable_time:
@@ -137,25 +141,25 @@ class Controller(ControllerBase):
 					self.derate_start_time = None
 					self.derate_multiplier = self.user_derate_multiplier
 					self.eventLogger.info("System Derater - OFF")
-
-		# If outisde stable window (high) consider this an overshoot and minimize output
+	
+		# If outside stable window (high) consider this an overshoot and minimize output
 		if (current - self.set_point) >= self.stable_window:
 			self.u = 0.0
 			self.eventLogger.info("Overshoot Detected, minimizing output")
-      
+	  
 		# Check if current is within +/- Stable Window of set_point
 		if abs(error) <= self.stable_window and self.new_target:
-			if not hasattr(self, 'within_range_start') or self.within_range_start is None:
+			if self.within_range_start is None:
 				self.within_range_start = time.time()
 			elif time.time() - self.within_range_start >= self.stable_time:
 				self.new_target = False
 				self.error = 0.0
-				self. inter = 0.0
+				self.inter = 0.0
 				self.derv = 0.0
-			else:
-				self.within_range_start = None
 				self.eventLogger.info("System Stable")
-
+		else:
+			self.within_range_start = None
+	
 		# Update for next cycle
 		self.error = error
 		self.last = current
