@@ -96,7 +96,7 @@ class Controller(ControllerBase):
 		# P
 		error = current - self.set_point
 		self.p = self.kp * error + self.center # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
-		self.eventLogger.info("P:  ")
+		self.eventLogger.info("P:  " + str(self.p))
 		# I
 		if self.p > 0 and self.p < 1: # Ensure we are in the pb, otherwise do not calculate i to avoid windup
 			self.inter += error * dt
@@ -104,15 +104,16 @@ class Controller(ControllerBase):
 			self.inter = min(self.inter, self.inter_max)
 	
 		self.i = self.ki * self.inter
-		self.eventLogger.info("I:  ")
+		self.eventLogger.info("I:  " + str(self.i))
 	
 		# D
 		self.derv = (current - self.last) / dt # Rate of change in Degrees per second
 		self.d = self.kd * self.derv
-		self.eventLogger.info("D:  ")
+		self.eventLogger.info("D:  " + str(self.d))
 	
 		# PID
 		self.u = self.p + self.i + self.d
+		self.eventLogger.info("U Initial:  " + str(self.u))
 	
 		# If rate of change is too high within derate window during a set point change, derate output
 		if self.new_target and abs(error) <= self.derate_window and self.derv >= self.max_rate_of_change and error < 0:
@@ -156,7 +157,7 @@ class Controller(ControllerBase):
 		self.last = current
 		self.last_update = time.time()
 	
-		self.eventLogger.info("U Value: " + str(self.u))
+		self.eventLogger.info("U Output: " + str(self.u))
 	
 		return self.u
 	
