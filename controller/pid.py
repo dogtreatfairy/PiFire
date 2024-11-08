@@ -132,6 +132,9 @@ class Controller(ControllerBase):
 				if self.derate_multiplier < 1:
 					self.derate_multiplier += self.rerate_increment
 					self.derate_multiplier = min(self.derate_multiplier, 1)  # Ensure it does not exceed 1
+					self.error = 0.0
+					self.inter = 0.0
+					self.derv = 0.0
 	
 			# If derate multiplier reaches 1, reset derate flag
 			if self.derate_multiplier == 1:
