@@ -100,10 +100,10 @@ class Controller(ControllerBase):
 		self.p = self.kp * error + self.center # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
 	
 		# I
-		if self.p > 0 and self.p < 1: # Ensure we are in the pb, otherwise do not calculate i to avoid windup
-			self.inter += error * dt
-			self.inter = max(self.inter, -self.inter_max)
-			self.inter = min(self.inter, self.inter_max)
+		#if self.p > 0 and self.p < 1: # Ensure we are in the pb, otherwise do not calculate i to avoid windup
+		self.inter += error * dt
+		self.inter = max(self.inter, -self.inter_max)
+		self.inter = min(self.inter, self.inter_max)
 	
 		self.i = self.ki * self.inter
 		self.i = max(-1, min(self.i, 1))
