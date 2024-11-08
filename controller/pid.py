@@ -114,7 +114,10 @@ class Controller(ControllerBase):
 		self.d = max(-1, min(self.d, 1))
 	
 		# PID
-		self.u = self.p + self.i + self.d
+		if self.derate:
+			self.u = self.p + self.i  # PI control only when derated
+		else:
+			self.u = self.p + self.i + self.d  # PID control when not derated
 	
 		# If rate of change is too high within derate window during a set point change, derate output
 		if self.new_target and abs(error) <= self.derate_window and rate_of_change >= self.max_rate_of_change and error < 0:
@@ -132,14 +135,12 @@ class Controller(ControllerBase):
 				if self.derate_multiplier < 1:
 					self.derate_multiplier += self.rerate_increment
 					self.derate_multiplier = min(self.derate_multiplier, 1)  # Ensure it does not exceed 1
-					self.error = 0.0
-					self.inter = 0.0
-					self.derv = 0.0
 	
 			# If derate multiplier reaches 1, reset derate flag
 			if self.derate_multiplier == 1:
 				self.derate = False
 				self.derate_start_time = None
+				self.derv = 0.0
 				self.eventLogger.info("System Derater - OFF")
 	
 			# Reset the derate multiplier if the rate of change exceeds the max rate of change
