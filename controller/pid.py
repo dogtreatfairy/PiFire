@@ -71,7 +71,7 @@ class Controller(ControllerBase):
 		self.derate_multiplier = self.user_derate_multiplier
 		self.derate = False
 		self.derate_start_time = None
-		self.rerate_increment = 0.05
+		self.rerate_increment = config['rerate_increment']
 		
 		self.stable_time = config['stable_time']
 		self.stable_window = config['stable_window']
@@ -174,6 +174,8 @@ class Controller(ControllerBase):
 		self.derv = 0.0
 		self.last_update = time.time()
 		self.new_target = True
+		self.derate = False
+		self.derate_multiplier = self.user_derate_multiplier
 		self.eventLogger.info("New Set Point: " + str(self.set_point))
     
 	def set_gains(self, pb, ti, td):

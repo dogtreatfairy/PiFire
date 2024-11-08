@@ -84,6 +84,17 @@
                     "hidden" : false
                 },
 				{
+                    "option_name" : "rerate_increment",
+                    "option_friendly_name" : "Rerate Increment", 
+                    "option_description" : "When re-rating output, increment to do so by. This value is added to the derate multiplier each cycle unitl derate is disabled. [Default=0.05]",
+                    "option_type" : "float",
+                    "option_default" : 0.05,
+                    "option_min" : null,
+                    "option_max" : null, 
+                    "option_step" : 0.01,
+                    "hidden" : false
+                },
+				{
                     "option_name" : "stable_time",
                     "option_friendly_name" : "Stable Time (Sec)", 
                     "option_description" : "Amount of time system must stay within the Stable Window to be considered stable [Default=120]",
