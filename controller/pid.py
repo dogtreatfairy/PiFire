@@ -96,7 +96,7 @@ class Controller(ControllerBase):
 		# P
 		error = current - self.set_point
 		self.p = self.kp * error + self.center # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
-	
+		self.eventLogger.info("P:  ")
 		# I
 		if self.p > 0 and self.p < 1: # Ensure we are in the pb, otherwise do not calculate i to avoid windup
 			self.inter += error * dt
@@ -104,12 +104,12 @@ class Controller(ControllerBase):
 			self.inter = min(self.inter, self.inter_max)
 	
 		self.i = self.ki * self.inter
-		self.i = max(-1, min(self.i, 1))
+		self.eventLogger.info("I:  ")
 	
 		# D
 		self.derv = (current - self.last) / dt # Rate of change in Degrees per second
 		self.d = self.kd * self.derv
-		self.d = max(-1, min(self.d, 1))
+		self.eventLogger.info("D:  ")
 	
 		# PID
 		self.u = self.p + self.i + self.d
