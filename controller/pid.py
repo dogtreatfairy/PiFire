@@ -123,7 +123,7 @@ class Controller(ControllerBase):
 		# If derate is true, derate the output by the derate multiplier
 		if self.derate:
 			self.u = self.u * self.derate_multiplier
-			self.eventLogger.info("System Derater - ON        Multiplier: " + self.derate_multiplier)
+			self.eventLogger.info("System Derater - ON        Multiplier: " + str(self.derate_multiplier))
 		
 			# Gradually increase the derate multiplier until it reaches 1
 			if self.derate_multiplier < 1:
@@ -170,7 +170,7 @@ class Controller(ControllerBase):
 		self.derv = 0.0
 		self.last_update = time.time()
 		self.new_target = True
-		self.eventLogger.info("New Set Point: " + self.set_point)
+		self.eventLogger.info("New Set Point: " + str(self.set_point))
     
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)
