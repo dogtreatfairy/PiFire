@@ -34,15 +34,22 @@
 Imported Libraries
 '''
 import time
+import logging
 from controller.base import ControllerBase 
+from common import *  # Common Module for WebUI and Control Program
 
 '''
 Class Definition
 '''
 class Controller(ControllerBase):
+	
+
+
 	def __init__(self, config, units, cycle_data):
 		super().__init__(config, units, cycle_data)
-
+		
+		self.eventLogger = create_logger('events', filename='/tmp/events.log', messageformat='%(asctime)s [%(levelname)s] %(message)s', level=logging.INFO)
+		
 		self._calculate_gains(config['PB'], config['Ti'], config['Td'])
 
 		self.p = 0.0
@@ -111,10 +118,12 @@ class Controller(ControllerBase):
 		if self.new_target and abs(error) <= self.derate_window and rate_of_change >= self.max_rate_of_change:
 			self.derate = True
 			self.derate_start_time = time.time()
+			self.derate_multiplier = self.user_derate_multiplier
 
 		# If derate is true, derate the output by the derate multiplier
 		if self.derate:
 			self.u = self.u * self.derate_multiplier
+			self.eventLogger.info("System Derater - ON        Multiplier: " + self.derate_multiplier)
 		
 			# Gradually increase the derate multiplier until it reaches 1
 			if self.derate_multiplier < 1:
@@ -127,15 +136,12 @@ class Controller(ControllerBase):
 					self.derate = False
 					self.derate_start_time = None
 					self.derate_multiplier = self.user_derate_multiplier
-		
-		# If derated longer than the stable window, reset derate flag
-		if not self.derate_start_time == None and not self.stable_time == None:
-			if (time.time() - self.derate_start_time) >= self.stable_time:
-				self.derate = False
+					self.eventLogger.info("System Derater - OFF")
 
 		# If outisde stable window (high) consider this an overshoot and minimize output
 		if (current - self.set_point) >= self.stable_window:
 			self.u = 0.0
+			self.eventLogger.info("Overshoot Detected, minimizing output")
       
 		# Check if current is within +/- Stable Window of set_point
 		if abs(error) <= self.stable_window and self.new_target:
@@ -148,6 +154,7 @@ class Controller(ControllerBase):
 				self.derv = 0.0
 			else:
 				self.within_range_start = None
+				self.eventLogger.info("System Stable")
 
 		# Update for next cycle
 		self.error = error
@@ -163,6 +170,7 @@ class Controller(ControllerBase):
 		self.derv = 0.0
 		self.last_update = time.time()
 		self.new_target = True
+		self.eventLogger.info("New Set Point: " + self.set_point)
     
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)
