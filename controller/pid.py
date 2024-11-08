@@ -106,12 +106,12 @@ class Controller(ControllerBase):
 			self.inter = min(self.inter, self.inter_max)
 	
 		self.i = self.ki * self.inter
-		self.i = max(0, min(self.i, 1))
+		self.i = max(-1, min(self.i, 1))
 	
 		# D
 		self.derv = (current - self.last) / dt
 		self.d = self.kd * self.derv
-		self.d = max(0, min(self.d, 1))
+		self.d = max(-1, min(self.d, 1))
 	
 		# PID
 		self.u = self.p + self.i + self.d
@@ -162,6 +162,8 @@ class Controller(ControllerBase):
 		self.error = error
 		self.last = current
 		self.last_update = time.time()
+
+		self.eventLogger.info("U Value: " + str(self.u))
 	
 		return self.u
 
