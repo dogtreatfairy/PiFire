@@ -160,8 +160,6 @@ class Controller(ControllerBase):
 		self.error = error
 		self.last = current
 		self.last_update = time.time()
-
-		if (current - self.set_point) <= 
 	
 		self.eventLogger.info(f"U Final: {self.u}")
 	
