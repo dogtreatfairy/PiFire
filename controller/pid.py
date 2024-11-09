@@ -54,6 +54,8 @@ class Controller(ControllerBase):
 		self.d = 0.0
 		self.u = 0
 
+		self.pb = config['PB']
+
 		self.last_update = time.time()
 		self.error = 0.0
 		self.set_point = 0
@@ -145,6 +147,10 @@ class Controller(ControllerBase):
 			self.u = 0.0
 			self.eventLogger.info("Overshoot Detected, minimizing output")
 		
+		# If set point is outside pb/2 high, limit u to a min of 1.0 Fixes issue where one cycle is wasted due to self.last being set to 0.0 on set point change.
+		if (current - self.set_point) < -(self.pb / 2):
+			self.u = 1.0
+		
 		# Reset integral term when current temperature first reaches or exceeds set point after a set point change
 		if self.new_target and abs(current - self.set_point) <= 3:
 			self.inter = 0.0
@@ -154,6 +160,8 @@ class Controller(ControllerBase):
 		self.error = error
 		self.last = current
 		self.last_update = time.time()
+
+		if (current - self.set_point) <= 
 	
 		self.eventLogger.info(f"U Final: {self.u}")
 	
