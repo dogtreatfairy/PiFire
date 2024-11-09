@@ -88,7 +88,7 @@ class Controller(ControllerBase):
 		self.kd = self.kp * td
 
 	def update(self, current):
-		self.center = (current * 0.001) # Dynamically set self.center depending on current temperature. This prevents overshoots.
+		self.center = (current * 0.0012) # Dynamically set self.center depending on current temperature.
 		
 		# P
 		error = current - self.set_point
@@ -98,10 +98,9 @@ class Controller(ControllerBase):
 		dt = time.time() - self.last_update
 		self.inter_max = min(abs(self.center / self.ki), self.set_point) # Calculate max I as a function of the current center value.
 		
-		if self.p > 0 and self.p < (1 + self.center): # Ensure we are in the pb, otherwise do not calculate i to avoid windup
-			self.inter += error * dt
-			self.inter = max(self.inter, -self.inter_max)
-			self.inter = min(self.inter, self.inter_max)
+		self.inter += error * dt
+		self.inter = max(self.inter, -self.inter_max)
+		self.inter = min(self.inter, self.inter_max)
 		
 		if self.p > 1 or self.p < 0: # Zero out I if we are outside of the PB
 			self.inter = 0.0
@@ -113,6 +112,18 @@ class Controller(ControllerBase):
 		self.d = self.kd * self.derv
 	
 		# PID
+		self.u = self.p + self.i + self.d
+
+		# Back-calculation anti-windup
+		if self.u > 1:
+			self.i -= (self.u - 1) / self.ki
+		elif self.u < 0:
+			self.i -= (self.u - 0) / self.ki
+
+		# Recalculate the integral term after back-calculation
+		self.inter = self.i / self.ki
+
+		# Recalculate the total output using the updated integral term
 		self.u = self.p + self.i + self.d
 	
 		self.eventLogger.info(f"-- PID Values --")
