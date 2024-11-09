@@ -88,8 +88,6 @@ class Controller(ControllerBase):
 		self.kd = self.kp * td
 
 	def update(self, current):
-		dt = time.time() - self.last_update  # Time elapsed since last update
-
 		self.center = (current * 0.001) # Dynamically set self.center depending on current temperature. This prevents overshoots.
 		
 		# P
@@ -100,7 +98,7 @@ class Controller(ControllerBase):
 		dt = time.time() - self.last_update
 		self.inter_max = min(abs(self.center / self.ki), self.set_point) # Calculate max I as a function of the current center value.
 		
-		if self.p > 0 and self.p < 1: # Ensure we are in the pb, otherwise do not calculate i to avoid windup
+		if self.p > 0 and self.p < (1 + self.center): # Ensure we are in the pb, otherwise do not calculate i to avoid windup
 			self.inter += error * dt
 			self.inter = max(self.inter, -self.inter_max)
 			self.inter = min(self.inter, self.inter_max)
