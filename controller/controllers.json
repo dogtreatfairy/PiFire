@@ -178,17 +178,6 @@
                     "option_max" : null, 
                     "option_step" : 0.1,
                     "hidden" : false
-                },
-                {
-                    "option_name" : "center",
-                    "option_friendly_name" : "Center Ratio", 
-                    "option_description" : "Center of Cycle Ratio, which is specific to the way this PID will behave. [Default=0.5]",
-                    "option_type" : "float",
-                    "option_default" : 0.5,
-                    "option_min" : null,
-                    "option_max" : null, 
-                    "option_step" : 0.01, 
-                    "hidden" : false
                 }
             ]
         },
