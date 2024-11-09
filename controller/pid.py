@@ -170,7 +170,7 @@ class Controller(ControllerBase):
 		self.new_target = True
 		self.derate = False
 		self.derate_multiplier = self.user_derate_multiplier
-		self.eventLogger.info(f"New Set Point: {self.set_point    ")
+		self.eventLogger.info(f"New Set Point: {self.set_point}")
     
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)
@@ -180,10 +180,10 @@ class Controller(ControllerBase):
 	
 	def supported_functions(self):
 		function_list = [
-			'upda        ', 
-	        'se        target', 
+			'update', 
+	        'set target', 
 	        'get_config', 
-			'set_ga        s', 
+			'set_gainss', 
 			'get_k'
         ]
 		return function_list
