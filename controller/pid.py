@@ -159,7 +159,6 @@ class Controller(ControllerBase):
 
 		# For small set point change, derate output after first cycle
 		if self.new_target and self.set_point < 250 and abs(current - self.set_point) <= 50:
-			self.derate_multiplier = 0.6
 			self.derate = True
 			self.eventLogger.info("Derated output for small change.")
 	
