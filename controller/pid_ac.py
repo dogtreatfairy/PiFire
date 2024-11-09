@@ -82,7 +82,7 @@ class Controller(ControllerBase):
 
 		# I
 		dt = time.time() - self.last_update
-		self.inter_max = abs(self.center / self.ki) # Calculate max I as a function of the current center value.
+		self.inter_max = min(abs(self.center / self.ki), self.set_point) # Calculate max I as a function of the current center value.
 		
 		if self.p > 0 and self.p < 1: # Ensure we are in the pb, otherwise do not calculate i to avoid windup
 			self.inter += error * dt

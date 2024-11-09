@@ -42,9 +42,6 @@ from common import *  # Common Module for WebUI and Control Program
 Class Definition
 '''
 class Controller(ControllerBase):
-	
-
-
 	def __init__(self, config, units, cycle_data):
 		super().__init__(config, units, cycle_data)
 		
@@ -61,7 +58,7 @@ class Controller(ControllerBase):
 		self.error = 0.0
 		self.set_point = 0
 
-		self.center = config['center']
+		self.center = 0.5
 		
 		self.max_rate_of_change = config['max_rate_of_change']
 		
@@ -92,29 +89,41 @@ class Controller(ControllerBase):
 
 	def update(self, current):
 		dt = time.time() - self.last_update  # Time elapsed since last update
+
+		self.center = (current * 0.001) # Dynamically set self.center depending on current temperature. This prevents overshoots.
 		
 		# P
 		error = current - self.set_point
 		self.p = self.kp * error + self.center # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
-		self.eventLogger.info("P:  " + str(self.p))
+		
 		# I
+		dt = time.time() - self.last_update
+		self.inter_max = min(abs(self.center / self.ki), self.set_point) # Calculate max I as a function of the current center value.
+		
 		if self.p > 0 and self.p < 1: # Ensure we are in the pb, otherwise do not calculate i to avoid windup
 			self.inter += error * dt
 			self.inter = max(self.inter, -self.inter_max)
 			self.inter = min(self.inter, self.inter_max)
-	
+		
+		if self.p > 1 or self.p < 0: # Zero out I if we are outside of the PB
+			self.inter = 0.0
+
 		self.i = self.ki * self.inter
-		self.eventLogger.info("I:  " + str(self.i))
 	
 		# D
 		self.derv = (current - self.last) / dt # Rate of change in Degrees per second
 		self.d = self.kd * self.derv
-		self.eventLogger.info("D:  " + str(self.d))
 	
 		# PID
 		self.u = self.p + self.i + self.d
-		self.eventLogger.info("U Initial:  " + str(self.u))
 	
+		self.eventLogger.info(f"-- PID Values --")
+		self.eventLogger.info(f"C:  {self.center}")
+		self.eventLogger.info(f"P:  {self.p}")
+		self.eventLogger.info(f"I:  {self.i}")
+		self.eventLogger.info(f"D:  {self.d}")
+		self.eventLogger.info(f"U:  {self.u}")
+
 		# If rate of change is too high within derate window during a set point change, derate output
 		if self.new_target and abs(error) <= self.derate_window and self.derv >= self.max_rate_of_change and error < 0:
 			self.derate = True
@@ -124,7 +133,7 @@ class Controller(ControllerBase):
 		# If derate is true, derate the output by the derate multiplier
 		if self.derate:
 			self.u = self.u * self.derate_multiplier
-			self.eventLogger.info(f"System Derater - ON        Multiplier: {self.derate_multiplier}")
+			self.eventLogger.info(f"Derate - ON - M: {self.derate_multiplier}")
 	
 			# Gradually increase the derate multiplier until it reaches 1, only if rate of change is below max
 			if self.derv < self.max_rate_of_change:
@@ -136,7 +145,7 @@ class Controller(ControllerBase):
 			if self.derate_multiplier == 1:
 				self.derate = False
 				self.derate_start_time = None
-				self.eventLogger.info("System Derater - OFF")
+				self.eventLogger.info("Derate - OFF")
 	
 			# Reset the derate multiplier if the rate of change exceeds the max rate of change
 			if self.derv >= self.max_rate_of_change:
@@ -157,7 +166,7 @@ class Controller(ControllerBase):
 		self.last = current
 		self.last_update = time.time()
 	
-		self.eventLogger.info("U Output: " + str(self.u))
+		self.eventLogger.info(f"U Final: {self.u}")
 	
 		return self.u
 	
