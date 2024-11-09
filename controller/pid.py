@@ -60,8 +60,6 @@ class Controller(ControllerBase):
 
 		self.center = 0.5
 		
-		self.max_rate_of_change = config['max_rate_of_change']
-		
 		self.derate_window = config['derate_window']
 		self.user_derate_multiplier = config['derate_multiplier']
 		self.derate_multiplier = self.user_derate_multiplier
@@ -116,7 +114,7 @@ class Controller(ControllerBase):
 		self.eventLogger.info(f"U:  {self.u}")
 
 		# If rate of change is too high within derate window during a set point change, derate output
-		if self.new_target and abs(error) <= self.derate_window and self.derv >= self.max_rate_of_change and error < 0:
+		if self.new_target and abs(error) <= self.derate_window and self.derv >= self.center and error < 0:
 			self.derate = True
 			self.derate_start_time = time.time()
 			self.derate_multiplier = self.user_derate_multiplier
@@ -127,7 +125,7 @@ class Controller(ControllerBase):
 			self.eventLogger.info(f"Derate - ON - M: {self.derate_multiplier}")
 	
 			# Gradually increase the derate multiplier until it reaches 1, only if rate of change is below max
-			if self.derv < self.max_rate_of_change:
+			if self.derv < self.center:
 				if self.derate_multiplier < 1:
 					self.derate_multiplier += self.rerate_increment
 					self.derate_multiplier = min(self.derate_multiplier, 1)  # Ensure it does not exceed 1
@@ -139,7 +137,7 @@ class Controller(ControllerBase):
 			self.eventLogger.info("Derate - OFF")
 	
 			# Reset the derate multiplier if the rate of change exceeds the max rate of change
-			if self.derv >= self.max_rate_of_change:
+			if self.derv >= self.center:
 				self.derate_multiplier = self.user_derate_multiplier
 	
 		# If outside stable window (high) consider this an overshoot and minimize output

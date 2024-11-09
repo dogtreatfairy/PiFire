@@ -51,17 +51,6 @@
                     "hidden" : false
                 },
                 {
-                    "option_name" : "max_rate_of_change",
-                    "option_friendly_name" : "Max Rate of Change (Temp)", 
-                    "option_description" : "Maximum degree's per second change before reducing output. [Default=0.20]",
-                    "option_type" : "float",
-                    "option_default" : 0.20,
-                    "option_min" : null,
-                    "option_max" : null, 
-                    "option_step" : 0.01,
-                    "hidden" : false
-                },
-                {
                     "option_name" : "derate_window",
                     "option_friendly_name" : "Derate Window (Temp)", 
                     "option_description" : "Window around set_point where rate of change derate is active on set point change [Default=20]",
