@@ -146,7 +146,7 @@ class Controller(ControllerBase):
 			self.eventLogger.info("Overshoot Detected, minimizing output")
 		
 		# Reset integral term when current temperature first reaches or exceeds set point after a set point change
-		if self.new_target and current >= self.set_point:
+		if self.new_target and abs(current - self.set_point) <= 3:
 			self.inter = 0.0
 			self.new_target = False
 	
