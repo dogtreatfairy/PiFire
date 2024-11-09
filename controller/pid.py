@@ -156,10 +156,12 @@ class Controller(ControllerBase):
 		if self.new_target and abs(current - self.set_point) <=3:
 			self.inter = 0.0
 			self.new_target = False
-		# For small climbs, derate output after first cycle
-		if self.new_target and abs(current - self.set_point) <= 40:
+
+		# For small set point change, derate output after first cycle
+		if self.new_target and self.set_point < 250 and abs(current - self.set_point) <= 50:
 			self.derate_multiplier = 0.6
 			self.derate = True
+			self.eventLogger.info("Derated output for small change.")
 	
 		# Update for next cycle
 		self.error = error
