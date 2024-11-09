@@ -97,9 +97,9 @@ class Controller(ControllerBase):
 		dt = time.time() - self.last_update
 
 		self.inter += error * dt
-		self.inter = max(self.inter, -self.center)
-		self.inter = min(self.inter, self.center)
 		self.i = self.ki * self.inter
+		self.i = max(self.i, -self.center)
+		self.i= min(self.i, self.center)
 
 		# D
 		self.derv = (current - self.last) / dt  # Rate of change in Degrees per second
