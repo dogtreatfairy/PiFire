@@ -129,6 +129,69 @@
                 }
             ]
         },
+		"pid_ac" : {
+            "friendly_name" : "PID Auto Center",
+            "module_name" : "pid_ac",
+            "image" : "pid.png",
+            "description" : "The standard PID controller for PiFire, used by default. This software was originally developed by GitHub user DBorello as part of his excellent PiSmoker project.  Slightly modified by @weberbox and adapted for PiFire. ",
+            "author" : "Dan Borello",
+            "link" : "https://github.com/DBorello/PiSmoker", 
+            "contributors" : ["Ben Parmeter", "James Weber", "Ryan Steel"],
+            "attributions" : [],
+            "recommendations" : {
+                "cycle" : { 
+                    "cycle_time" : 25,
+                    "cycle_ratio_min" : 0.1,
+                    "cycle_ratio_max" : 0.9
+                }   
+            },
+            "config" : [
+                {
+                    "option_name" : "PB",
+                    "option_friendly_name" : "Proportional Band(PB)", 
+                    "option_description" : "This is the temperature band centered around the set point, that the controller is active.  If the error is greater than PB/2, the command is 0.  If the error is less than PB/2, the command is 1.0. [Default=60.0]",
+                    "option_type" : "float",
+                    "option_default" : 60.0,
+                    "option_min" : null,
+                    "option_max" : null, 
+                    "option_step" : 0.1,
+                    "hidden" : false
+                },
+                {
+                    "option_name" : "Td",
+                    "option_friendly_name" : "Derivative Time (Td)", 
+                    "option_description" : "Time (in seconds) to predict the future value. [Default=45.0]",
+                    "option_type" : "float",
+                    "option_default" : 45.0,
+                    "option_min" : null,
+                    "option_max" : null,
+                    "option_step" : 0.1,  
+                    "hidden" : false
+                },
+                {
+                    "option_name" : "Ti",
+                    "option_friendly_name" : "Integral Time (Ti)", 
+                    "option_description" : "Time (in seconds) to eliminate the integral error. [Default=180.0]",
+                    "option_type" : "float",
+                    "option_default" : 180.0,
+                    "option_min" : null,
+                    "option_max" : null, 
+                    "option_step" : 0.1,
+                    "hidden" : false
+                },
+                {
+                    "option_name" : "center",
+                    "option_friendly_name" : "Center Ratio", 
+                    "option_description" : "Center of Cycle Ratio, which is specific to the way this PID will behave. [Default=0.5]",
+                    "option_type" : "float",
+                    "option_default" : 0.5,
+                    "option_min" : null,
+                    "option_max" : null, 
+                    "option_step" : 0.01, 
+                    "hidden" : false
+                }
+            ]
+        },
         "fuzzy" : {
             "friendly_name" : "Fuzzy Logic Controller",
             "module_name" : "fuzzy",

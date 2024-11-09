@@ -171,17 +171,6 @@ class Controller(ControllerBase):
 		self.derate = False
 		self.derate_multiplier = self.user_derate_multiplier
 		self.eventLogger.info(f"New Set Point: {self.set_point}")
-
-	def set_target(self, set_point):
-		self.set_point = set_point
-		self.error = 0.0
-		self.inter = 0.0
-		self.derv = 0.0
-		self.last_update = time.time()
-		self.new_target = True
-		self.derate = False
-		self.derate_multiplier = self.user_derate_multiplier
-		self.eventLogger.info("New Set Point: " + str(self.set_point))
     
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)
