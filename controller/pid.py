@@ -133,10 +133,10 @@ class Controller(ControllerBase):
 					self.derate_multiplier = min(self.derate_multiplier, 1)  # Ensure it does not exceed 1
 	
 			# If derate multiplier reaches 1, reset derate flag
-		if self.derate_multiplier == 1:
-			self.derate = False
-			self.derate_start_time = None
-			self.eventLogger.info("Derate - OFF")
+			if self.derate_multiplier == 1:
+				self.derate = False
+				self.derate_start_time = None
+				self.eventLogger.info("Derate - OFF")
 	
 			# Reset the derate multiplier if the rate of change exceeds the max rate of change
 			if self.derv >= self.center:
