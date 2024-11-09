@@ -74,7 +74,6 @@ class Controller(ControllerBase):
 
 		self.derv = 0.0
 		self.inter = 0.0
-		self.inter_max = abs(self.center / self.ki)
 
 		self.last = 150
 
@@ -88,7 +87,7 @@ class Controller(ControllerBase):
 		self.kd = self.kp * td
 
 	def update(self, current):
-		self.center = (current * 0.0012)  # Dynamically set self.center depending on current temperature.
+		self.center = (self.set_point * 0.0012)  # Dynamically set self.center depending on current temperature.
     
 		# P
 		error = current - self.set_point
@@ -96,11 +95,10 @@ class Controller(ControllerBase):
 
 		# I
 		dt = time.time() - self.last_update
-		self.inter_max = min(abs(self.center / self.ki), (self.set_point * 0.0012))  # Calculate max I as a function of the current center value.
 
 		self.inter += error * dt
-		self.inter = max(self.inter, -self.inter_max)
-		self.inter = min(self.inter, self.inter_max)
+		self.inter = max(self.inter, -self.center)
+		self.inter = min(self.inter, self.center)
 		self.i = self.ki * self.inter
 
 		# D
@@ -135,10 +133,10 @@ class Controller(ControllerBase):
 					self.derate_multiplier = min(self.derate_multiplier, 1)  # Ensure it does not exceed 1
 	
 			# If derate multiplier reaches 1, reset derate flag
-			if self.derate_multiplier == 1:
-				self.derate = False
-				self.derate_start_time = None
-				self.eventLogger.info("Derate - OFF")
+		if self.derate_multiplier == 1:
+			self.derate = False
+			self.derate_start_time = None
+			self.eventLogger.info("Derate - OFF")
 	
 			# Reset the derate multiplier if the rate of change exceeds the max rate of change
 			if self.derv >= self.max_rate_of_change:
@@ -172,21 +170,20 @@ class Controller(ControllerBase):
 		self.new_target = True
 		self.derate = False
 		self.derate_multiplier = self.user_derate_multiplier
-		self.eventLogger.info(f"New Set Point: {self.set_point}")
+		self.eventLogger.info(f"New Set Point: {self.set_point    ")
     
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)
-		self.inter_max = abs(self.center / self.ki)
 
 	def get_k(self):
 		return self.kp, self.ki, self.kd
 	
 	def supported_functions(self):
 		function_list = [
-			'update', 
-	        'set_target', 
+			'upda        ', 
+	        'se        target', 
 	        'get_config', 
-			'set_gains', 
+			'set_ga        s', 
 			'get_k'
         ]
 		return function_list
