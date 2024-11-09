@@ -88,26 +88,25 @@ class Controller(ControllerBase):
 		self.kd = self.kp * td
 
 	def update(self, current):
-		self.center = (current * 0.0012) # Dynamically set self.center depending on current temperature.
-		
+		self.center = (current * 0.0012)  # Dynamically set self.center depending on current temperature.
+    
 		# P
 		error = current - self.set_point
-		self.p = self.kp * error + self.center # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
-		
+		self.p = self.kp * error + self.center  # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
+
 		# I
 		dt = time.time() - self.last_update
-		self.inter_max = min(abs(self.center / self.ki), (self.set_point*0.0012)) # Calculate max I as a function of the current center value.
-		
+		self.inter_max = min(abs(self.center / self.ki), (self.set_point * 0.0012))  # Calculate max I as a function of the current center value.
+
 		self.inter += error * dt
 		self.inter = max(self.inter, -self.inter_max)
 		self.inter = min(self.inter, self.inter_max)
-
 		self.i = self.ki * self.inter
-	
+
 		# D
-		self.derv = (current - self.last) / dt # Rate of change in Degrees per second
+		self.derv = (current - self.last) / dt  # Rate of change in Degrees per second
 		self.d = self.kd * self.derv
-	
+
 		# PID
 		self.u = self.p + self.i + self.d
 	
