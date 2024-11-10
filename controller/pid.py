@@ -127,6 +127,7 @@ class Controller(ControllerBase):
 
 		# Derate 3 cycles for low set_points
 		if self.low_set_point:
+			self.eventLogger.info("Low Set Point - Derating")
 			self.derate = True
 			self.derate_multiplier = 0.7
 			self.low_set_point_counter += 1
@@ -153,6 +154,8 @@ class Controller(ControllerBase):
 			# Reset the derate multiplier if the rate of change exceeds the max rate of change
 			if self.derv >= self.center and not self.last == 0.0:
 				self.derate_multiplier = self.user_derate_multiplier
+				self.low_set_point = False # Reset low set point flag if RESET MULTIPLIER is triggered
+				self.low_set_point_counter = 0
 				self.eventLogger.info("RESET MULTIPLIER")
 
 		# If derate multiplier reaches 1, reset derate flags
@@ -167,8 +170,8 @@ class Controller(ControllerBase):
 			self.eventLogger.info("Overshoot Detected, minimizing output")
 		
 		# If set point is outside pb/2 high, limit u to a min of 1.0 Fixes issue where one cycle is wasted due to self.last being set to 0.0 on set point change.
-		#if (current - self.set_point) < -(self.pb / 2) and not self.derate:
-		#	self.u = 1.0
+		if (current - self.set_point) < -(self.pb / 2) and not self.derate:
+			self.u = 1.0
 		
 		# Reset integral term when current temperature first reaches or exceeds set point after a set point change
 		if self.new_target and abs(current - self.set_point) <=3:
@@ -176,7 +179,7 @@ class Controller(ControllerBase):
 			self.new_target = False
 
 		# For small set point change, derate output after first cycle
-		if self.new_target and 100 > self.set_point < 250 and abs(current - self.set_point) <= 50 and not self.derate:
+		if self.new_target and 100 < self.set_point < 250 and abs(current - self.set_point) <= 50 and not self.derate:
 			self.derate = True
 			self.derate_multiplier = self.user_derate_multiplier
 			self.derate_multiplier = (1-self.derate_multiplier)/2 + self.derate_multiplier
