@@ -105,7 +105,7 @@ class Controller(ControllerBase):
 		self.i = max(self.i, -self.center)
 		self.i= min(self.i, self.center)
 		
-		# Reset inter if system has not reached halfway to the set point. This keeps small set point changes from causeing overshoots.
+		# Reset inter if system has not reached halfway to the set point. This keeps small set point changes from causing overshoots.
 		if self.new_target and (time.time() - self.last_set_point) >= self.cycle_time * 3 and abs(current - self.set_point) <= abs(self.start_change_temp - self.set_point) / 2:
 			self.inter = 0.0
 
@@ -140,7 +140,7 @@ class Controller(ControllerBase):
 					self.derate_multiplier = min(self.derate_multiplier, 1)  # Ensure it does not exceed 1
 	
 			# Reset the derate multiplier if the rate of change exceeds the max rate of change
-			if self.derv >= self.center:
+			if self.derv >= self.center and not self.last == 0.0:
 				self.derate_multiplier = self.user_derate_multiplier
 				self.eventLogger.info("RESET MULTIPLIER")
 
