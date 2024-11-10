@@ -89,7 +89,9 @@ class Controller(ControllerBase):
 		self.center = (self.set_point * 0.0012)  # Dynamically set self.center depending on current temperature.
     
 		# P
-		error = current - self.set_point
+		if not self.set_point == 0.0:
+			error = current - self.set_point
+		
 		self.p = self.kp * error + self.center  # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
 
 		# I
@@ -155,7 +157,7 @@ class Controller(ControllerBase):
 			self.new_target = False
 
 		# For small set point change, derate output after first cycle
-		if self.new_target and self.set_point < 250 and abs(current - self.set_point) <= 50 and not self.derate:
+		if self.new_target and 100 > self.set_point < 250 and abs(current - self.set_point) <= 50 and not self.derate:
 			self.derate = True
 			self.derate_multiplier = self.user_derate_multiplier
 			self.derate_multiplier = (1-self.derate_multiplier)/2 + self.derate_multiplier
@@ -178,7 +180,6 @@ class Controller(ControllerBase):
 		self.last_update = time.time()
 		self.new_target = True
 		self.derate = False
-		self.derate_multiplier = self.user_derate_multiplier
 		self.eventLogger.info(f"New Set Point: {self.set_point}")
     
 	def set_gains(self, pb, ti, td):
