@@ -75,6 +75,7 @@ class Controller(ControllerBase):
 		self.inter = 0.0
 
 		self.last = 150
+		self.start_change_temp = 0.0
 
 		self.set_target(0.0)
 		self.new_target = False
@@ -101,6 +102,10 @@ class Controller(ControllerBase):
 		self.i = self.ki * self.inter
 		self.i = max(self.i, -self.center)
 		self.i= min(self.i, self.center)
+		
+		# Reset inter if system has not reached halfway to the set point. This keeps small set point changes from causeing overshoots.
+		if self.new_target and (time.time() - self.last_set_point) >= self.cycle_data['cycle_time'] * 3 and abs(current - self.set_point) <= abs(self.start_change_temp - self.set_point) / 2:
+			self.inter = 0.0
 
 		# D
 		self.derv = (current - self.last) / dt  # Rate of change in Degrees per second
@@ -135,6 +140,7 @@ class Controller(ControllerBase):
 			# Reset the derate multiplier if the rate of change exceeds the max rate of change
 			if self.derv >= self.center:
 				self.derate_multiplier = self.user_derate_multiplier
+				self.eventLogger.info("RESET MULTIPLIER")
 
 		# If derate multiplier reaches 1, reset derate flags
 		if self.derate_multiplier >= 1 and self.derate:
@@ -178,6 +184,8 @@ class Controller(ControllerBase):
 		self.inter = 0.0
 		self.derv = 0.0
 		self.last_update = time.time()
+		self.last_set_point = time.time()
+		self.start_change_temp = self.last
 		self.new_target = True
 		self.derate = False
 		self.eventLogger.info(f"New Set Point: {self.set_point}")
