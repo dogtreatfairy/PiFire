@@ -108,6 +108,7 @@ class Controller(ControllerBase):
 		# Reset inter if system has not reached halfway to the set point. This keeps small set point changes from causing overshoots.
 		if self.new_target and (time.time() - self.last_set_point) >= self.cycle_time * 3 and abs(current - self.set_point) <= abs(self.start_change_temp - self.set_point) / 2:
 			self.inter = 0.0
+			self.eventLogger.info("Reset Integral Term")
 
 		# D
 		self.derv = (current - self.last) / dt  # Rate of change in Degrees per second
@@ -124,7 +125,7 @@ class Controller(ControllerBase):
 		self.eventLogger.info(f"U:  {self.u}")
 
 		# If rate of change is too high within derate window during a set point change, derate output
-		if self.new_target and abs(error) <= self.derate_window and self.derv >= self.center and error < 0 and not self.derate:
+		if self.new_target and ((abs(error) <= self.derate_window) or (100 < self.set_point < 200 and abs(error) <= self.derate_window + 10)) and self.derv >= self.center and error < 0 and not self.derate:
 			self.derate = True
 			self.derate_multiplier = self.user_derate_multiplier
 	
