@@ -71,7 +71,7 @@ class Controller(ControllerBase):
 		self.stable_time = config['stable_time']
 		self.stable_window = config['stable_window']
 
-		self.cycle_time = cycle_data['cycle_time']
+		self.cycle_time = cycle_data['HoldCycleTime']
 
 		self.derv = 0.0
 		self.inter = 0.0
