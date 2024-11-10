@@ -66,7 +66,6 @@ class Controller(ControllerBase):
 		self.user_derate_multiplier = config['derate_multiplier']
 		self.derate_multiplier = self.user_derate_multiplier
 		self.derate = False
-		self.derate_start_time = None
 		self.rerate_increment = config['rerate_increment']
 		
 		self.stable_time = config['stable_time']
@@ -116,9 +115,8 @@ class Controller(ControllerBase):
 		self.eventLogger.info(f"U:  {self.u}")
 
 		# If rate of change is too high within derate window during a set point change, derate output
-		if self.new_target and abs(error) <= self.derate_window and self.derv >= self.center and error < 0:
+		if self.new_target and abs(error) <= self.derate_window and self.derv >= self.center and error < 0 and not self.derate:
 			self.derate = True
-			self.derate_start_time = time.time()
 			self.derate_multiplier = self.user_derate_multiplier
 	
 		# If derate is true, derate the output by the derate multiplier
@@ -132,15 +130,14 @@ class Controller(ControllerBase):
 					self.derate_multiplier += self.rerate_increment
 					self.derate_multiplier = min(self.derate_multiplier, 1)  # Ensure it does not exceed 1
 	
-			# If derate multiplier reaches 1, reset derate flag
-			if self.derate_multiplier == 1:
-				self.derate = False
-				self.derate_start_time = None
-				self.eventLogger.info("Derate - OFF")
-	
 			# Reset the derate multiplier if the rate of change exceeds the max rate of change
 			if self.derv >= self.center:
 				self.derate_multiplier = self.user_derate_multiplier
+
+		# If derate multiplier reaches 1, reset derate flags
+		if self.derate_multiplier >= 1 and self.derate:
+			self.derate = False
+			self.eventLogger.info("Derate - OFF")
 	
 		# If outside stable window (high) consider this an overshoot and minimize output
 		if (current - self.set_point) >= self.stable_window:
@@ -158,8 +155,9 @@ class Controller(ControllerBase):
 			self.new_target = False
 
 		# For small set point change, derate output after first cycle
-		if self.new_target and self.set_point < 250 and abs(current - self.set_point) <= 50:
-			self.derate = True
+		if self.new_target and self.set_point < 250 and abs(current - self.set_point) <= 50 and not self.derate:
+			self.derate_multiplier = self.user_derate_multiplier
+			self.derate_multiplier = (1-self.derate_multiplier)/2 + self.derate_multiplier
 			self.eventLogger.info("Derated output for small change.")
 	
 		# Update for next cycle
