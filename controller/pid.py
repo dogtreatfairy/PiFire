@@ -71,6 +71,8 @@ class Controller(ControllerBase):
 		self.stable_time = config['stable_time']
 		self.stable_window = config['stable_window']
 
+		self.cycle_time = cycle_data['cycle_time']
+
 		self.derv = 0.0
 		self.inter = 0.0
 
@@ -104,7 +106,7 @@ class Controller(ControllerBase):
 		self.i= min(self.i, self.center)
 		
 		# Reset inter if system has not reached halfway to the set point. This keeps small set point changes from causeing overshoots.
-		if self.new_target and (time.time() - self.last_set_point) >= self.cycle_data['cycle_time'] * 3 and abs(current - self.set_point) <= abs(self.start_change_temp - self.set_point) / 2:
+		if self.new_target and (time.time() - self.last_set_point) >= self.cycle_time * 3 and abs(current - self.set_point) <= abs(self.start_change_temp - self.set_point) / 2:
 			self.inter = 0.0
 
 		# D
