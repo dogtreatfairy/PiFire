@@ -78,8 +78,6 @@ class Controller(ControllerBase):
 
 		self.last = 150
 		self.start_change_temp = 0.0
-		self.low_set_point = False
-		self.low_set_point_counter = 0
 		self.set_target(0.0)
 		self.new_target = False
 		self.within_range_start = None
@@ -125,16 +123,6 @@ class Controller(ControllerBase):
 		self.eventLogger.info(f"D:  {self.d}")
 		self.eventLogger.info(f"U:  {self.u}")
 
-		# Derate 3 cycles for low set_points
-		if self.low_set_point:
-			self.eventLogger.info("Low Set Point - Derating")
-			self.derate = True
-			self.derate_multiplier = 0.7
-			self.low_set_point_counter += 1
-			if self.low_set_point_counter >= 3:
-				self.low_set_point = False
-				self.low_set_point_counter = 0
-
 		# If rate of change is too high within derate window during a set point change, derate output
 		if self.new_target and ((abs(error) <= self.derate_window) or (100 < self.set_point < 225 and abs(error) <= self.derate_window + 10)) and self.derv >= self.center and error < 0 and not self.derate:
 			self.derate = True
@@ -154,8 +142,6 @@ class Controller(ControllerBase):
 			# Reset the derate multiplier if the rate of change exceeds the max rate of change
 			if self.derv >= self.center and not self.last == 0.0:
 				self.derate_multiplier = self.user_derate_multiplier
-				self.low_set_point = False # Reset low set point flag if RESET MULTIPLIER is triggered
-				self.low_set_point_counter = 0
 				self.eventLogger.info("RESET MULTIPLIER")
 
 		# If derate multiplier reaches 1, reset derate flags
@@ -204,8 +190,6 @@ class Controller(ControllerBase):
 		self.start_change_temp = self.last
 		self.new_target = True
 		self.derate = False
-		if set_point < 200:
-			self.low_set_point = True
 		self.eventLogger.info(f"New Set Point: {self.set_point}")
     
 	def set_gains(self, pb, ti, td):
