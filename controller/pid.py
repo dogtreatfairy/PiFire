@@ -157,8 +157,8 @@ class Controller(ControllerBase):
 			self.eventLogger.info("Overshoot Detected, minimizing output")
 		
 		# If set point is outside pb/2 high, limit u to a min of 1.0 Fixes issue where one cycle is wasted due to self.last being set to 0.0 on set point change.
-		if (current - self.set_point) < -(self.pb / 2) and not self.derate:
-			self.u = 1.0
+		#if (current - self.set_point) < -(self.pb / 2) and not self.derate:
+		#	self.u = 1.0
 		
 		# Reset integral term when current temperature first reaches or exceeds set point after a set point change
 		if self.new_target and abs(current - self.set_point) <=3:
