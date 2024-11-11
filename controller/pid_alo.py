@@ -107,7 +107,7 @@ class Controller(ControllerBase):
 			self.new_target_counter += 1
 		
 		# If rate of change is too high and error is negative within derate window during a set point change, derate output
-		if self.new_target and self.derv >= self.center and ((-self.pb <= error < 0) or (100 < self.set_point <= 225 and -(self.pb + 10) <= error < 0)) and not self.last == 0.0:
+		if self.new_target and self.derv * 1.2 >= self.center and ((-self.pb <= error < 0) or (100 < self.set_point <= 225 and -(self.pb + 10) <= error < 0)) and not self.last == 0.0:
 			self.derate = True
 			self.derate_multiplier = self.user_derate_multiplier	
 
