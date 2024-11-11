@@ -117,21 +117,24 @@ class Controller(ControllerBase):
 
 		# Minimize output when Current Temp is > Stable Window
 		elif error > self.stable_window:
-			self.inter = 0.0
 			self.u = 0.0
 		
 		# If not overshooting or still climbing outside PB/2, calculate PID
 		else:
 			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
 			if self.new_target and abs(error) <=3:
-				self.inter = 0.0
 				self.new_target = False
+
+			# Reset integral term if error is outside stable window to avoid windup
+			if abs(error) > self.stable_window:
+				self.inter = 0.0
 			
 			# P
 			self.p = self.kp * error + self.center
 
 			# I
 			self.inter += error * dt
+			
 			# Reset inter if system has not reached halfway to the set point. This keeps small set point changes from causing overshoots.
 			if self.new_target and (time.time() - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2:
 				self.inter = 0.0
