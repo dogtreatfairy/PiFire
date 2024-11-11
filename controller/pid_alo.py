@@ -94,25 +94,25 @@ class Controller(ControllerBase):
 			self.start_change_temp = current
 
 		# Dynamically set self.center depending on current temperature.
-		self.center = (self.set_point * 0.0012)  
+		self.center = self.set_point * 0.0012 
 
 		# Error Calculation
 		if not self.set_point == 0.0:
 			error = current - self.set_point
 
-		# For small set point increase, derate output for the first 4 cycles.
-		if self.new_target and (100 < self.set_point <= 250 or -self.pb <= error < 0) and self.new_target_counter <= 4:
+		# For small set point increase, derate output for the first 3 cycles.
+		if self.new_target and (100 < self.set_point <= 250 or -self.pb <= error < 0) and self.new_target_counter <= 3:
 			self.derate = True
 			self.derate_multiplier = (1-self.user_derate_multiplier)/2 + self.user_derate_multiplier
 			self.new_target_counter += 1
 		
 		# If rate of change is too high and error is negative within derate window during a set point change, derate output
-		if self.new_target and self.derv >= self.center and ((-self.pb <= error < 0) or (100 < self.set_point <= 225 and -(self.pb + 10) <= error < 0)) and not self.derate:
+		if self.new_target and self.derv >= self.center and ((-self.pb <= error < 0) or (100 < self.set_point <= 225 and -(self.pb + 10) <= error < 0)) and not self.last == 0.0:
 			self.derate = True
 			self.derate_multiplier = self.user_derate_multiplier	
 
 		# If set point is outside pb/2 high, limit u to a min of 1.0 Fixes issue where one cycle is wasted due to self.last being set to 0.0 on set point change.
-		if error < -(self.pb / 2) and not self.derate:
+		if error < -self.pb and not self.derate:
 			self.u = 1.0
 
 		# Minimize output when Current Temp is > Stable Window
@@ -152,10 +152,6 @@ class Controller(ControllerBase):
 			
 			# If Derated
 			if self.derate:
-				# Reset the derate multiplier if the rate of change exceeds the max rate of change
-				if self.derv >= self.center and not self.last == 0.0:
-					self.derate_multiplier = self.user_derate_multiplier
-
 				# If derate multiplier reaches 1, reset derate flags
 				if self.derate_multiplier >= 1:
 					self.derate = False
