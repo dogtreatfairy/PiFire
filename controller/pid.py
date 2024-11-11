@@ -34,9 +34,8 @@
 Imported Libraries
 '''
 import time
-import logging
 from controller.base import ControllerBase 
-from common import *  # Common Module for WebUI and Control Program
+from common import *
 
 '''
 Class Definition
@@ -44,9 +43,7 @@ Class Definition
 class Controller(ControllerBase):
 	def __init__(self, config, units, cycle_data):
 		super().__init__(config, units, cycle_data)
-		
-		self.eventLogger = create_logger('events', filename='/tmp/events.log', messageformat='%(asctime)s [%(levelname)s] %(message)s', level=logging.INFO)
-		
+			
 		self._calculate_gains(config['PB'], config['Ti'], config['Td'])
 
 		self.p = 0.0
@@ -57,6 +54,7 @@ class Controller(ControllerBase):
 		self.pb = config['PB']
 
 		self.last_update = time.time()
+		self.last_set_time = time.time()
 		self.error = 0.0
 		self.set_point = 0
 
@@ -68,7 +66,6 @@ class Controller(ControllerBase):
 		self.derate = False
 		self.rerate_increment = config['rerate_increment']
 		
-		self.stable_time = config['stable_time']
 		self.stable_window = config['stable_window']
 
 		self.cycle_time = cycle_data['HoldCycleTime']
@@ -78,10 +75,11 @@ class Controller(ControllerBase):
 
 		self.last = 150
 		self.start_change_temp = 0.0
-		self.set_target(0.0)
 		self.new_target = False
 		self.new_target_counter = 0.0
 		self.within_range_start = None
+
+		self.set_target(0.0)
 
 	def _calculate_gains(self, pb, ti, td):
 		self.kp = -1 / pb
@@ -97,10 +95,11 @@ class Controller(ControllerBase):
 
 		self.center = (self.set_point * 0.0012)  # Dynamically set self.center depending on current temperature.
     
-		# P
+		# Error Calculation
 		if not self.set_point == 0.0:
 			error = current - self.set_point
 		
+		# P
 		self.p = self.kp * error + self.center  # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
 
 		# I
@@ -112,30 +111,21 @@ class Controller(ControllerBase):
 		self.i= min(self.i, self.center)
 		
 		# Reset inter if system has not reached halfway to the set point. This keeps small set point changes from causing overshoots.
-		if self.new_target and (time.time() - self.last_set_point) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2:
+		if self.new_target and (time.time() - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2:
 			self.inter = 0.0
-			self.eventLogger.info("Reset Integral Term")
 
 		# D
-		self.derv = (error) / dt  # Rate of change in Degrees per second
+		self.derv = (current - self.last) / dt  # Rate of change in Degrees per second
 		self.d = self.kd * self.derv
 
 		# PID
 		self.u = self.p + self.i + self.d
-	
-		self.eventLogger.info(f"-- PID Values --")
-		self.eventLogger.info(f"C:  {self.center}")
-		self.eventLogger.info(f"P:  {self.p}")
-		self.eventLogger.info(f"I:  {self.i}")
-		self.eventLogger.info(f"D:  {self.d}")
-		self.eventLogger.info(f"U:  {self.u}")
 
 		# For small set point change, derate output for the first 4 cycles
 		if self.new_target and 100 < self.set_point < 250 and abs(error) <= 50 and self.new_target_counter <= 4:
 			self.derate = True
 			self.derate_multiplier = (1-self.user_derate_multiplier)/2 + self.user_derate_multiplier
 			self.new_target_counter += 1
-			self.eventLogger.info("Derated output for small change.")
 		
 		# If rate of change is too high within derate window during a set point change, derate output
 		if self.new_target and ((abs(error) <= self.derate_window) or (100 < self.set_point < 225 and abs(error) <= (self.derate_window + 10))) and self.derv >= self.center and error < 0 and not self.derate:
@@ -145,7 +135,6 @@ class Controller(ControllerBase):
 		# If derate is true, derate the output by the derate multiplier
 		if self.derate:
 			self.u = self.u * self.derate_multiplier
-			self.eventLogger.info(f"Derate - ON - M: {self.derate_multiplier}")
 	
 			# Gradually increase the derate multiplier until it reaches 1, only if rate of change is below max
 			if self.derv < self.center:
@@ -156,18 +145,15 @@ class Controller(ControllerBase):
 		# Reset the derate multiplier if the rate of change exceeds the max rate of change
 		if self.derv >= self.center and not self.last == 0.0:
 			self.derate_multiplier = self.user_derate_multiplier
-			self.eventLogger.info("RESET MULTIPLIER")
 
 		# If derate multiplier reaches 1, reset derate flags
 		if self.derate_multiplier >= 1 and self.derate:
 			self.derate = False
-			self.eventLogger.info("Derate - OFF")
 	
 		# If outside stable window (high) consider this an overshoot and minimize output
 		if (error) >= self.stable_window:
 			self.u = 0.0
 			self.inter = 0.0
-			self.eventLogger.info("Overshoot Detected, minimizing output")
 		
 		# If set point is outside pb/2 high, limit u to a min of 1.0 Fixes issue where one cycle is wasted due to self.last being set to 0.0 on set point change.
 		if (error) < -(self.pb / 2) and not self.derate:
@@ -175,15 +161,13 @@ class Controller(ControllerBase):
 		
 		# Reset integral term when current temperature first reaches or exceeds set point after a set point change
 		if self.new_target and abs(error) <=3:
-			#self.inter = 0.0
+			self.inter = 0.0
 			self.new_target = False
 	
 		# Update for next cycle
 		self.error = error
 		self.last = current
 		self.last_update = time.time()
-	
-		self.eventLogger.info(f"U Final: {self.u}")
 	
 		return self.u
 	
@@ -193,12 +177,11 @@ class Controller(ControllerBase):
 		self.inter = 0.0
 		self.derv = 0.0
 		self.last_update = time.time()
-		self.last_set_point = time.time()
+		self.last_set_time = time.time()
 		self.start_change_temp = self.last
 		self.new_target = True
 		self.new_target_counter = 0
 		self.derate = False
-		self.eventLogger.info(f"New Set Point: {self.set_point}")
     
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)

@@ -34,9 +34,7 @@
 Imported Libraries
 '''
 import time
-import logging
 from controller.base import ControllerBase 
-from common import *
 
 '''
 Class Definition
@@ -44,8 +42,6 @@ Class Definition
 class Controller(ControllerBase):
 	def __init__(self, config, units, cycle_data):
 		super().__init__(config, units, cycle_data)
-
-		self.eventLogger = create_logger('events', filename='/tmp/events.log', messageformat='%(asctime)s [%(levelname)s] %(message)s', level=logging.INFO)
 
 		self._calculate_gains(config['PB'], config['Ti'], config['Td'])
 
@@ -55,8 +51,13 @@ class Controller(ControllerBase):
 		self.u = 0
 
 		self.last_update = time.time()
+		self.last_set_time = time.time()
 		self.error = 0.0
 		self.set_point = 0
+		self.cycle_time = cycle_data['HoldCycleTime']
+
+		self.start_change_temp = 0.0
+		self.new_target = False
 
 		self.center = 0.5
 
@@ -74,40 +75,44 @@ class Controller(ControllerBase):
 		self.kd = self.kp * td
 
 	def update(self, current):
-		self.center = (current * 0.001) # Dynamically set self.center depending on current temperature. This prevents overshoots.
+		# Elapsed time since last update
+		dt = time.time() - self.last_update
+		
+		# Fix self.last being set to 0.0 on set point change
+		if self.last == 0.0:
+			self.last = current
+
+		self.center = (self.set_point * 0.0012)  # Dynamically set self.center depending on current temperature.
+    
+		# Error Calculation
+		if not self.set_point == 0.0:
+			error = current - self.set_point
 		
 		# P
-		error = current - self.set_point
 		self.p = self.kp * error + self.center # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
 
 		# I
-		dt = time.time() - self.last_update
-		self.inter_max = min(abs(self.center / self.ki), self.set_point) # Calculate max I as a function of the current center value.
+		self.inter += error * dt
 		
-		if self.p > 0 and self.p < 1: # Ensure we are in the pb, otherwise do not calculate i to avoid windup
-			self.inter += error * dt
-			self.inter = max(self.inter, -self.inter_max)
-			self.inter = min(self.inter, self.inter_max)
-		
-		if self.p > 1 or self.p < 0: # Zero out I if we are outside of the PB
+		# Reset inter if system has not reached halfway to the set point. This keeps small set point changes from causing overshoots.
+		if 0 > self.p > 1 or (self.new_target and (time.time() - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2):
 			self.inter = 0.0
 
+		# Reset integral term when current temperature first reaches or exceeds set point after a set point change
+		if self.new_target and abs(error) <=3:
+			self.inter = 0.0
+			self.new_target = False
+
 		self.i = self.ki * self.inter
+		self.i = max(self.i, -self.center)
+		self.i = min(self.i, self.center)
 
 		# D
 		self.derv = (current - self.last) / dt
 		self.d = self.kd * self.derv
 
-		# List PID Values
-		self.eventLogger.info(f"-- PID Values --")
-		self.eventLogger.info(f"C:  {self.center}")
-		self.eventLogger.info(f"P:  {self.p}")
-		self.eventLogger.info(f"I:  {self.i}")
-		self.eventLogger.info(f"D:  {self.d}")
-
 		# PID
 		self.u = self.p + self.i + self.d
-		self.eventLogger.info(f"U:  {self.u}")
 
 		# Update for next cycle
 		self.error = error
@@ -122,7 +127,9 @@ class Controller(ControllerBase):
 		self.inter = 0.0
 		self.derv = 0.0
 		self.last_update = time.time()
-		self.eventLogger.info(f"New Set Point: {self.set_point}")
+		self.last_set_time = time.time()
+		self.new_target = True
+		self.start_change_temp = self.last
 
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)
