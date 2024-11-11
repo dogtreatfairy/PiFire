@@ -89,6 +89,12 @@ class Controller(ControllerBase):
 		self.kd = self.kp * td
 
 	def update(self, current):
+		
+		# Fix self.last being set to 0.0 on set point change
+		if self.last == 0.0 and self.new_target:
+			self.last = current
+			self.start_change_temp = current
+
 		self.center = (self.set_point * 0.0012)  # Dynamically set self.center depending on current temperature.
     
 		# P
@@ -106,12 +112,12 @@ class Controller(ControllerBase):
 		self.i= min(self.i, self.center)
 		
 		# Reset inter if system has not reached halfway to the set point. This keeps small set point changes from causing overshoots.
-		if self.new_target and (time.time() - self.last_set_point) >= self.cycle_time * 3 and abs(current - self.set_point) <= abs(self.start_change_temp - self.set_point) / 2:
+		if self.new_target and (time.time() - self.last_set_point) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2:
 			self.inter = 0.0
 			self.eventLogger.info("Reset Integral Term")
 
 		# D
-		self.derv = (current - self.last) / dt  # Rate of change in Degrees per second
+		self.derv = (error) / dt  # Rate of change in Degrees per second
 		self.d = self.kd * self.derv
 
 		# PID
@@ -125,7 +131,7 @@ class Controller(ControllerBase):
 		self.eventLogger.info(f"U:  {self.u}")
 
 		# For small set point change, derate output for the first 4 cycles
-		if self.new_target and 100 < self.set_point < 250 and abs(current - self.set_point) <= 50 and self.new_target_counter <= 4:
+		if self.new_target and 100 < self.set_point < 250 and abs(error) <= 50 and self.new_target_counter <= 4:
 			self.derate = True
 			self.derate_multiplier = (1-self.user_derate_multiplier)/2 + self.user_derate_multiplier
 			self.new_target_counter += 1
@@ -158,20 +164,19 @@ class Controller(ControllerBase):
 			self.eventLogger.info("Derate - OFF")
 	
 		# If outside stable window (high) consider this an overshoot and minimize output
-		if (current - self.set_point) >= self.stable_window:
+		if (error) >= self.stable_window:
 			self.u = 0.0
 			self.inter = 0.0
 			self.eventLogger.info("Overshoot Detected, minimizing output")
 		
 		# If set point is outside pb/2 high, limit u to a min of 1.0 Fixes issue where one cycle is wasted due to self.last being set to 0.0 on set point change.
-		if (current - self.set_point) < -(self.pb / 2) and not self.derate:
+		if (error) < -(self.pb / 2) and not self.derate:
 			self.u = 1.0
 		
 		# Reset integral term when current temperature first reaches or exceeds set point after a set point change
-		if self.new_target and abs(current - self.set_point) <=3:
-			self.inter = 0.0
+		if self.new_target and abs(error) <=3:
+			#self.inter = 0.0
 			self.new_target = False
-			self.new_target_counter = 0
 	
 		# Update for next cycle
 		self.error = error
@@ -191,6 +196,7 @@ class Controller(ControllerBase):
 		self.last_set_point = time.time()
 		self.start_change_temp = self.last
 		self.new_target = True
+		self.new_target_counter = 0
 		self.derate = False
 		self.eventLogger.info(f"New Set Point: {self.set_point}")
     
