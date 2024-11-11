@@ -80,6 +80,7 @@ class Controller(ControllerBase):
 		self.start_change_temp = 0.0
 		self.set_target(0.0)
 		self.new_target = False
+		self.new_target_counter = 0.0
 		self.within_range_start = None
 
 	def _calculate_gains(self, pb, ti, td):
@@ -123,8 +124,15 @@ class Controller(ControllerBase):
 		self.eventLogger.info(f"D:  {self.d}")
 		self.eventLogger.info(f"U:  {self.u}")
 
+		# For small set point change, derate output for the first 4 cycles
+		if self.new_target and 100 < self.set_point < 250 and abs(current - self.set_point) <= 50 and self.new_target_counter <= 4:
+			self.derate = True
+			self.derate_multiplier = (1-self.user_derate_multiplier)/2 + self.user_derate_multiplier
+			self.new_target_counter += 1
+			self.eventLogger.info("Derated output for small change.")
+		
 		# If rate of change is too high within derate window during a set point change, derate output
-		if self.new_target and ((abs(error) <= self.derate_window) or (100 < self.set_point < 225 and abs(error) <= self.derate_window + 10)) and error < 0 and not self.derate:
+		if self.new_target and ((abs(error) <= self.derate_window) or (100 < self.set_point < 225 and abs(error) <= self.derate_window + 10)) and self.derv >= self.center and error < 0 and not self.derate:
 			self.derate = True
 			self.derate_multiplier = self.user_derate_multiplier
 	
@@ -163,13 +171,7 @@ class Controller(ControllerBase):
 		if self.new_target and abs(current - self.set_point) <=3:
 			self.inter = 0.0
 			self.new_target = False
-
-		# For small set point change, derate output after first cycle
-		if self.new_target and 100 < self.set_point < 250 and abs(current - self.set_point) <= 50 and not self.derate:
-			self.derate = True
-			self.derate_multiplier = self.user_derate_multiplier
-			self.derate_multiplier = (1-self.derate_multiplier)/2 + self.derate_multiplier
-			self.eventLogger.info("Derated output for small change.")
+			self.new_target_counter = 0
 	
 		# Update for next cycle
 		self.error = error
