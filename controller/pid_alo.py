@@ -35,7 +35,6 @@ Imported Libraries
 '''
 import time
 from controller.base import ControllerBase 
-from common import *
 
 '''
 Class Definition
@@ -102,6 +101,17 @@ class Controller(ControllerBase):
 		if not self.set_point == 0.0:
 			error = current - self.set_point
 
+		# For small set point increase, derate output for the first 4 cycles.
+		if self.new_target and 100 < self.set_point < 250 and error <= -self.pb and self.new_target_counter <= 4:
+			self.derate = True
+			self.derate_multiplier = (1-self.user_derate_multiplier)/2 + self.user_derate_multiplier
+			self.new_target_counter += 1
+		
+		# If rate of change is too high and error is negative within derate window during a set point change, derate output
+		if self.new_target and self.derv >= self.center and ((error <= -self.derate_window) or (100 < self.set_point < 225 and error <= -self.derate_window + 10)) and not self.derate:
+			self.derate = True
+			self.derate_multiplier = self.user_derate_multiplier	
+
 		# If set point is outside pb/2 high, limit u to a min of 1.0 Fixes issue where one cycle is wasted due to self.last being set to 0.0 on set point change.
 		if error < -(self.pb / 2) and not self.derate:
 			self.u = 1.0
@@ -111,6 +121,7 @@ class Controller(ControllerBase):
 			self.inter = 0.0
 			self.u = 0.0
 		
+		# If not overshooting or still climbing outside PB/2, calculate PID
 		else:
 			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
 			if self.new_target and abs(error) <=3:
@@ -136,17 +147,6 @@ class Controller(ControllerBase):
 
 			# PID
 			self.u = self.p + self.i + self.d
-
-			# For small set point increase, derate output for the first 4 cycles.
-			if self.new_target and 100 < self.set_point < 250 and error <= -self.pb and self.new_target_counter <= 4:
-				self.derate = True
-				self.derate_multiplier = (1-self.user_derate_multiplier)/2 + self.user_derate_multiplier
-				self.new_target_counter += 1
-			
-			# If rate of change is too high and error is negative within derate window during a set point change, derate output
-			if self.new_target and self.derv >= self.center and ((error <= -self.derate_window) or (100 < self.set_point < 225 and error <= -self.derate_window + 10)) and not self.derate:
-				self.derate = True
-				self.derate_multiplier = self.user_derate_multiplier
 			
 			# If Derated
 			if self.derate:
