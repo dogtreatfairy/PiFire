@@ -67,7 +67,7 @@ class Controller(ControllerBase):
 
 		self.last = 150
 
-		self.set_target(0.0)
+		#self.set_target(0.0)
 
 	def _calculate_gains(self, pb, ti, td):
 		self.kp = -1 / pb
@@ -79,8 +79,8 @@ class Controller(ControllerBase):
 		dt = time.time() - self.last_update
 		
 		# Fix self.last being set to 0.0 on set point change
-		if self.last == 0.0:
-			self.last = current
+		#if self.last == 0.0:
+		#	self.last = current
 
 		self.center = (self.set_point * 0.0012)  # Dynamically set self.center depending on current temperature.
     
@@ -89,7 +89,7 @@ class Controller(ControllerBase):
 			error = current - self.set_point
 		
 		# P
-		self.p = self.kp * error + self.center # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
+		self.p = self.kp * error + self.center
 
 		# I
 		self.inter += error * dt

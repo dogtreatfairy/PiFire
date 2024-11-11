@@ -87,83 +87,86 @@ class Controller(ControllerBase):
 		self.kd = self.kp * td
 
 	def update(self, current):
-		
+		# Elapsed time since last update
+		dt = time.time() - self.last_update
+
 		# Fix self.last being set to 0.0 on set point change
 		if self.last == 0.0 and self.new_target:
 			self.last = current
 			self.start_change_temp = current
 
-		self.center = (self.set_point * 0.0012)  # Dynamically set self.center depending on current temperature.
-    
+		# Dynamically set self.center depending on current temperature.
+		self.center = (self.set_point * 0.0012)  
+
 		# Error Calculation
 		if not self.set_point == 0.0:
 			error = current - self.set_point
-		
-		# P
-		self.p = self.kp * error + self.center  # p = 1 for pb / 2 under set_point, p = 0 for pb / 2 over set_point
 
-		# I
-		dt = time.time() - self.last_update
-
-		self.inter += error * dt
-		self.i = self.ki * self.inter
-		self.i = max(self.i, -self.center)
-		self.i= min(self.i, self.center)
-		
-		# Reset inter if system has not reached halfway to the set point. This keeps small set point changes from causing overshoots.
-		if self.new_target and (time.time() - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2:
-			self.inter = 0.0
-
-		# D
-		self.derv = (current - self.last) / dt  # Rate of change in Degrees per second
-		self.d = self.kd * self.derv
-
-		# PID
-		self.u = self.p + self.i + self.d
-
-		# For small set point change, derate output for the first 4 cycles
-		if self.new_target and 100 < self.set_point < 250 and abs(error) <= 50 and self.new_target_counter <= 4:
-			self.derate = True
-			self.derate_multiplier = (1-self.user_derate_multiplier)/2 + self.user_derate_multiplier
-			self.new_target_counter += 1
-		
-		# If rate of change is too high within derate window during a set point change, derate output
-		if self.new_target and ((abs(error) <= self.derate_window) or (100 < self.set_point < 225 and abs(error) <= (self.derate_window + 10))) and self.derv >= self.center and error < 0 and not self.derate:
-			self.derate = True
-			self.derate_multiplier = self.user_derate_multiplier
-	
-		# If derate is true, derate the output by the derate multiplier
-		if self.derate:
-			self.u = self.u * self.derate_multiplier
-	
-			# Gradually increase the derate multiplier until it reaches 1, only if rate of change is below max
-			if self.derv < self.center:
-				if self.derate_multiplier < 1:
-					self.derate_multiplier += self.rerate_increment
-					self.derate_multiplier = min(self.derate_multiplier, 1)  # Ensure it does not exceed 1
-	
-		# Reset the derate multiplier if the rate of change exceeds the max rate of change
-		if self.derv >= self.center and not self.last == 0.0:
-			self.derate_multiplier = self.user_derate_multiplier
-
-		# If derate multiplier reaches 1, reset derate flags
-		if self.derate_multiplier >= 1 and self.derate:
-			self.derate = False
-	
-		# If outside stable window (high) consider this an overshoot and minimize output
-		if (error) >= self.stable_window:
-			self.u = 0.0
-			self.inter = 0.0
-		
 		# If set point is outside pb/2 high, limit u to a min of 1.0 Fixes issue where one cycle is wasted due to self.last being set to 0.0 on set point change.
-		if (error) < -(self.pb / 2) and not self.derate:
+		if error < -(self.pb / 2) and not self.derate:
 			self.u = 1.0
-		
-		# Reset integral term when current temperature first reaches or exceeds set point after a set point change
-		if self.new_target and abs(error) <=3:
+
+		# Minimize output when Current Temp is > Stable Window
+		elif error > self.stable_window:
 			self.inter = 0.0
-			self.new_target = False
-	
+			self.u = 0.0
+		
+		else:
+			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
+			if self.new_target and abs(error) <=3:
+				self.inter = 0.0
+				self.new_target = False
+			
+			# P
+			self.p = self.kp * error + self.center
+
+			# I
+			self.inter += error * dt
+			# Reset inter if system has not reached halfway to the set point. This keeps small set point changes from causing overshoots.
+			if self.new_target and (time.time() - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2:
+				self.inter = 0.0
+			
+			self.i = self.ki * self.inter
+			self.i = max(self.i, -self.center)
+			self.i = min(self.i, self.center)
+			
+			# D
+			self.derv = (current - self.last) / dt  # Rate of change in Degrees per second
+			self.d = self.kd * self.derv
+
+			# PID
+			self.u = self.p + self.i + self.d
+
+			# For small set point increase, derate output for the first 4 cycles.
+			if self.new_target and 100 < self.set_point < 250 and error <= -self.pb and self.new_target_counter <= 4:
+				self.derate = True
+				self.derate_multiplier = (1-self.user_derate_multiplier)/2 + self.user_derate_multiplier
+				self.new_target_counter += 1
+			
+			# If rate of change is too high and error is negative within derate window during a set point change, derate output
+			if self.new_target and self.derv >= self.center and ((error <= -self.derate_window) or (100 < self.set_point < 225 and error <= -self.derate_window + 10)) and not self.derate:
+				self.derate = True
+				self.derate_multiplier = self.user_derate_multiplier
+			
+			# If Derated
+			if self.derate:
+				# Reset the derate multiplier if the rate of change exceeds the max rate of change
+				if self.derv >= self.center and not self.last == 0.0:
+					self.derate_multiplier = self.user_derate_multiplier
+
+				# If derate multiplier reaches 1, reset derate flags
+				if self.derate_multiplier >= 1:
+					self.derate = False
+
+				# If derate is true, derate the output by the derate multiplier
+				self.u = self.u * self.derate_multiplier
+
+				# Gradually increase the derate multiplier until it reaches 1, only if rate of change is below max
+				if self.derv < self.center:
+					if self.derate_multiplier < 1:
+						self.derate_multiplier += self.rerate_increment
+						self.derate_multiplier = min(self.derate_multiplier, 1)  # Ensure it does not exceed 1
+		
 		# Update for next cycle
 		self.error = error
 		self.last = current
