@@ -50,21 +50,10 @@
                     "option_step" : 0.1,
                     "hidden" : false
                 },
-                {
-                    "option_name" : "derate_window",
-                    "option_friendly_name" : "Derate Window (Temp)", 
-                    "option_description" : "Window +/- Set Point where Derater is active. When rate of temp climb in Deg/Sec is > 1.2(Set Point / 1000), derater is activated in this window. [Default=25]",
-                    "option_type" : "float",
-                    "option_default" : 25,
-                    "option_min" : null,
-                    "option_max" : null, 
-                    "option_step" : 1,
-                    "hidden" : false
-                },
 				{
                     "option_name" : "derate_multiplier",
                     "option_friendly_name" : "Derate Multiplier", 
-                    "option_description" : "Multiplier to derate output if conditions are met. [Default=0.4]",
+                    "option_description" : "Multiplier to derate output if rate is too fast within -PB degrees of the set point. [Default=0.4]",
                     "option_type" : "float",
                     "option_default" : 0.4,
                     "option_min" : null,

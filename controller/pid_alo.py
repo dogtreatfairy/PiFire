@@ -59,7 +59,6 @@ class Controller(ControllerBase):
 
 		self.center = 0.5
 		
-		self.derate_window = config['derate_window']
 		self.user_derate_multiplier = config['derate_multiplier']
 		self.derate_multiplier = self.user_derate_multiplier
 		self.derate = False
@@ -102,13 +101,13 @@ class Controller(ControllerBase):
 			error = current - self.set_point
 
 		# For small set point increase, derate output for the first 4 cycles.
-		if self.new_target and 100 < self.set_point < 250 and error <= -self.pb and self.new_target_counter <= 4:
+		if self.new_target and (100 < self.set_point <= 250 or -self.pb <= error < 0) and self.new_target_counter <= 4:
 			self.derate = True
 			self.derate_multiplier = (1-self.user_derate_multiplier)/2 + self.user_derate_multiplier
 			self.new_target_counter += 1
 		
 		# If rate of change is too high and error is negative within derate window during a set point change, derate output
-		if self.new_target and self.derv >= self.center and ((error <= -self.derate_window) or (100 < self.set_point < 225 and error <= -self.derate_window + 10)) and not self.derate:
+		if self.new_target and self.derv >= self.center and ((-self.pb <= error < 0) or (100 < self.set_point <= 225 and -(self.pb + 10) <= error < 0)) and not self.derate:
 			self.derate = True
 			self.derate_multiplier = self.user_derate_multiplier	
 
