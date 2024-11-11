@@ -132,7 +132,7 @@ class Controller(ControllerBase):
 			self.eventLogger.info("Derated output for small change.")
 		
 		# If rate of change is too high within derate window during a set point change, derate output
-		if self.new_target and ((abs(error) <= self.derate_window) or (100 < self.set_point < 225 and abs(error) <= self.derate_window + 10)) and self.derv >= self.center and error < 0 and not self.derate:
+		if self.new_target and ((abs(error) <= self.derate_window) or (100 < self.set_point < 225 and abs(error) <= (self.derate_window + 10))) and self.derv >= self.center and error < 0 and not self.derate:
 			self.derate = True
 			self.derate_multiplier = self.user_derate_multiplier
 	
@@ -147,10 +147,10 @@ class Controller(ControllerBase):
 					self.derate_multiplier += self.rerate_increment
 					self.derate_multiplier = min(self.derate_multiplier, 1)  # Ensure it does not exceed 1
 	
-			# Reset the derate multiplier if the rate of change exceeds the max rate of change
-			if self.derv >= self.center and not self.last == 0.0:
-				self.derate_multiplier = self.user_derate_multiplier
-				self.eventLogger.info("RESET MULTIPLIER")
+		# Reset the derate multiplier if the rate of change exceeds the max rate of change
+		if self.derv >= self.center and not self.last == 0.0:
+			self.derate_multiplier = self.user_derate_multiplier
+			self.eventLogger.info("RESET MULTIPLIER")
 
 		# If derate multiplier reaches 1, reset derate flags
 		if self.derate_multiplier >= 1 and self.derate:
