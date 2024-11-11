@@ -124,7 +124,7 @@ class Controller(ControllerBase):
 		self.eventLogger.info(f"U:  {self.u}")
 
 		# If rate of change is too high within derate window during a set point change, derate output
-		if self.new_target and ((abs(error) <= self.derate_window) or (100 < self.set_point < 225 and abs(error) <= self.derate_window + 10)) and self.derv >= self.center and error < 0 and not self.derate:
+		if self.new_target and ((abs(error) <= self.derate_window) or (100 < self.set_point < 225 and abs(error) <= self.derate_window + 10)) and error < 0 and not self.derate:
 			self.derate = True
 			self.derate_multiplier = self.user_derate_multiplier
 	
