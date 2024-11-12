@@ -101,13 +101,13 @@ class Controller(ControllerBase):
 			error = current - self.set_point
 
 		# For small set point increase, derate output for the first 3 cycles.
-		if self.new_target and (100 < self.set_point <= 250 or -self.pb <= error < 0) and self.new_target_counter <= 3:
+		if self.new_target and ((100 < self.set_point <= 250 or -self.pb <= error < 0) and self.new_target_counter <= 5) or (self.derv >= self.center * 0.8 and self.new_target_counter <= 15):
 			self.derate = True
-			self.derate_multiplier = (1-self.user_derate_multiplier)/2 + self.user_derate_multiplier
+			self.derate_multiplier = (1-self.user_derate_multiplier)/3 + self.user_derate_multiplier
 			self.new_target_counter += 1
 		
 		# If rate of change is too high and error is negative within derate window during a set point change, derate output
-		if self.new_target and self.derv * 1.2 >= self.center and ((-self.pb <= error < 0) or (100 < self.set_point <= 225 and -(self.pb + 10) <= error < 0)) and not self.last == 0.0:
+		if self.new_target and self.derv >= self.center and ((-self.pb <= error < 0) or (100 < self.set_point <= 225 and -(self.pb + 10) <= error < 0)) and not self.last == 0.0:
 			self.derate = True
 			self.derate_multiplier = self.user_derate_multiplier	
 
@@ -128,6 +128,10 @@ class Controller(ControllerBase):
 			# Reset integral term if error is outside stable window to avoid windup
 			if abs(error) > self.stable_window:
 				self.inter = 0.0
+
+			# Reset derivative term if error is outside PB/2
+			if abs(error) > self.pb / 2:
+				self.derv = 0.0
 			
 			# P
 			self.p = self.kp * error + self.center
