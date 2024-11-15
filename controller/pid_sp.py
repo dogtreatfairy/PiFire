@@ -81,13 +81,9 @@ class Controller(ControllerBase):
 		self.kp = -1 / pb
 		self.ki = self.kp / ti
 		self.kd = self.kp * td
-	
-	def system_model(self, u):
-        # Simple first-order lag model with time delay
-		return self.kp * (1 - math.exp(-self.theta / self.tau)) * u
 
 	def update(self, current):
-		# Elapsed time since last update
+        # Elapsed time since last update
 		dt = time.time() - self.last_update
 
 		# Fix self.last being set to 0.0 on set point change
@@ -101,9 +97,13 @@ class Controller(ControllerBase):
 		# Error Calculation
 		if not self.set_point == 0.0:
 			error = current - self.set_point
+		
+		# D
+		self.derv = (current - self.last) / dt  # Rate of change in Degrees per second
+		self.d = self.kd * self.derv
 
 		# Predict future temperature using Smith Predictor
-		predicted_temp = current + self.system_model(self.u)
+		predicted_temp = current + self.derv * self.theta
 
 		# Predicted error
 		predicted_error = predicted_temp - self.set_point
@@ -143,10 +143,6 @@ class Controller(ControllerBase):
 			self.i = self.ki * self.inter
 			self.i = max(self.i, -self.center)
 			self.i = min(self.i, self.center)
-
-			# D
-			self.derv = (current - self.last) / dt  # Rate of change in Degrees per second
-			self.d = self.kd * self.derv
 
 			# PID
 			self.u = self.p + self.i + self.d
