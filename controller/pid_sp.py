@@ -36,6 +36,8 @@ Imported Libraries
 import time
 import math
 from controller.base import ControllerBase 
+import logging
+from common import *
 
 '''
 Class Definition
@@ -43,6 +45,8 @@ Class Definition
 class Controller(ControllerBase):
 	def __init__(self, config, units, cycle_data):
 		super().__init__(config, units, cycle_data)
+		
+		self.eventLogger = create_logger('events', filename='/tmp/events.log', messageformat='%(asctime)s [%(levelname)s] %(message)s', level=logging.INFO)
 			
 		self._calculate_gains(config['PB'], config['Ti'], config['Td'])
 
@@ -98,12 +102,13 @@ class Controller(ControllerBase):
 		if not self.set_point == 0.0:
 			error = current - self.set_point
 		
-		# D
-		self.derv = (current - self.last) / dt  # Rate of change in Degrees per second
-		self.d = self.kd * self.derv
+		# Rate of Change Calculation
+		self.roc = (current - self.last) / dt  # Rate of change in Degrees per second
+		self.eventLogger.info('Rate of Chg: ' + str(self.roc))
 
 		# Predict future temperature using Smith Predictor
-		predicted_temp = current + self.derv * self.theta
+		predicted_temp = current + (self.roc * self.theta) * (1 - math.exp(-dt / self.tau))
+		self.eventLogger.info('Predicted Temp: ' + str(predicted_temp))
 
 		# Predicted error
 		predicted_error = predicted_temp - self.set_point
@@ -135,6 +140,10 @@ class Controller(ControllerBase):
 
 			# I
 			self.inter += predicted_error * dt
+
+			# D
+			self.derv = (predicted_temp - self.last) / dt
+			self.d = self.kd * self.derv
 
 			# Reset inter if system has not reached halfway to the set point
 			if self.new_target and (time.time() - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2:
