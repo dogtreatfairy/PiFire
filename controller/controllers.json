@@ -85,6 +85,91 @@
                 }
             ]
         },
+		"pid_sp" : {
+            "friendly_name" : "PID Smith Predictor",
+            "module_name" : "pid_sp",
+            "image" : "pid.png",
+            "description" : "The standard PID controller for PiFire, modified to include a Smith Predictor. This software was originally developed by GitHub user DBorello as part of his excellent PiSmoker project.  Slightly modified by @weberbox and adapted for PiFire. ",
+            "author" : "Dan Borello",
+            "link" : "https://github.com/DBorello/PiSmoker", 
+            "contributors" : ["Ben Parmeter", "James Weber", "Ryan Steel"],
+            "attributions" : [],
+            "recommendations" : {
+                "cycle" : { 
+                    "cycle_time" : 15,
+                    "cycle_ratio_min" : 0.1,
+                    "cycle_ratio_max" : 0.9
+                }   
+            },
+            "config" : [
+                {
+                    "option_name" : "PB",
+                    "option_friendly_name" : "Proportional Band(PB)", 
+                    "option_description" : "This is the temperature band centered around the set point, that the controller is active.  If the error is greater than PB/2, the command is 0.  If the error is less than PB/2, the command is 1.0. [Default=60.0]",
+                    "option_type" : "float",
+                    "option_default" : 60.0,
+                    "option_min" : null,
+                    "option_max" : null, 
+                    "option_step" : 0.1,
+                    "hidden" : false
+                },
+                {
+                    "option_name" : "Td",
+                    "option_friendly_name" : "Derivative Time (Td)", 
+                    "option_description" : "Time (in seconds) to predict the future value. [Default=45.0]",
+                    "option_type" : "float",
+                    "option_default" : 45.0,
+                    "option_min" : null,
+                    "option_max" : null,
+                    "option_step" : 0.1,  
+                    "hidden" : false
+                },
+                {
+                    "option_name" : "Ti",
+                    "option_friendly_name" : "Integral Time (Ti)", 
+                    "option_description" : "Time (in seconds) to eliminate the integral error. [Default=180.0]",
+                    "option_type" : "float",
+                    "option_default" : 180.0,
+                    "option_min" : null,
+                    "option_max" : null, 
+                    "option_step" : 0.1,
+                    "hidden" : false
+                },
+				{
+                    "option_name" : "stable_window",
+                    "option_friendly_name" : "Stable Window (Degrees)", 
+                    "option_description" : "Window +/- from Set Point for triggering Overshoot condition. When in Overshoot, output is set to min. [Default=12]",
+                    "option_type" : "float",
+                    "option_default" : 12,
+                    "option_min" : null,
+                    "option_max" : null, 
+                    "option_step" : 1,
+                    "hidden" : false
+                }, 
+				{
+                    "option_name" : "tau",
+                    "option_friendly_name" : "Tau (s)", 
+					"option_description" : "Time constant (Tau) for the Smith Predictor. This is the time delay in seconds that the predictor uses to estimate future values. [Default=112]",
+                    "option_type" : "float",
+                    "option_default" : 112,
+                    "option_min" : null,
+                    "option_max" : null, 
+                    "option_step" : 1,
+                    "hidden" : false
+                },
+				{
+					"option_name": "theta",
+					"option_friendly_name" : "Theta (Degrees)", 
+					"option_description" : "Theta is the angle in degrees used for advanced control calculations. It helps in predicting the system's behavior more accurately. [Default=73.5]",
+ 					"option_type" : "float",
+  					"option_default" : 73.5,
+   					"option_min" : null,
+    				"option_max" : null, 
+     				"option_step" : 0.1,
+      				"hidden" : false
+                }
+            ]
+        },
 		"pid_ac" : {
             "friendly_name" : "PID Auto Center",
             "module_name" : "pid_ac",
