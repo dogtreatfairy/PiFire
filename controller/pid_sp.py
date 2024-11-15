@@ -65,6 +65,8 @@ class Controller(ControllerBase):
 		self.theta	= config['theta']
 		
 		self.stable_window = config['stable_window']
+		self.stable = False
+		self.stable_start_time = 0
 
 		self.cycle_time = cycle_data['HoldCycleTime']
 
@@ -105,11 +107,23 @@ class Controller(ControllerBase):
 		# Predict future temperature
 		predicted_temp = current + (self.roc * self.theta) * (1 - math.exp(-dt / self.tau))
 
-		# Predicted error if error is negative. This keeps system from holding higher than set point when setting a much lower set point.
-		if error > 0:
+		# Predict Error
+		predicted_error = predicted_temp - self.set_point
+
+		# Disable Smith Predictor if system is stable. This keeps the system from holding temperatures higher than the set point.
+		if self.new_target and abs(error) < self.stable_window:
+			if not self.stable and self.stable_start_time == 0: 
+				self.stable_start_time = time.time()
+
+			if time() - self.stable_start_time > self.cycle_time * 5 and abs(error) < self.stable_window: 
+				self.stable = True
+		
+		if self.new_target and abs(error) > self.stable_window:
+			self.stable_start_time = 0
+			self.stable = False
+
+		if self.stable:
 			predicted_error = error
-		else:
-			predicted_error = predicted_temp - self.set_point
 
 		# If set point is outside pb/2 high, limit u to a min of 1.0
 		if predicted_error < -self.pb:
@@ -170,6 +184,8 @@ class Controller(ControllerBase):
 		self.new_target = True
 		self.new_target_counter = 0
 		self.start_change_temp = self.last
+		self.stable = False
+		self.stable_start_time = 0
     
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)

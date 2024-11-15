@@ -127,7 +127,7 @@
 				{
                     "option_name" : "center_factor",
                     "option_friendly_name" : "Center Factor", 
-                    "option_description" : "Center Factor x Set Point = Center Value. Using the Default Center Factor, at 225F center is 0.27. [Default=0.0012]",
+                    "option_description" : "Center Factor multiplied by Set Point. EX: At 225F center is 225 * 0.0012 = 0.27. [Default=0.0012]",
                     "option_type" : "float",
                     "option_default" : 0.0012,
                     "option_min" : null,
@@ -201,7 +201,7 @@
 				{
                     "option_name" : "center_factor",
                     "option_friendly_name" : "Center Factor", 
-                    "option_description" : "Center Factor x Set Point = Center Value. Using the Default Center Factor, at 225F center is 0.27. [Default=0.0012]",
+                    "option_description" : "Center Factor multiplied by Set Point. EX: At 225F center is 225 * 0.0012 = 0.27. [Default=0.0012]",
                     "option_type" : "float",
                     "option_default" : 0.0012,
                     "option_min" : null,
