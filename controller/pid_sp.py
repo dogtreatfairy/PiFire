@@ -115,8 +115,8 @@ class Controller(ControllerBase):
 			if not self.stable and self.stable_start_time == 0: 
 				self.stable_start_time = time.time()
 
-			if time() - self.stable_start_time > self.cycle_time * 5 and abs(error) < self.stable_window: 
-				self.stable = True
+		if time.time() - self.stable_start_time > self.cycle_time * 7 and abs(error) < self.stable_window: 
+			self.stable = True
 		
 		if self.new_target and abs(error) > self.stable_window:
 			self.stable_start_time = 0
