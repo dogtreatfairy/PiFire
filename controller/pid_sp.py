@@ -89,6 +89,7 @@ class Controller(ControllerBase):
 	def update(self, current):
         # Elapsed time since last update
 		dt = time.time() - self.last_update
+		self.eventLogger.info('Current Temp: ' + str(current))
 
 		# Fix self.last being set to 0.0 on set point change
 		if self.last == 0.0 and self.new_target:
@@ -108,10 +109,11 @@ class Controller(ControllerBase):
 
 		# Predict future temperature using Smith Predictor
 		predicted_temp = current + (self.roc * self.theta) * (1 - math.exp(-dt / self.tau))
-		self.eventLogger.info('Predicted Temp: ' + str(predicted_temp))
+		self.eventLogger.info('P Temp: ' + str(predicted_temp))
 
 		# Predicted error
 		predicted_error = predicted_temp - self.set_point
+		self.eventLogger.info('P Error: ' + str(predicted_error))
 
 		# If set point is outside pb/2 high, limit u to a min of 1.0
 		if predicted_error < -self.pb:
@@ -126,14 +128,17 @@ class Controller(ControllerBase):
 			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
 			if self.new_target and abs(error) <= 3:
 				self.new_target = False
+				self.eventLogger.info('New Target - FALSE')
 
 			# Reset integral term if error is outside stable window to avoid windup
 			if abs(error) > self.stable_window:
 				self.inter = 0.0
+				self.eventLogger.info('INTER ZERO')
 
 			# Reset derivative term if error is outside PB/2
 			if abs(error) > self.pb / 2:
 				self.derv = 0.0
+				self.eventLogger.info('DERV ZERO')
 
 			# P
 			self.p = self.kp * predicted_error + self.center
@@ -156,6 +161,11 @@ class Controller(ControllerBase):
 			# PID
 			self.u = self.p + self.i + self.d
 
+		self.eventLogger.info('P: ' + str(self.p))
+		self.eventLogger.info('I: ' + str(self.i))
+		self.eventLogger.info('D: ' + str(self.d))
+		self.eventLogger.info('U: ' + str(self.u))
+
 		# Update for next cycle
 		self.error = error
 		self.last = current
@@ -173,6 +183,10 @@ class Controller(ControllerBase):
 		self.start_change_temp = self.last
 		self.new_target = True
 		self.new_target_counter = 0
+		self.eventLogger.info('---------------------------------')
+		self.eventLogger.info('Target: ' + str(self.set_point))
+		self.eventLogger.info('New Target - TRUE')
+		self.eventLogger.info('---------------------------------')
     
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)
