@@ -36,8 +36,6 @@ Imported Libraries
 import time
 import math
 from controller.base import ControllerBase 
-import logging
-from common import *
 
 '''
 Class Definition
@@ -45,8 +43,6 @@ Class Definition
 class Controller(ControllerBase):
 	def __init__(self, config, units, cycle_data):
 		super().__init__(config, units, cycle_data)
-		
-		self.eventLogger = create_logger('events', filename='/tmp/events.log', messageformat='%(asctime)s [%(levelname)s] %(message)s', level=logging.INFO)
 			
 		self._calculate_gains(config['PB'], config['Ti'], config['Td'])
 
@@ -63,11 +59,13 @@ class Controller(ControllerBase):
 		self.set_point = 0
 
 		self.center = 0.5
+		self.center_factor = config['center_factor']
 		
 		self.tau = config['tau']
 		self.theta	= config['theta']
 		
 		self.stable_window = config['stable_window']
+
 		self.cycle_time = cycle_data['HoldCycleTime']
 
 		self.derv = 0.0
@@ -89,15 +87,13 @@ class Controller(ControllerBase):
 	def update(self, current):
         # Elapsed time since last update
 		dt = time.time() - self.last_update
-		self.eventLogger.info('Current Temp: ' + str(current))
 
 		# Fix self.last being set to 0.0 on set point change
 		if self.last == 0.0 and self.new_target:
 			self.last = current
-			self.start_change_temp = current
 
 		# Dynamically set self.center depending on current temperature.
-		self.center = self.set_point * 0.0012 
+		self.center = self.set_point * self.center_factor
 
 		# Error Calculation
 		if not self.set_point == 0.0:
@@ -105,15 +101,15 @@ class Controller(ControllerBase):
 		
 		# Rate of Change Calculation
 		self.roc = (current - self.last) / dt  # Rate of change in Degrees per second
-		self.eventLogger.info('Rate of Chg: ' + str(self.roc))
 
-		# Predict future temperature using Smith Predictor
+		# Predict future temperature
 		predicted_temp = current + (self.roc * self.theta) * (1 - math.exp(-dt / self.tau))
-		self.eventLogger.info('P Temp: ' + str(predicted_temp))
 
-		# Predicted error
-		predicted_error = predicted_temp - self.set_point
-		self.eventLogger.info('P Error: ' + str(predicted_error))
+		# Predicted error if error is negative. This keeps system from holding higher than set point when setting a much lower set point.
+		if error > 0:
+			predicted_error = error
+		else:
+			predicted_error = predicted_temp - self.set_point
 
 		# If set point is outside pb/2 high, limit u to a min of 1.0
 		if predicted_error < -self.pb:
@@ -128,43 +124,33 @@ class Controller(ControllerBase):
 			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
 			if self.new_target and abs(error) <= 3:
 				self.new_target = False
-				self.eventLogger.info('New Target - FALSE')
 
 			# Reset integral term if error is outside stable window to avoid windup
 			if abs(error) > self.stable_window:
 				self.inter = 0.0
-				self.eventLogger.info('INTER ZERO')
 
 			# Reset derivative term if error is outside PB/2
 			if abs(error) > self.pb / 2:
 				self.derv = 0.0
-				self.eventLogger.info('DERV ZERO')
 
 			# P
 			self.p = self.kp * predicted_error + self.center
 
 			# I
+			# Reset integral if the system has not reached halfway to the set point within 3 cycles. Prevents overshoots on small set point changes.
+			if self.new_target and (time.time() - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2:
+				self.inter = 0.0
 			self.inter += predicted_error * dt
+			self.i = self.ki * self.inter
+			self.i = max(self.i, -self.center)
+			self.i = min(self.i, self.center)
 
 			# D
 			self.derv = (predicted_temp - self.last) / dt
 			self.d = self.kd * self.derv
 
-			# Reset inter if system has not reached halfway to the set point
-			if self.new_target and (time.time() - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2:
-				self.inter = 0.0
-
-			self.i = self.ki * self.inter
-			self.i = max(self.i, -self.center)
-			self.i = min(self.i, self.center)
-
 			# PID
 			self.u = self.p + self.i + self.d
-
-		self.eventLogger.info('P: ' + str(self.p))
-		self.eventLogger.info('I: ' + str(self.i))
-		self.eventLogger.info('D: ' + str(self.d))
-		self.eventLogger.info('U: ' + str(self.u))
 
 		# Update for next cycle
 		self.error = error
@@ -183,10 +169,7 @@ class Controller(ControllerBase):
 		self.start_change_temp = self.last
 		self.new_target = True
 		self.new_target_counter = 0
-		self.eventLogger.info('---------------------------------')
-		self.eventLogger.info('Target: ' + str(self.set_point))
-		self.eventLogger.info('New Target - TRUE')
-		self.eventLogger.info('---------------------------------')
+		self.start_change_temp = self.last
     
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)

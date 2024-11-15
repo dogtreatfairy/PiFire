@@ -60,6 +60,9 @@ class Controller(ControllerBase):
 		self.new_target = False
 
 		self.center = 0.5
+		self.center_factor = config['center_factor']
+
+		self.stable_window = config['stable_window']
 
 		self.derv = 0.0
 		self.inter = 0.0
@@ -67,7 +70,7 @@ class Controller(ControllerBase):
 
 		self.last = 150
 
-		#self.set_target(0.0)
+		self.set_target(0.0)
 
 	def _calculate_gains(self, pb, ti, td):
 		self.kp = -1 / pb
@@ -79,40 +82,62 @@ class Controller(ControllerBase):
 		dt = time.time() - self.last_update
 		
 		# Fix self.last being set to 0.0 on set point change
-		#if self.last == 0.0:
-		#	self.last = current
+		if self.last == 0.0:
+			self.last = current
 
-		self.center = (self.set_point * 0.0012)  # Dynamically set self.center depending on current temperature.
+		self.center = self.set_point * self.center_factor  # Dynamically set self.center depending on current temperature.
     
 		# Error Calculation
 		if not self.set_point == 0.0:
 			error = current - self.set_point
+
+		# If set point is outside pb/2 high, limit u to a min of 1.0
+		if error < -self.pb:
+			self.u = 1.0
+
+		# Minimize output when Current Temp is > Stable Window
+		elif error > self.stable_window:
+			self.u = 0.0
+
+		# If not overshooting or still climbing outside PB/2, calculate PID
+		else:
+			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
+			if self.new_target and abs(error) <= 3:
+				self.new_target = False
+
+			# Reset integral term if error is outside stable window to avoid windup
+			if abs(error) > self.stable_window:
+				self.inter = 0.0
+
+			# Reset derivative term if error is outside PB/2
+			if abs(error) > self.pb / 2:
+				self.derv = 0.0
 		
-		# P
-		self.p = self.kp * error + self.center
+			# P
+			self.p = self.kp * error + self.center
 
-		# I
-		self.inter += error * dt
-		
-		# Reset inter if system has not reached halfway to the set point. This keeps small set point changes from causing overshoots.
-		if 0 > self.p > 1 or (self.new_target and (time.time() - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2):
-			self.inter = 0.0
+			# I
+			self.inter += error * dt
+			
+			# Reset inter if system has not reached halfway to the set point. This keeps small set point changes from causing overshoots.
+			if 0 > self.p > 1 or (self.new_target and (time.time() - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2):
+				self.inter = 0.0
 
-		# Reset integral term when current temperature first reaches or exceeds set point after a set point change
-		if self.new_target and abs(error) <=3:
-			self.inter = 0.0
-			self.new_target = False
+			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
+			if self.new_target and abs(error) <=3:
+				self.inter = 0.0
+				self.new_target = False
 
-		self.i = self.ki * self.inter
-		self.i = max(self.i, -self.center)
-		self.i = min(self.i, self.center)
+			self.i = self.ki * self.inter
+			self.i = max(self.i, -self.center)
+			self.i = min(self.i, self.center)
 
-		# D
-		self.derv = (current - self.last) / dt
-		self.d = self.kd * self.derv
+			# D
+			self.derv = (current - self.last) / dt
+			self.d = self.kd * self.derv
 
-		# PID
-		self.u = self.p + self.i + self.d
+			# PID
+			self.u = self.p + self.i + self.d
 
 		# Update for next cycle
 		self.error = error
@@ -128,7 +153,9 @@ class Controller(ControllerBase):
 		self.derv = 0.0
 		self.last_update = time.time()
 		self.last_set_time = time.time()
+		self.start_change_temp = self.last
 		self.new_target = True
+		self.new_target_counter = 0
 		self.start_change_temp = self.last
 
 	def set_gains(self, pb, ti, td):
