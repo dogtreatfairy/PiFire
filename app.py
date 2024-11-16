@@ -1789,7 +1789,7 @@ def settings_page(action=None):
 	if request.method == 'POST' and action == 'cycle':
 		response = request.form
 		active_controller = settings['controller']['selected']
-		controller_config = settings['controller'][active_controller]['config']
+		controller_config = settings['controller']['cycle'][active_controller]
 
 		if _is_not_blank(response, 'pmode'):
 			settings['cycle_data']['PMode'] = int(response['pmode'])
@@ -1859,18 +1859,18 @@ def settings_page(action=None):
 								settings['controller']['config'][selected][option_name] = float(value)
 							else: 
 								settings['controller']['config'][selected][option_name] = value
-					for option in controller['metadata'][selected]['config']:
+					for option in controller['metadata'][selected]['cycle']:
 						if option_name == option['option_name']: 
 							if option['option_type'] == 'float':
-								settings['controller'][selected]['recommendations']['cycle'][option_name] = float(value) 
+								settings['controller']['cycle'][selected][option_name] = float(value) 
 							elif option['option_type'] == 'int':
-								settings['controller'][selected]['recommendations']['cycle'][option_name] = int(value)
+								settings['controller']['cycle'][selected][option_name]  = int(value)
 							elif option['option_type'] == 'bool':
-								settings['controller'][selected]['recommendations']['cycle'][option_name] = True if value == 'true' else False 
+								settings['controller']['cycle'][selected][option_name]  = True if value == 'true' else False 
 							elif option['option_type'] == 'numlist':
-								settings['controller'][selected]['recommendations']['cycle'][option_name] = float(value)
+								settings['controller']['cycle'][selected][option_name]  = float(value)
 							else: 
-								settings['controller'][selected]['recommendations']['cycle'][option_name] = value
+								settings['controller']['cycle'][selected][option_name]  = value
  
 		event['type'] = 'updated'
 		event['text'] = 'Successfully updated cycle settings.'
