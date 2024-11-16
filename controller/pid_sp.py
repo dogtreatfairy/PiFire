@@ -90,9 +90,6 @@ class Controller(ControllerBase):
 		if self.last == 0.0 and self.new_target:
 			self.last = current
 	
-		# Dynamically set self.center depending on current temperature.
-		self.center = self.set_point * self.center_factor
-	
 		# Error Calculation
 		error = current - self.set_point if self.set_point != 0.0 else 0.0
 	
@@ -155,6 +152,8 @@ class Controller(ControllerBase):
 		self.last_set_time = time.time()
 		self.start_change_temp = self.last
 		self.new_target = True
+		# Dynamically set self.center depending on current temperature.
+		self.center = self.set_point * self.center_factor
     
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)

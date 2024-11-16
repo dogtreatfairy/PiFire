@@ -66,7 +66,6 @@ class Controller(ControllerBase):
 
 		self.derv = 0.0
 		self.inter = 0.0
-		self.inter_max = 1.0
 
 		self.last = 150
 
@@ -85,21 +84,15 @@ class Controller(ControllerBase):
 		if self.last == 0.0:
 			self.last = current
 
-		self.center = self.set_point * self.center_factor  # Dynamically set self.center depending on current temperature.
-    
 		# Error Calculation
 		if not self.set_point == 0.0:
 			error = current - self.set_point
 
-		# If set point is outside pb/2 high, limit u to a min of 1.0
+		# Determine control output based on predicted error
 		if error < -self.pb:
 			self.u = 1.0
-
-		# Minimize output when Current Temp is > Stable Window
 		elif error > self.stable_window:
 			self.u = 0.0
-
-		# If not overshooting or still climbing outside PB/2, calculate PID
 		else:
 			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
 			if self.new_target and abs(error) <= 3:
@@ -155,12 +148,11 @@ class Controller(ControllerBase):
 		self.last_set_time = time.time()
 		self.start_change_temp = self.last
 		self.new_target = True
-		self.new_target_counter = 0
-		self.start_change_temp = self.last
+		# Dynamically set self.center depending on current temperature.
+		self.center = self.set_point * self.center_factor
 
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)
-		self.inter_max = abs(self.center / self.ki)
 
 	def get_k(self):
 		return self.kp, self.ki, self.kd
