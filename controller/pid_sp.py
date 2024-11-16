@@ -96,14 +96,15 @@ class Controller(ControllerBase):
 		# Rate of Change Calculation
 		self.roc = (current - self.last) / dt  # Rate of change in Degrees per second
 	
-		# Predict future temperature
+		# Predict future temperature and error
 		predicted_temp = current + (self.roc * self.theta) * (1 - math.exp(-dt / self.tau))
 		predicted_error = predicted_temp - self.set_point
 	
-		# Determine control output based on predicted error
+		# Determine output
 		if predicted_error < -self.pb:
 			self.u = 1.0
-		elif predicted_error > self.stable_window:
+		# The second half of this OR statement allows the controller to fall to the set point without bouncing the temp off of it.
+		elif (predicted_error > self.stable_window) or (self.new_target and self.set_point < current):
 			self.u = 0.0
 		else:
 			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
@@ -125,6 +126,7 @@ class Controller(ControllerBase):
 			# Reset integral if the system has not reached halfway to the set point within 3 cycles. Prevents overshoots on small set point changes.
 			if self.new_target and (current_time - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2:
 				self.inter = 0.0
+			
 			self.inter += predicted_error * dt
 			self.i = self.ki * self.inter
 			self.i = max(min(self.i, self.center), -self.center)
