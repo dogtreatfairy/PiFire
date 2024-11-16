@@ -65,9 +65,6 @@ class Controller(ControllerBase):
 		self.theta	= config['theta']
 		
 		self.stable_window = config['stable_window']
-		self.stable = False
-		self.stable_start_time = 0
-
 		self.cycle_time = cycle_data['HoldCycleTime']
 
 		self.derv = 0.0
@@ -76,8 +73,6 @@ class Controller(ControllerBase):
 		self.last = 150
 		self.start_change_temp = 0.0
 		self.new_target = False
-		self.new_target_counter = 0.0
-		self.within_range_start = None
 
 		self.set_target(0.0)
 
@@ -87,89 +82,67 @@ class Controller(ControllerBase):
 		self.kd = self.kp * td
 
 	def update(self, current):
-        # Elapsed time since last update
-		dt = time.time() - self.last_update
-
+		# Elapsed time since last update
+		current_time = time.time()
+		dt = current_time - self.last_update
+	
 		# Fix self.last being set to 0.0 on set point change
 		if self.last == 0.0 and self.new_target:
 			self.last = current
-
+	
 		# Dynamically set self.center depending on current temperature.
 		self.center = self.set_point * self.center_factor
-
+	
 		# Error Calculation
-		if not self.set_point == 0.0:
-			error = current - self.set_point
-		
+		error = current - self.set_point if self.set_point != 0.0 else 0.0
+	
 		# Rate of Change Calculation
 		self.roc = (current - self.last) / dt  # Rate of change in Degrees per second
-
+	
 		# Predict future temperature
 		predicted_temp = current + (self.roc * self.theta) * (1 - math.exp(-dt / self.tau))
-
-		# Predict Error
 		predicted_error = predicted_temp - self.set_point
-
-		# Disable Smith Predictor if system is stable. This keeps the system from holding temperatures higher than the set point.
-		if self.new_target and abs(error) < self.stable_window:
-			if not self.stable and self.stable_start_time == 0: 
-				self.stable_start_time = time.time()
-
-		if time.time() - self.stable_start_time > self.cycle_time * 7 and abs(error) < self.stable_window: 
-			self.stable = True
-		
-		if self.new_target and abs(error) > self.stable_window:
-			self.stable_start_time = 0
-			self.stable = False
-
-		if self.stable:
-			predicted_error = error
-
-		# If set point is outside pb/2 high, limit u to a min of 1.0
+	
+		# Determine control output based on predicted error
 		if predicted_error < -self.pb:
 			self.u = 1.0
-
-		# Minimize output when Current Temp is > Stable Window
 		elif predicted_error > self.stable_window:
 			self.u = 0.0
-
-		# If not overshooting or still climbing outside PB/2, calculate PID
 		else:
 			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
 			if self.new_target and abs(error) <= 3:
 				self.new_target = False
-
+	
 			# Reset integral term if error is outside stable window to avoid windup
 			if abs(error) > self.stable_window:
 				self.inter = 0.0
-
+	
 			# Reset derivative term if error is outside PB/2
 			if abs(error) > self.pb / 2:
 				self.derv = 0.0
-
+	
 			# P
 			self.p = self.kp * predicted_error + self.center
-
+	
 			# I
 			# Reset integral if the system has not reached halfway to the set point within 3 cycles. Prevents overshoots on small set point changes.
-			if self.new_target and (time.time() - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2:
+			if self.new_target and (current_time - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2:
 				self.inter = 0.0
 			self.inter += predicted_error * dt
 			self.i = self.ki * self.inter
-			self.i = max(self.i, -self.center)
-			self.i = min(self.i, self.center)
-
+			self.i = max(min(self.i, self.center), -self.center)
+	
 			# D
 			self.derv = (predicted_temp - self.last) / dt
 			self.d = self.kd * self.derv
-
+	
 			# PID
 			self.u = self.p + self.i + self.d
-
+	
 		# Update for next cycle
 		self.error = error
 		self.last = current
-		self.last_update = time.time()
+		self.last_update = current_time
 	
 		return self.u
 	
@@ -182,10 +155,6 @@ class Controller(ControllerBase):
 		self.last_set_time = time.time()
 		self.start_change_temp = self.last
 		self.new_target = True
-		self.new_target_counter = 0
-		self.start_change_temp = self.last
-		self.stable = False
-		self.stable_start_time = 0
     
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)
