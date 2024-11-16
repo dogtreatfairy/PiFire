@@ -41,8 +41,8 @@ from controller.base import ControllerBase
 Class Definition
 '''
 class Controller(ControllerBase):
-	def __init__(self, config, globals, cycle_data):
-		super().__init__(config, globals, cycle_data)
+	def __init__(self, config, units, cycle_data):
+		super().__init__(config, units, cycle_data)
 			
 		self._calculate_gains(config['PB'], config['Ti'], config['Td'])
 
@@ -53,7 +53,7 @@ class Controller(ControllerBase):
 
 		self.pb = config['PB']
 
-		self.units = globals('units')
+		self.units = units
 
 		self.last_update = time.time()
 		self.last_set_time = time.time()
