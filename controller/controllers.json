@@ -9,10 +9,12 @@
             "link" : "https://github.com/DBorello/PiSmoker", 
             "contributors" : ["Ben Parmeter", "James Weber"],
             "attributions" : [],
-			"cycle" : { 
-				"cycle_time" : 25,
-				"u_min" : 0.1,
-				"u_max" : 0.9   
+            "recommendations" : {
+                "cycle" : { 
+                    "cycle_time" : 25,
+                    "cycle_ratio_min" : 0.1,
+                    "cycle_ratio_max" : 0.9
+                }   
             },
             "config" : [
                 {
@@ -70,10 +72,12 @@
             "link" : "https://github.com/DBorello/PiSmoker", 
             "contributors" : ["Ben Parmeter", "James Weber", "Ryan Steel"],
             "attributions" : [],
-            "cycle" : { 
-				"cycle_time" : 15,
-				"u_min" : 0.05,
-				"u_max" : 0.9  
+            "recommendations" : {
+                "cycle" : { 
+                    "cycle_time" : 15,
+                    "cycle_ratio_min" : 0.05,
+                    "cycle_ratio_max" : 0.9
+                }   
             },
             "config" : [
                 {
@@ -142,10 +146,12 @@
             "link" : "https://github.com/DBorello/PiSmoker", 
             "contributors" : ["Ben Parmeter", "James Weber", "Ryan Steel"],
             "attributions" : [],
-            "cycle" : { 
-				"cycle_time" : 15,
-				"u_min" : 0.05,
-				"u_max" : 0.9  
+            "recommendations" : {
+                "cycle" : { 
+                    "cycle_time" : 15,
+                    "cycle_ratio_min" : 0.05,
+                    "cycle_ratio_max" : 0.9
+                }   
             },
             "config" : [
                 {
@@ -236,10 +242,12 @@
             "link" : "https://nebhead.github.io/PiFire", 
             "contributors" : [],
             "attributions" : ["Sci-Kit Fuzzy"],
-            "cycle" : { 
-				"cycle_time" : 25,
-				"u_min" : 0.1,
-				"u_max" : 0.9  
+            "recommendations" : {
+                "cycle" : { 
+                    "cycle_time" : 25,
+                    "cycle_ratio_min" : 0.1,
+                    "cycle_ratio_max" : 1.0
+                }   
             },
             "config" : []
         }, 
@@ -252,10 +260,12 @@
             "link" : "https://nebhead.github.io/PiFire", 
             "contributors" : [],
             "attributions" : ["Sci-Kit Learn"],
-            "cycle" : { 
-				"cycle_time" : 25,
-				"u_min" : 0.1,
-				"u_max" : 0.9  
+            "recommendations" : {
+                "cycle" : { 
+                    "cycle_time" : 25,
+                    "cycle_ratio_min" : 0.1,
+                    "cycle_ratio_max" : 1.0
+                }   
             },
             "config" : []
         }

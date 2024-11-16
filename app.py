@@ -1788,22 +1788,20 @@ def settings_page(action=None):
 
 	if request.method == 'POST' and action == 'cycle':
 		response = request.form
-		active_controller = settings['controller']['selected']
-		controller_config = settings['controller']['cycle'][active_controller]
 
 		if _is_not_blank(response, 'pmode'):
 			settings['cycle_data']['PMode'] = int(response['pmode'])
 		if _is_not_blank(response, 'holdcycletime'):
-			settings['cycle_data']['HoldCycleTime'] = int(controller_config['HoldCycleTime'])
+			settings['cycle_data']['HoldCycleTime'] = int(response['holdcycletime'])
 		if _is_not_blank(response, 'SmokeOnCycleTime'):
 			settings['cycle_data']['SmokeOnCycleTime'] = int(response['SmokeOnCycleTime'])
 		if _is_not_blank(response, 'SmokeOffCycleTime'):
 			settings['cycle_data']['SmokeOffCycleTime'] = int(response['SmokeOffCycleTime'])
-		
+
 		if _is_not_blank(response, 'u_min'):
-			settings['cycle_data']['u_min'] = float(controller_config['u_min'])
+			settings['cycle_data']['u_min'] = float(response['u_min'])
 		if _is_not_blank(response, 'u_max'):
-			settings['cycle_data']['u_max'] = float(controller_config['u_max'])
+			settings['cycle_data']['u_max'] = float(response['u_max'])
 
 		if _is_checked(response, 'lid_open_detect_enable'):
 			settings['cycle_data']['LidOpenDetectEnabled'] = True
@@ -1859,18 +1857,6 @@ def settings_page(action=None):
 								settings['controller']['config'][selected][option_name] = float(value)
 							else: 
 								settings['controller']['config'][selected][option_name] = value
-					for option in controller['metadata'][selected]['cycle']:
-						if option_name == option['option_name']: 
-							if option['option_type'] == 'float':
-								settings['controller']['cycle'][selected][option_name] = float(value) 
-							elif option['option_type'] == 'int':
-								settings['controller']['cycle'][selected][option_name]  = int(value)
-							elif option['option_type'] == 'bool':
-								settings['controller']['cycle'][selected][option_name]  = True if value == 'true' else False 
-							elif option['option_type'] == 'numlist':
-								settings['controller']['cycle'][selected][option_name]  = float(value)
-							else: 
-								settings['controller']['cycle'][selected][option_name]  = value
  
 		event['type'] = 'updated'
 		event['text'] = 'Successfully updated cycle settings.'
