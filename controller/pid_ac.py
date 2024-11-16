@@ -40,8 +40,8 @@ from controller.base import ControllerBase
 Class Definition
 '''
 class Controller(ControllerBase):
-	def __init__(self, config, units, cycle_data):
-		super().__init__(config, units, cycle_data)
+	def __init__(self, config, units, globals, cycle_data):
+		super().__init__(config, units, globals, cycle_data)
 
 		self._calculate_gains(config['PB'], config['Ti'], config['Td'])
 
@@ -49,6 +49,8 @@ class Controller(ControllerBase):
 		self.i = 0.0
 		self.d = 0.0
 		self.u = 0
+
+		self.units = globals['units']
 
 		self.last_update = time.time()
 		self.last_set_time = time.time()
@@ -149,10 +151,13 @@ class Controller(ControllerBase):
 		self.start_change_temp = self.last
 		self.new_target = True
 		# Dynamically set self.center depending on set_point. Higher centers are needed to achieve higher temps, lower centers for lower temps.
-		if set_point <= 240:
-			self.center = set_point * self.center_factor
-		else:
-			self.center = set_point * self.center_factor * 1.2
+		if self.units == "F":
+			if set_point <= 240:
+				self.center = set_point * self.center_factor
+			else:
+				self.center = set_point * self.center_factor * 1.2
+		elif self.units == "C":
+			self.center = set_point * self.center_factor * 2.3
     
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)
