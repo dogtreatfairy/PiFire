@@ -1789,7 +1789,7 @@ def settings_page(action=None):
 	if request.method == 'POST' and action == 'cycle':
 		response = request.form
 		active_controller = settings['controller']['selected']
-		controller_config = settings['controller']['config'][active_controller]
+		controller_config = settings['controller']['recommendations'][active_controller]
 
 		if _is_not_blank(response, 'pmode'):
 			settings['cycle_data']['PMode'] = int(response['pmode'])
