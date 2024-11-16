@@ -91,7 +91,7 @@ class Controller(ControllerBase):
 			self.last = current
 	
 		# Error Calculation
-		error = current - self.set_point if self.set_point != 0.0 else 0.0
+		error = current - self.set_point
 	
 		# Rate of Change Calculation
 		self.roc = (current - self.last) / dt  # Rate of change in Degrees per second
@@ -99,6 +99,10 @@ class Controller(ControllerBase):
 		# Predict future temperature and error
 		predicted_temp = current + (self.roc * self.theta) * (1 - math.exp(-dt / self.tau))
 		predicted_error = predicted_temp - self.set_point
+
+		# Disable Smith Predictor within stable window
+		if abs(error) <= self.stable_window and not self.new_target:
+			predicted_error = error
 	
 		# Determine output
 		if predicted_error < -self.pb:
