@@ -75,7 +75,7 @@
             "recommendations" : {
                 "cycle" : { 
                     "cycle_time" : 15,
-                    "cycle_ratio_min" : 0.1,
+                    "cycle_ratio_min" : 0.05,
                     "cycle_ratio_max" : 0.9
                 }   
             },
@@ -149,7 +149,7 @@
             "recommendations" : {
                 "cycle" : { 
                     "cycle_time" : 15,
-                    "cycle_ratio_min" : 0.1,
+                    "cycle_ratio_min" : 0.05,
                     "cycle_ratio_max" : 0.9
                 }   
             },
