@@ -35,9 +35,7 @@ Imported Libraries
 '''
 import time
 import math
-import logging
 from controller.base import ControllerBase 
-from common import *
 
 
 '''
@@ -46,9 +44,6 @@ Class Definition
 class Controller(ControllerBase):
 	def __init__(self, config, units, cycle_data):
 		super().__init__(config, units, cycle_data)
-		
-		self.eventLogger = create_logger('events', filename='/tmp/events.log', messageformat='%(asctime)s [%(levelname)s] %(message)s', level=logging.INFO)
-
 			
 		self._calculate_gains(config['PB'], config['Ti'], config['Td'])
 
@@ -167,7 +162,6 @@ class Controller(ControllerBase):
 		self.start_change_temp = self.last
 		self.new_target = True
 		# Dynamically set self.center depending on set_point. Higher centers are needed to achieve higher temps, lower centers for lower temps.
-		self.eventLogger.info(f'Set Target: {set_point} {self.units}')
 		if self.units == "F":
 			if set_point <= 240:
 				self.center = set_point * self.center_factor
