@@ -12,8 +12,8 @@
             "recommendations" : {
                 "cycle" : { 
                     "cycle_time" : 25,
-                    "cycle_ratio_min" : 0.1,
-                    "cycle_ratio_max" : 0.9
+                    "u_min" : 0.1,
+                    "u_max" : 0.9
                 }   
             },
             "config" : [
@@ -75,8 +75,8 @@
             "recommendations" : {
                 "cycle" : { 
                     "cycle_time" : 15,
-                    "cycle_ratio_min" : 0.05,
-                    "cycle_ratio_max" : 0.9
+                    "u_min" : 0.05,
+                    "u_max" : 0.9
                 }   
             },
             "config" : [
@@ -127,9 +127,9 @@
 				{
                     "option_name" : "center_factor",
                     "option_friendly_name" : "Center Factor", 
-                    "option_description" : "Center Factor multiplied by Set Point. Higher Center Factors increase system response at high set points. Lower Center Factors increase system stability at low set points but may keep the system from reaching high set points. EX: At 225F center is 225 * 0.0012 = 0.27. [Default=0.0012]",
+                    "option_description" : "Center Factor multiplied by Set Point. Higher Center Factors increase system response at high set points. Lower Center Factors increase system stability at low set points but may keep the system from reaching high set points. EX: At 225F center is 225 * 0.0012 = 0.27. [Default=0.0010]",
                     "option_type" : "float",
-                    "option_default" : 0.0012,
+                    "option_default" : 0.0010,
                     "option_min" : null,
                     "option_max" : null, 
                     "option_step" : 0.0001,
@@ -149,8 +149,8 @@
             "recommendations" : {
                 "cycle" : { 
                     "cycle_time" : 15,
-                    "cycle_ratio_min" : 0.05,
-                    "cycle_ratio_max" : 0.9
+                    "u_min" : 0.05,
+                    "u_max" : 0.9
                 }   
             },
             "config" : [
@@ -201,9 +201,9 @@
 				{
                     "option_name" : "center_factor",
                     "option_friendly_name" : "Center Factor", 
-                    "option_description" : "Center Factor multiplied by Set Point. Higher Center Factors increase system response at high set points. Lower Center Factors increase system stability at low set points but may keep the system from reaching high set points. EX: At 225F center is 225 * 0.0012 = 0.27. [Default=0.0012]",
+                    "option_description" : "Center Factor multiplied by Set Point. Higher Center Factors increase system response at high set points. Lower Center Factors increase system stability at low set points but may keep the system from reaching high set points. EX: At 225F center is 225 * 0.0012 = 0.27. [Default=0.0010]",
                     "option_type" : "float",
-                    "option_default" : 0.0012,
+                    "option_default" : 0.0010,
                     "option_min" : null,
                     "option_max" : null, 
                     "option_step" : 0.0001,
@@ -245,8 +245,8 @@
             "recommendations" : {
                 "cycle" : { 
                     "cycle_time" : 25,
-                    "cycle_ratio_min" : 0.1,
-                    "cycle_ratio_max" : 1.0
+                    "u_min" : 0.1,
+                    "u_max" : 1.0
                 }   
             },
             "config" : []
@@ -263,8 +263,8 @@
             "recommendations" : {
                 "cycle" : { 
                     "cycle_time" : 25,
-                    "cycle_ratio_min" : 0.1,
-                    "cycle_ratio_max" : 1.0
+                    "u_min" : 0.1,
+                    "u_max" : 1.0
                 }   
             },
             "config" : []
