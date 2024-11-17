@@ -144,6 +144,10 @@ class Controller(ControllerBase):
 			# D
 			self.derv = (predicted_temp - self.last) / dt
 			self.d = self.kd * self.derv
+
+			# If error is within PB, reduce output to prevent overshoots
+			if error < self.pb and current_time - self.last_set_time < self.cycle_time * 3:
+				self.u = self.u * 0.65
 	
 			# PID
 			self.u = self.p + self.i + self.d
