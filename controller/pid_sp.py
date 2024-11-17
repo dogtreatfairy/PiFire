@@ -104,8 +104,8 @@ class Controller(ControllerBase):
 		predicted_error = predicted_temp - self.set_point
 
 		# Disable Smith Predictor within stable window & not self.new_target removed
-		if abs(error) <= self.stable_window:
-			predicted_error = error
+		#if abs(error) <= self.stable_window:
+			#predicted_error = error
 	
 		# Determine output
 		if predicted_error < -self.pb / 2:
