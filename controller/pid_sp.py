@@ -110,9 +110,12 @@ class Controller(ControllerBase):
 		# Determine output
 		if predicted_error < -self.pb / 2:
 			self.u = 1.0
-		# The second half of this OR statement allows the controller to fall to the set point without bouncing the temp off of it.
-		elif (predicted_error > self.stable_window) or (self.new_target and self.set_point < current):
+		# If overshooting, minimize output
+		elif (predicted_error > self.stable_window):
 			self.u = 0.0
+		# Minimize derivative to maximize descent rate
+		elif (self.new_target and self.set_point < current):
+			self.derv = 0.0
 		else:
 			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
 			if self.new_target and abs(error) <= 3:
