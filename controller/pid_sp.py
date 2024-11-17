@@ -108,7 +108,7 @@ class Controller(ControllerBase):
 			#predicted_error = error
 	
 		# Determine output
-		if predicted_error < -self.pb / 2:
+		if predicted_error < -self.pb:
 			self.u = 1.0
 		# If overshooting, minimize output
 		elif (predicted_error > self.stable_window):
