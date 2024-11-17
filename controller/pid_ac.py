@@ -50,12 +50,15 @@ class Controller(ControllerBase):
 		self.d = 0.0
 		self.u = 0
 
+		self.pb = config['PB']
+
 		self.units = units
 
 		self.last_update = time.time()
 		self.last_set_time = time.time()
 		self.error = 0.0
 		self.set_point = 0
+
 		self.cycle_time = cycle_data['HoldCycleTime']
 
 		self.start_change_temp = 0.0
@@ -84,12 +87,11 @@ class Controller(ControllerBase):
 		dt = current_time - self.last_update
 		
 		# Fix self.last being set to 0.0 on set point change
-		if self.last == 0.0:
+		if self.last == 0.0 and self.new_target:
 			self.last = current
-
-		# Error Calculation
-		if not self.set_point == 0.0:
-			error = current - self.set_point
+			
+		# Error Calculation.
+		error = current - self.set_point
 
 		# Determine output
 		if error < -self.pb:
@@ -97,20 +99,17 @@ class Controller(ControllerBase):
 		# If overshooting, minimize output
 		elif error > self.stable_window:
 			self.u = 0.0
-		# Minimize derivative to maximize descent rate
-		elif self.new_target and self.set_point < current:
-			self.derv = 0.0
 		else:
 			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
 			if self.new_target and abs(error) <= 3:
 				self.new_target = False
 
-			# Reset integral term if error is outside stable window to avoid windup
-			if abs(error) > self.stable_window:
+			# Reset integral if the system is not within stable window or has not reached halfway to the set point within 3 cycles. Prevents overshoots on small set point changes.
+			if (abs(error) > self.stable_window) or (self.new_target and current_time - self.last_set_time >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2):
 				self.inter = 0.0
 
-			# Reset derivative term if error is outside PB/2
-			if abs(error) > self.pb / 2:
+			# Minimize derivative to maximize descent rate when setting new lower Set Point
+			if (self.new_target and self.set_point < current) or (abs(error) > self.pb / 2):
 				self.derv = 0.0
 		
 			# P
@@ -119,15 +118,6 @@ class Controller(ControllerBase):
 			# I
 			self.inter += error * dt
 			
-			# Reset inter if system has not reached halfway to the set point. This keeps small set point changes from causing overshoots.
-			if 0 > self.p > 1 or (self.new_target and (current_time - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2):
-				self.inter = 0.0
-
-			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
-			if self.new_target and abs(error) <=3:
-				self.inter = 0.0
-				self.new_target = False
-
 			self.i = self.ki * self.inter
 			self.i = max(self.i, -self.center)
 			self.i = min(self.i, self.center)
