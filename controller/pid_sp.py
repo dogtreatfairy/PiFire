@@ -108,7 +108,7 @@ class Controller(ControllerBase):
 			predicted_error = error
 	
 		# Determine output
-		if predicted_error < -self.pb:
+		if predicted_error < -self.pb / 2:
 			self.u = 1.0
 		# The second half of this OR statement allows the controller to fall to the set point without bouncing the temp off of it.
 		elif (predicted_error > self.stable_window) or (self.new_target and self.set_point < current):
