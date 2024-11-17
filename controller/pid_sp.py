@@ -102,19 +102,15 @@ class Controller(ControllerBase):
 		# Predict future temperature and error
 		predicted_temp = current + (self.roc * self.theta) * (1 - math.exp(-dt / self.tau))
 		predicted_error = predicted_temp - self.set_point
-
-		# Disable Smith Predictor within stable window & not self.new_target removed
-		#if abs(error) <= self.stable_window:
-			#predicted_error = error
 	
 		# Determine output
 		if predicted_error < -self.pb:
 			self.u = 1.0
 		# If overshooting, minimize output
-		elif (predicted_error > self.stable_window):
+		elif predicted_error > self.stable_window:
 			self.u = 0.0
 		# Minimize derivative to maximize descent rate
-		elif (self.new_target and self.set_point < current):
+		elif self.new_target and self.set_point < current:
 			self.derv = 0.0
 		else:
 			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
@@ -165,7 +161,7 @@ class Controller(ControllerBase):
 		self.inter = 0.0
 		self.derv = 0.0
 		self.last_update = time.time()
-		self.last_set_time = time.time()
+		self.last_set_time = self.last_update
 		self.start_change_temp = self.last
 		self.new_target = True
 		# Dynamically set self.center depending on set_point. Higher centers are needed to achieve higher temps, lower centers for lower temps.
@@ -175,7 +171,10 @@ class Controller(ControllerBase):
 			else:
 				self.center = set_point * self.center_factor * 1.2
 		elif self.units == "C":
-			self.center = set_point * self.center_factor * 2.3
+			if set_point <= 115:
+				self.center = (set_point * 9/5 + 32) * self.center_factor
+			else:
+				self.center = (set_point * 9/5 + 32) * self.center_factor * 1.2
     
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)

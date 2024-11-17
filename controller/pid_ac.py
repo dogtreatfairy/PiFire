@@ -80,7 +80,8 @@ class Controller(ControllerBase):
 
 	def update(self, current):
 		# Elapsed time since last update
-		dt = time.time() - self.last_update
+		current_time = time.time()
+		dt = current_time - self.last_update
 		
 		# Fix self.last being set to 0.0 on set point change
 		if self.last == 0.0:
@@ -90,11 +91,15 @@ class Controller(ControllerBase):
 		if not self.set_point == 0.0:
 			error = current - self.set_point
 
-		# Determine control output based on predicted error
+		# Determine output
 		if error < -self.pb:
 			self.u = 1.0
+		# If overshooting, minimize output
 		elif error > self.stable_window:
 			self.u = 0.0
+		# Minimize derivative to maximize descent rate
+		elif self.new_target and self.set_point < current:
+			self.derv = 0.0
 		else:
 			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
 			if self.new_target and abs(error) <= 3:
@@ -115,7 +120,7 @@ class Controller(ControllerBase):
 			self.inter += error * dt
 			
 			# Reset inter if system has not reached halfway to the set point. This keeps small set point changes from causing overshoots.
-			if 0 > self.p > 1 or (self.new_target and (time.time() - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2):
+			if 0 > self.p > 1 or (self.new_target and (current_time - self.last_set_time) >= self.cycle_time * 3 and abs(error) <= abs(self.start_change_temp - self.set_point) / 2):
 				self.inter = 0.0
 
 			# Reset integral term when current temperature first reaches or exceeds set point after a set point change
@@ -137,7 +142,7 @@ class Controller(ControllerBase):
 		# Update for next cycle
 		self.error = error
 		self.last = current
-		self.last_update = time.time()
+		self.last_update = current_time
 
 		return self.u
 
@@ -147,7 +152,7 @@ class Controller(ControllerBase):
 		self.inter = 0.0
 		self.derv = 0.0
 		self.last_update = time.time()
-		self.last_set_time = time.time()
+		self.last_set_time = self.last_update
 		self.start_change_temp = self.last
 		self.new_target = True
 		# Dynamically set self.center depending on set_point. Higher centers are needed to achieve higher temps, lower centers for lower temps.
@@ -157,7 +162,10 @@ class Controller(ControllerBase):
 			else:
 				self.center = set_point * self.center_factor * 1.2
 		elif self.units == "C":
-			self.center = set_point * self.center_factor * 2.3
+			if set_point <= 115:
+				self.center = (set_point * 9/5 + 32) * self.center_factor
+			else:
+				self.center = (set_point * 9/5 + 32) * self.center_factor * 1.2
     
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)
