@@ -103,9 +103,9 @@ class Controller(ControllerBase):
 		predicted_temp = current + (self.roc * self.theta) * (1 - math.exp(-dt / self.tau))
 		predicted_error = predicted_temp - self.set_point
 
-		# Disable Smith Predictor within stable window
-		#if abs(error) <= self.stable_window and not self.new_target:
-			#predicted_error = error
+		# Disable Smith Predictor within stable window & not self.new_target removed
+		if abs(error) <= self.stable_window:
+			predicted_error = error
 	
 		# Determine output
 		if predicted_error < -self.pb / 2:
@@ -122,13 +122,12 @@ class Controller(ControllerBase):
 				self.new_target = False
 	
 			# Reset integral term if error is outside stable window to avoid windup
-			#if abs(error) > self.stable_window:
-				#self.inter = 0.0
+			if abs(error) > self.stable_window:
+				self.inter = 0.0
 	
 			# Reset derivative term if error is outside PB/2
 			if abs(error) > self.pb / 2:
 				self.derv = 0.0
-				self.inter = 0.0
 	
 			# P
 			self.p = self.kp * predicted_error + self.center
