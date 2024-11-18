@@ -23,11 +23,16 @@ class ProbesMain:
 
 	def __init__(self, probe_map, units, disable=False):
 		self.errors = []
+	def __init__(self, probe_map, units, disable=False):
+		self.errors = []
 		self.logger = logging.getLogger("control")
+		self.units = units
+		self.disable = disable 
 		self.units = units
 		self.disable = disable 
 		self.probe_devices = probe_map['probe_devices']
 		self.probe_info = probe_map['probe_info']
+		self.device_info_list = []
 		self.device_info_list = []
 		self._setup_probe_devices(self.probe_devices)
 	
@@ -36,6 +41,11 @@ class ProbesMain:
 		self.probe_device_list = []
 		for device in probe_devices:
 			try: 
+				if not self.disable:
+					modulename = device['module']
+				else: 
+					modulename = 'disabled'
+				devicename = device['device']
 				if not self.disable:
 					modulename = device['module']
 				else: 
@@ -51,11 +61,20 @@ class ProbesMain:
 					f'Please run the configuration wizard again from the admin panel to fix this issue. ' 
 				self.errors.append(error_event)
 				self.logger.error(error_event)
+				newmodule = importlib.import_module('probes.disabled')
+				device['module'] = 'disabled'
+				error_event = f'An error occurred loading the [{modulename}] probe module for [{devicename}]. '\
+					f'PiFire will not display probe data for this device ({devicename}). ' \
+					f'This sometimes means that the hardware is not connected properly, or the module is not configured. ' \
+					f'Please run the configuration wizard again from the admin panel to fix this issue. ' 
+				self.errors.append(error_event)
+				self.logger.error(error_event)
 			
 			'''
 			Send the probe information and the device information to the device module 
 			'''
 			instance = newmodule.ReadProbes(self.probe_info, device, self.units)
+			self.device_info_list.append(device)  # Build list of device information
 			self.device_info_list.append(device)  # Build list of device information
 
 			'''

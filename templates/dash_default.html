@@ -10,123 +10,51 @@
 
 {% block content %}
 <!-- Card Section -->
-<div class="row"> <!-- Probe Cards -->
-	{% for probe in settings['probe_settings']['probe_map']['probe_info'] %}
-		{% if probe['type'] != 'Aux' %}
-		<div id="card_{{ probe['label'] }}" class="col-lg-4 col-md-6 col-sm-12" 
-			{% if probe['label'] in dash_data['custom']['hidden_cards'] or not probe['enabled'] %}
-				style="display:none" 
+<div class="mx-auto">
+	<div class="cards-wrapper mx-auto">
+		<div class="grid-sizer"></div> <!-- Add this line -->
+		<!-- Probe Cards -->
+		{% for probe in settings['probe_settings']['probe_map']['probe_info'] %}
+			{% if probe['enabled'] and probe['type'] != 'Aux' %}
+				<div id="card_{{ probe['label'] }}" class="grid-item" 
+					{% if probe['label'] in dash_data['custom']['hidden_cards'] %}
+						style="display:none"
+					{% endif %}>
+					<!-- Card for Probe Data -->
+					{{ render_probe_card(probe, settings, control) }}
+				</div>
 			{% endif %}
-			{% if probe['enabled'] %}
-				data-enabled="true"
+		{% endfor %}
+		<!-- Status Card -->
+		<div id="card_status" class="grid-item" 
+			{% if 'status' in dash_data['custom']['hidden_cards'] %}
+				style="display:none;"
 			{% else %}
-				data-enabled="false"
-			{% endif %}
-			>
-			<br>
-			<!-- Card for Probe Data -->
-			{{ render_probe_card(probe, settings, control, probe['enabled']) }}
-			<br>
+			{% endif %}>
+			{{ render_status_card(settings) }}
 		</div>
-		{% endif %}
-	{% endfor %}
-		<div id="card_status" class="col-lg-4 col-md-6 col-sm-12" 
-		{% if 'status' in dash_data['custom']['hidden_cards'] %}
-			style="display:none"
-		{% endif %}>
-		<br>
-		{{ render_status_card(settings) }}
-		<br>
+		<!-- Time Elapsed Card -->
+		<div id="card_time_elapsed" class="grid-item" 
+			{% if 'time_elapsed' in dash_data['custom']['hidden_cards'] %}
+				style="display:none"
+			{% endif %}>
+				{{ render_time_elapsed_card() }}
 		</div>
-		<div id="card_time_elapsed" class="col-lg-4 col-md-6 col-sm-12" 
-		{% if 'time_elapsed' in dash_data['custom']['hidden_cards'] %}
-			style="display:none"
-		{% endif %}>
-		<br>
-		{{ render_time_elapsed_card() }}
-		<br>
-	</div>
-</div> <!-- End of Row -->
-
-<br>
-<br>
-
-<!-- Navigation Button Row -->
-<div class="row">
-	<div class="col">
-		<a href="/history" class="btn btn-outline-primary btn-block shadow" role="button"><i class="fas fa-chart-line"></i> Status & History Graphs</a>
-	</div> <!-- End of Column -->
-</div> <!-- End of Row -->
-<br>
-<br>
-<br>
-<br>
-
-<!-- Server Reload Modal -->
-<div class="modal" id="serverReloadModal">
-	<div class="modal-dialog">
-	  <div class="modal-content">
-  
-		<!-- Modal Header -->
-		<div class="modal-header">
-		  <h4 class="modal-title">Server Change Detected</h4>
-		  <button type="button" class="close" data-dismiss="modal">&times;</button>
-		</div>
-  
-		<!-- Modal body -->
-		<div class="modal-body">
-		  A server side change was detected (probably some probes got reconfigured) and needs to reload this page. <br>
-		  <br>
-		  Please click reload below to reload the page.
-		</div>
-  
-		<!-- Modal footer -->
-		<div class="modal-footer">
-		  <button type="button" class="btn btn-danger" id="reloadPage" data-dismiss="modal">Reload</button>
-		</div>
-  
-	  </div>
-	</div>
-</div> <!-- End Server Reload Modal -->
-
-<!-- Server Offline Modal -->
-<div class="modal" id="serverOfflineModal">
-	<div class="modal-dialog">
-	  <div class="modal-content">
-  
-		<!-- Modal Header -->
-		<div class="modal-header">
-		  <h4 class="modal-title">Server is Unresponsive / Offline</h4>
-		  <button type="button" class="close" data-dismiss="modal">&times;</button>
-		</div>
-  
-		<!-- Modal body -->
-		<div class="modal-body">
-		  The server is unresponsive/offline and hasn't responded to recent requests. Check that your system is on and connected to the network.<br>
-		</div>
-  
-		<!-- Modal footer -->
-		<div class="modal-footer">
-		  <button type="button" class="btn btn-danger" id="serverOffline" data-dismiss="modal" onclick="dashClearErrorCounter();">Wait Longer</button>
-		</div>
-  
-	  </div>
-	</div>
-</div> <!-- End Server Offline Modal -->
+	</div> <!-- End of Row -->
+</div> <!-- End of Cards Wrapper -->
 
 <!-- Dash Gear Icon for Dash Settings -->
 <span class="gear-icon" onclick="dashSettings();">
 	<i class="fa-solid fa-gear"></i>
 </span>
-
 <!-- Dashboard Settings Modal -->
-<div class="modal" id="dashSettingsModal">
-	<div class="modal-dialog modal-xl">
+<div class="modal" tabindex="-1" id="dashSettingsModal" aria-labelledby="dashSettingsModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialogue-centered">
 	  <div class="modal-content">
   
 		<!-- Modal Header -->
 		<div class="modal-header">
-		  <h4 class="modal-title">Dashboard Settings</h4>
+		  <h4 class="modal-title" id="dashSettingsModalLabel">Dashboard Settings</h4>
 		  <button type="button" class="close" data-dismiss="modal">&times;</button>
 		</div>
   
@@ -217,7 +145,6 @@
 		<div class="modal-footer">
 			<button type="button" class="btn btn-secondary" data-dismiss="modal">Dismiss</button>
 		</div>
-  
 	  </div>
 	</div>
 </div> <!-- End Server Reload Modal -->
@@ -228,7 +155,7 @@
 {% from "_macro_control_panel.html" import render_container %}
 {{ render_container(settings, control) }}
 <!-- End Control Panel -->
-{% endblock %}
+{% endblock %} 
 
 {% block controlpanel_scripts %}
 <!-- Control Panel JS -->
@@ -236,11 +163,48 @@
 {% endblock %}
 
 {% block scripts %}
-	<script> 
-		var units = "{{ settings['globals']['units'] }}";
-		var dashDataStruct = {{ dash_data|tojson }};
-		//console.log(dashDataStruct);
-	</script>
-	<script src="{{ url_for('static', filename='js/dash_default.js') }}"></script>
-	<script src="{{ url_for('static', filename='js/gauge.js') }}"></script>
+<script> 
+	var units = "{{ settings['globals']['units'] }}";
+	var dashDataStruct = {{ dash_data|tojson }};
+	//console.log(dashDataStruct);
+</script>
+<script src="{{ url_for('static', filename='js/dash_default.js') }}"></script>
+<script src="{{ url_for('static', filename='js/gauge.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/masonry.pkgd.min.js') }}"></script>
+
+<script>
+	var elem;
+	var msnry;
+
+	window.onload = function() {
+		elem = document.querySelector('.cards-wrapper');
+		msnry = new Masonry( elem, {
+			itemSelector: '.grid-item',
+			gutter: 20,
+			fitWidth: false
+		});
+	}
+
+	function recalculateMasonryLayout() {
+		setTimeout(function() {
+			msnry.reloadItems();
+			msnry.layout();
+		}, 300);
+	}
+
+	// Listen for changes in the viewport size
+	window.addEventListener('resize', function() {
+		recalculateMasonryLayout();
+	});
+
+	// Listen for changes in device orientation
+	window.addEventListener('orientationchange', function() {
+		recalculateMasonryLayout();
+	});
+
+
+</script>
+
+
 {% endblock %}

@@ -2,17 +2,22 @@
 
 # Automatic Installation Script
 # Many thanks to the PiVPN project (pivpn.io) for much of the inspiration for this script
-# Run from https://raw.githubusercontent.com/nebhead/pifire/master/auto-install/install.sh
+# Run from https://raw.githubusercontent.com/dogtreatfairy/pifire/development/auto-install/install.sh
 #
 # Install with this command (from your Pi):
 #
-# curl https://raw.githubusercontent.com/nebhead/pifire/master/auto-install/install.sh | bash
+# curl https://raw.githubusercontent.com/dogtreatfairy/pifire/development/auto-install/install.sh | bash
 #
 # NOTE: Pre-Requisites to run Raspi-Config first.  See README.md.
+
+APT_PACKAGES=("python3-dev" "python3-pip" "python3-venv" "python3-rpi.gpio" "python3-scipy" "nginx" "git" "supervisor" "ttf-mscorefonts-installer" "redis-server" "libatlas-base-dev" "libopenjp2-7" "rpi-hardware-pwm")
+GIT_REPO=("https://github.com/dogtreatfairy/pifire")
+GIT_BRANCH=("development")
 
 # Must be root to install
 if [[ $EUID -eq 0 ]];then
     echo "You are root."
+    echo ""
 else
     echo "SUDO will be used for the install."
     # Check if it is actually installed
@@ -39,8 +44,87 @@ r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
 # Display the welcome dialog
-whiptail --msgbox --backtitle "Welcome" --title "PiFire Automated Installer" "This installer will transform your Single Board Computer into a connected Smoker Controller.  NOTE: This installer is intended to be run on a fresh install of Raspberry Pi OS Lite 32-Bit Bullseye or later." ${r} ${c}
+# Check if /usr/local/bin/pifire exists
+if [ -d "/usr/local/bin/pifire" ]; then
+    DESCRIPTION="This installer will transform your Single Board Computer into a connected Smoker Controller.  NOTE: This installer is intended to be run on a fresh install of Raspberry Pi OS Lite 32-Bit Bullseye or later."
+    OPTION=$(whiptail --title "PiFire-DTFE (Dev) Installer" --menu "$DESCRIPTION\n\nChoose your option" 20 78 4 \
+    "Re-Install" "Purge and re-install PiFire" \
+    "Uninstall" "Remove PiFire" \
+    "Exit" "Exit installer" 3>&1 1>&2 2>&3)
 
+    exitstatus=$?
+    if [ $exitstatus = 0 ]; then
+        if [ "$OPTION" = "Exit" ]; then
+            exit 0
+        elif [ "$OPTION" = "Uninstall" ]; then
+            # Ask if the user wants to keep user settings
+            if (whiptail --title "Keep User Settings" --yesno "Do you want to save user settings?" 10 60) then
+                sudo cp /usr/local/bin/pifire/settings.json /usr/local/bin/settings-bak.json
+                echo ""
+                echo -e "User Settings - \e[32mSAVED\e[0m"
+                echo ""
+            fi
+
+            # Uninstall PYTHON_MODULES in the virtual environment
+            cd /usr/local/bin/pifire || { echo "Failed to change directory"; exit 1; }
+            source bin/activate || { echo "Failed to activate virtual environment"; exit 1; }
+            pip freeze | xargs pip uninstall -y || { echo "Failed to uninstall pip packages"; exit 1; }
+            deactivate || { echo "Failed to deactivate virtual environment"; exit 1; }
+            cd / || { echo "Failed to change directory"; exit 1; }
+
+            for pkg in "${APT_PACKAGES[@]}"; do
+                sudo apt-get purge -y $pkg
+                
+            done
+
+            sudo rm -rf /usr/local/bin/pifire
+
+            # Ask if the user wants to remove Samba
+            if (whiptail --title "Remove Samba" --yesno "Do you want to remove Samba?" 10 60) then
+                sudo apt-get purge -y samba
+            fi
+
+            sudo apt autoremove -y
+            sudo apt autoclean -y
+
+            exit 0
+        elif [ "$OPTION" = "Re-Install" ]; then
+            # Ask if the user wants to keep user settings
+            if (whiptail --title "Keep User Settings" --yesno "Do you want to keep user settings?" 10 60) then
+                sudo cp /usr/local/bin/pifire/settings.json /usr/local/bin/settings-bak.json
+                echo ""
+                echo -e "User Settings - \e[32mSAVED\e[0m"
+                echo ""                
+            fi
+
+            # Uninstall PYTHON_MODULES in the virtual environment
+            cd /usr/local/bin/pifire || { echo "Failed to change directory"; exit 1; }
+            source bin/activate || { echo "Failed to activate virtual environment"; exit 1; }
+            pip freeze | xargs pip uninstall -y || { echo "Failed to uninstall pip packages"; exit 1; }
+            deactivate || { echo "Failed to deactivate virtual environment"; exit 1; }
+            cd / || { echo "Failed to change directory"; exit 1; }
+
+            for pkg in "${APT_PACKAGES[@]}"; do
+                sudo apt-get purge -y $pkg
+            done
+
+            sudo apt autoremove -y
+            sudo apt autoclean -y
+
+            sudo rm -rf /usr/local/bin/pifire
+
+            # Ask if the user wants to remove Samba
+            if (whiptail --title "Remove Samba" --yesno "Do you want to remove Samba?" 10 60) then
+                sudo apt-get purge -y samba
+            fi
+        fi
+    else
+        DESCRIPTION="This installer will transform your Single Board Computer into a connected Smoker Controller.  NOTE: This installer is intended to be run on a fresh install of Raspberry Pi OS Lite 32-Bit Bullseye or later."
+        OPTION=$(whiptail --title "PiFire-DTFE (Dev) Installer" --menu "$DESCRIPTION\n\nChoose your option" 20 78 2 \
+        "Install" "Install PiFire" \
+        "Exit" "Exit installer" 3>&1 1>&2 2>&3)
+    fi
+fi
 # Starting actual steps for installation
 clear
 echo "*************************************************************************"
@@ -71,7 +155,9 @@ echo "**                                                                     **"
 echo "**      Installing Dependencies... (This could take several minutes)   **"
 echo "**                                                                     **"
 echo "*************************************************************************"
-$SUDO apt install python3-dev python3-pip python3-venv python3-rpi.gpio python3-scipy nginx git supervisor ttf-mscorefonts-installer redis-server gfortran libatlas-base-dev libopenblas-dev liblapack-dev libopenjp2-7 -y
+for pkg in "${APT_PACKAGES[@]}"; do
+    sudo apt install -y $pkg
+done
 
 # Grab project files
 clear
@@ -81,17 +167,10 @@ echo "**      Cloning PiFire from GitHub...                                  **"
 echo "**                                                                     **"
 echo "*************************************************************************"
 cd /usr/local/bin
-
-# Check if -dev option is used
-if [ "$1" = "-dev" ]; then
-    echo "Cloning development branch..."
-    # Replace the below command to fetch development branch
-    $SUDO git clone --depth 1 --branch development https://github.com/nebhead/pifire
-else
-    echo "Cloning main branch..."
-    # Use a shallow clone to reduce download size
-    $SUDO git clone --depth 1 https://github.com/nebhead/pifire
-fi
+# Use a shallow clone to reduce download size
+#$SUDO git clone --depth 1 https://github.com/dogtreatfairy/pifire
+# Replace the below command to fetch development branch
+$SUDO git clone --depth 1 --branch $GIT_BRANCH $GIT_REPO
 
 # Setup Python VENV & Install Python dependencies
 clear
@@ -185,7 +264,95 @@ fi
 # If supervisor isn't already running, startup Supervisor
 $SUDO service supervisor start
 
-# Rebooting
-whiptail --msgbox --backtitle "Install Complete / Reboot Required" --title "Installation Completed - Rebooting" "Congratulations, the installation is complete.  At this time, we will perform a reboot and your application should be ready.  On first boot, the wizard will guide you through the remaining setup steps.  You should be able to access your application by opening a browser on your PC or other device and using the IP address (or http://[hostname].local) for this device.  Enjoy!" ${r} ${c}
 clear
+echo "*************************************************************************"
+echo "**                                                                     **"
+echo "**      Configuring SAMBA Share...                                     **"
+echo "**                                                                     **"
+echo "*************************************************************************"
+
+SAMBA=$(whiptail --title "Install SAMBA Server?" --yesno "Do you want to install the SAMBA server and configure a share?" 8 78 3>&1 1>&2 2>&3)
+
+exitstatus=$?
+if [ $exitstatus = 0 ]; then
+    sudo apt-get install -y samba
+
+    # Create the directory if it doesn't exist
+    sudo mkdir -p /usr/local/bin/pifire
+
+    # Get list of users
+    users=$(cut -d: -f1 /etc/passwd)
+
+    # Convert users to array
+    users_array=($users)
+
+    # Create menu options
+    menu_options=()
+    for user in "${users_array[@]}"; do
+        menu_options+=("$user" "")
+    done
+
+    # Prompt for Samba username
+    smb_user=$(whiptail --title "User Selection" --menu "Select a user for the Samba share:" 20 78 10 "${menu_options[@]}" 3>&1 1>&2 2>&3)
+
+    # Add the user to the Samba password database
+    for i in {1..3}
+    do
+        sudo pdbedit -a -u $smb_user
+        if [ $? -eq 0 ]; then
+            break
+        else
+            echo "Passwords do not match. Please try again."
+        fi
+    done
+
+    if [ $i -eq 3 ]; then
+        echo "Failed to set Samba password after 3 attempts. Continuing without setting password."
+    fi
+
+    # Set up Samba configuration
+    while true; do
+        if echo "[pifire]" | sudo tee -a /etc/samba/smb.conf &&
+           echo "comment = PiFire Share" | sudo tee -a /etc/samba/smb.conf &&
+           echo "path = /usr/local/bin/pifire" | sudo tee -a /etc/samba/smb.conf &&
+           echo "browsable = yes" | sudo tee -a /etc/samba/smb.conf &&
+           echo "valid users = $smb_user" | sudo tee -a /etc/samba/smb.conf &&
+           echo "read only = no" | sudo tee -a /etc/samba/smb.conf &&
+           echo "create mask = 0664" | sudo tee -a /etc/samba/smb.conf &&
+           echo "directory mask = 0775" | sudo tee -a /etc/samba/smb.conf; then
+            break
+        else
+            echo "Failed to write to smb.conf. Try again? (y/n) "
+            read choice
+            case "$choice" in
+                y|Y ) continue;;
+                * ) echo "Continuing without updating smb.conf"; break;;
+            esac
+        fi
+    done
+
+    # Restart Samba services
+    sudo systemctl restart smbd nmbd
+fi
+
+sleep 1
+
+
+clear
+# Rebooting
+
+echo "Congratulations, the installation is complete.  At this time, we will perform a reboot and your application should be ready.  On first boot, the wizard will guide you through the remaining setup steps.  You should be able to access your application by opening a browser on your PC or other device and using the IP address (or http://[hostname].local) for this device.  Enjoy!"
+echo ""
+
+echo "Press any key to cancel."
+echo "Rebooting in:"
+for i in 5 4 3 2 1; do
+    echo "$i..."
+    read -r -s -n 1 -t 1 key
+    if [ $? -eq 0 ]; then
+        echo "Reboot cancelled"
+        exit 0
+    fi
+done
+
 $SUDO reboot

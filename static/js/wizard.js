@@ -12,46 +12,17 @@ function scrollTop() {
 
 // On Document Ready
 $(document).ready(function() {
-	// === Setup Pill Navigation Buttons ===
-	$("#platformBtn").click(function() {
-		$("#v-pills-platform-tab").trigger('click');
-		scrollTop()
+    // === Setup Pill Navigation Buttons ===
+	$('.nav-link').on('click', function(){
+        $('#wizardNav').collapse('hide'); 
+    });
+
+	$('.nextBtn').click(function(){
+		$('.nav-item > a.nav-link.active').parent().next('li').find('a').trigger('click');
 	});
-	$("#platformBack").click(function() {
-		$("#v-pills-start-tab").trigger('click');
-		scrollTop()
-	});
-	$("#probesBtn").click(function() {
-		$("#v-pills-probes-tab").trigger('click');
-		scrollTop()
-	});
-	$("#probesBack").click(function() {
-		$("#v-pills-platform-tab").trigger('click');
-		scrollTop()
-	});
-	$("#displayBtn").click(function() {
-		$("#v-pills-display-tab").trigger('click');
-		scrollTop()
-	});
-	$("#displayBack").click(function() {
-		$("#v-pills-probes-tab").trigger('click');
-		scrollTop()
-	});
-	$("#distanceBtn").click(function() {
-		$("#v-pills-distance-tab").trigger('click');
-		scrollTop()
-	});
-	$("#distanceBack").click(function() {
-		$("#v-pills-display-tab").trigger('click');
-		scrollTop()
-	});
-	$("#finishtabBtn").click(function() {
-		$("#v-pills-finish-tab").trigger('click');
-		scrollTop()
-	});
-	$("#finishtabBack").click(function() {
-		$("#v-pills-distance-tab").trigger('click');
-		scrollTop()
+	
+	$('.backBtn').click(function(){
+		$('.nav-item > a.nav-link.active').parent().prev('li').find('a').trigger('click');
 	});
 	// Wizard complete button will submit the form
 	$("#finishBtn").click(function() {

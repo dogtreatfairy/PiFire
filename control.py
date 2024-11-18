@@ -580,7 +580,7 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 			control['distance_update'] = False
 			write_control(control, direct_write=True, origin='control')
 
-		# Check hopper level when requested or every 300 seconds
+		# Check hopper level when requested or every 60 seconds
 		if control['hopper_check'] or (now - hopper_toggle_time) > 60:
 			pelletdb = read_pellet_db()
 			override = False 
@@ -661,7 +661,7 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 				control['manual']['change'] = None
 				control['manual']['output'] = None
 				write_control(control, direct_write=True, origin='control')
-
+		
 		# Change Auger State based on Cycle Time
 		if mode in ('Startup', 'Reignite', 'Smoke', 'Hold', 'Prime'):
 			if manual_override['auger'] < now:
