@@ -163,7 +163,6 @@ function update_recipe_pause() {
 function update_splus() {
     // Update splus buttons if splus_state changed
     console.log('Detected SPLUS change.')
-
     if ((cpMode == 'Smoke') || (cpMode == 'Hold')) {
         console.log('** Updating SPLUS. **')
         if (splus_state == true) {
@@ -174,27 +173,23 @@ function update_splus() {
             document.getElementById("splus_btn").className = "btn btn-outline-primary border border-secondary text-secondary shadow";
         };
     };
-
     last_splus_state = splus_state;
 };
 
 function update_setpoint() {
     // Update Primary Setpoint if it has changed
     console.log('Detected Primary SETPOINT change.')
-
     if (cpMode == 'Hold') {
         $("#hold_active_btn").html(cp_primary_setpoint + "°" + cp_units);
     } else {
         $("#hold_active_btn").html("<i class=\"fas fa-crosshairs\"></i>");
     };
-
     last_primary_setpoint = cp_primary_setpoint;
 };
 
 function update_pwm() {
     // Update PWM button if pwm_control changed
     console.log('Detected PWM change.')
-
     if (cpMode == 'Hold') {
         if (pwm_control == true) {
             $("#pwm_control_btn").show();
@@ -215,12 +210,6 @@ function check_state() {
         url : '/api/control',
         type : 'GET',
         success : function (control) {
-            // Relevant data returned from call:
-            //  data.mode
-            //  data.splus
-            //  data.pwm_control
-            //  data.primary_setpoint
-            
             if (control.control.mode == 'Recipe') {
                 cpMode = control.control.recipe.step_data.mode;
                 cpRecipeStep = control.control.recipe.step;
@@ -233,11 +222,9 @@ function check_state() {
                 cpRecipeStep = 0;
                 cpRecipeMode = false;
             };
-            
             splus_state = control.control.s_plus;
             pwm_control = control.control.pwm_control;
             cp_primary_setpoint = control.control.primary_setpoint;
-
             if((cpRecipeMode) && (cpRecipeStep != cpRecipeLastStep)) {
                 update_recipe_mode();
             } else if((!cpRecipeMode) && (cpMode != cpLastMode)) {
@@ -265,8 +252,6 @@ function check_current() {
         url : '/api/current',
         type : 'GET',
         success : function (current) {
-            // Relevant data returned from call:
-            //  data.status.units
             cp_units = current.status.units;
         }
     });
@@ -285,7 +270,6 @@ function cpRecipeUnpause() {
 };
 
 function cpStartupCheck(enable) {
-    // Check if user has bypassed startup_enable
     if (enable == 'False') {
         cpStartup();
     } else {
@@ -303,17 +287,59 @@ function cpStartup() {
     api_post(postdata);
 };
 
-// Main Loop
+function cpShutdownCheck(enable) {
+    if (enable == 'False') {
+        cpShutdown();
+    } else {
+        $('#shutdownModal').modal('show');
+    };
+};
 
+function cpShutdown() {
+    $('#shutdownModal').modal('hide');
+    var postdata = { 
+        'updated' : true,
+        'mode' : 'Shutdown'	
+    };
+    console.log('Requesting Shutdown.');
+    api_post(postdata);
+};
+
+function cpStopCheck(enable) {
+    if (enable == 'False') {
+        cpStop();
+    } else {
+        $('#stopModal').modal('show');
+    };
+};
+
+function cpStop() {
+    $('#stopModal').modal('hide');
+    var postdata = { 
+        'updated' : true,
+        'mode' : 'Stop'	
+    };
+    console.log('Requesting Stop.');
+    api_post(postdata);
+};
+
+// Main Loop
 $(document).ready(function(){
     check_current();
     
     // Setup Button Listeners
-
     $('#startupModal').on('shown.bs.modal', function (event) {
         $('#startupSlider').val(0);
     });
 
+    // Add listener for setpointModal to auto-select text
+    $('#setpointModal').on('shown.bs.modal', function () {
+        var input = document.getElementById('tempOutputId');
+        if (input) {
+            input.focus();
+            input.select();
+        }
+    });
 
     $("#monitor_btn").click(function(){
         var postdata = { 
@@ -325,35 +351,23 @@ $(document).ready(function(){
     });
 
     $("#shutdown_active_btn, #cp_recipe_shutdown_btn").click(function(){
-        var postdata = { 
-            'updated' : true,
-            'mode' : 'Shutdown'	
-        };
-        console.log('Requesting Shutdown.');
-        api_post(postdata);
+        cpShutdownCheck('True');
     });
 
     $("#stop_active_btn, #stop_inactive_btn").click(function(){
-        var postdata = { 
-            'updated' : true,
-            'mode' : 'Stop'	
-        };
-        console.log('Requesting Stop.');
-        api_post(postdata);
+        cpStopCheck('True');
     });
 
     $("#smoke_inactive_btn, #smoke_active_btn").click(function(){
         var postdata = { 
             'updated' : true,
             'mode' : 'Smoke'
-            //'s_plus' : splusDefault
         };
         console.log('Requesting Smoke.');
         api_post(postdata);
     });
 
     $("#splus_btn").click(function(){
-        // Toggle based on current value of this button
         if(splus_state == true) {
             var postdata = { 's_plus' : false };
             console.log('splus_state = ' + splus_state + ' Requesting false.');
@@ -365,7 +379,6 @@ $(document).ready(function(){
     });
 
     $("#pwm_control_btn").click(function(){
-        // Toggle based on current value of this button
         if(pwm_control == true) {
             var postdata = { 'pwm_control' : false };
             console.log('pwm_control_state = ' + pwm_control + ' Requesting false.');
@@ -381,7 +394,6 @@ $(document).ready(function(){
         var postdata = { 
             'updated' : true,
             'mode' : 'Hold',
-            //'s_plus' : splusDefault,
             'primary_setpoint' : setPoint 
         };
         console.log('Requesting Hold at: ' + setPoint);
@@ -389,13 +401,10 @@ $(document).ready(function(){
     });
 
     $("#cp_recipe_next_step_btn").click(function(){
-        //console.log('You clicked the button!');
         if(cpRecipePause && cpRecipeTriggered) {
-            // If the recipe was paused, then follow the unpause path
             console.log('Unpausing to Next Step.');
             cpRecipeUnpause();
         } else {
-            // If the user is requesting next step, force next step
             console.log('Requesting Next Step.');
             var postdata = { 
                 'updated' : true
