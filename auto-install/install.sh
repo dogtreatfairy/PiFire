@@ -6,7 +6,7 @@
 #
 # Install with this command (from your Pi):
 #
-# curl https://raw.githubusercontent.com/nebhead/pifire/master/auto-install/install.sh | bash
+# curl https://raw.githubusercontent.com/dogtreatfairy/pifire/nh-release-1.9/auto-install/install.sh | bash
 #
 # NOTE: Pre-Requisites to run Raspi-Config first.  See README.md.
 
@@ -83,15 +83,10 @@ echo "*************************************************************************"
 cd /usr/local/bin
 
 # Check if -dev option is used
-if [ "$1" = "-dev" ]; then
-    echo "Cloning development branch..."
-    # Replace the below command to fetch development branch
-    $SUDO git clone --depth 1 --branch development https://github.com/nebhead/pifire
-else
-    echo "Cloning main branch..."
-    # Use a shallow clone to reduce download size
-    $SUDO git clone --depth 1 https://github.com/nebhead/pifire
-fi
+echo "Cloning development branch..."
+# Replace the below command to fetch development branch
+$SUDO git clone --depth 1 --branch nh-release-1.9 https://github.com/dogtreatfairy/pifire
+
 
 # Setup Python VENV & Install Python dependencies
 clear
