@@ -1,114 +1,168 @@
 {% macro render_container(settings, control) %} 
 <!-- Glowing Effect -->
 <style>
-    @keyframes glowing {
-      0% {
-        background-color: #17a2b8;
-        box-shadow: 0 0 5px #17a2b8;
-      }
-      50% {
-        background-color: #49e7ff;
-        box-shadow: 0 0 20px #49e7ff;
-      }
-      100% {
-        background-color: #17a2b8;
-        box-shadow: 0 0 5px #17a2b8;
-      }
-    }
-    .glowbutton {
-      animation: glowing 1000ms infinite;
-    }
-
     .temperature-input {
     font-size: 64px;
     }
-    @media (max-width: 992px) {
+	@media (max-width: 992px) {
         .navbar-bottom {
             padding-bottom: 20px;
+        }
+    }
+    @media (max-width: 576px) {
+        .navbar-bottom {
+            padding-bottom: 0px;
         }
     }
 </style>
 
 <!-- Control Panel -->
 <div class="container" id="cp_container">
-    {% if settings['globals']['page_theme'] == 'dark' %}
-    <nav class="navbar fixed-bottom navbar-light justify-content-center navbar-bottom" style="z-index:1010; background-color: #aaaaaa;">
-    {% else %}
-    <nav class="navbar fixed-bottom navbar-light justify-content-center navbar-bottom" style="z-index:1010; background-color: #dddddd;">
-    {% endif %}
-    <span class="navbar-text">
-
-    <!-- Inactive Toolbar -->
-
-    <div class="btn-toolbar justify-content-center" role="toolbar" id="inactive_group"{% if control['mode'] not in ['Stop', 'Startup', 'Monitor', 'Error']%} style="display:none"{% endif %}>
-        <!-- Prime Group -->
-        <div id="prime_group" class="btn-group mr-2 dropup shadow" role="group" data-toggle="tooltip" data-placement="top" title="Prime the Firepot">
-            <button type="button" class="btn btn-outline-primary border border-secondary dropdown-toggle" id="prime_btn" data-toggle="dropdown" aria-expanded="false">
-                <i class="fas fa-angle-double-right"></i>
-            </button>
-            <div class="dropdown-menu">
-              <!-- Dropdown menu links -->
-              <button class="dropdown-item" type="button" onclick="setPrime(10, 'Stop')">Prime 10g</button>
-              <button class="dropdown-item" type="button" onclick="setPrime(25, 'Stop')">Prime 25g</button>
-              <button class="dropdown-item" type="button" onclick="setPrime(50, 'Stop')">Prime 50g</button>
-              <button class="dropdown-item" type="button" onclick="setPrime(10, 'Startup')">Prime 10g & Startup</button>
-              <button class="dropdown-item" type="button" onclick="setPrime(25, 'Startup')">Prime 25g & Startup</button>
-              <button class="dropdown-item" type="button" onclick="setPrime(50, 'Startup')">Prime 50g & Startup</button>
-            </div>
-        </div>
-        <div id="inactive_core_group" class="btn-group mr-2 shadow" role="group">
-            <button type="button" title="Startup" class="btn btn-outline-success border border-secondary" id="startup_btn" onclick="cpStartupCheck('{{settings['safety']['startup_check']}}');"><i class="fas fa-play"></i></button>
-            <button type="button" data-toggle="tooltip" title="Monitor" class="btn btn-outline-secondary border border-secondary" id="monitor_btn" name="setmodemonitor" value="true"><i class="fas fa-glasses"></i></button>
-            <button type="button" data-toggle="tooltip" title="Smoke Mode" class="btn btn-outline-secondary border border-secondary" id="smoke_inactive_btn" name="setmodesmoke" value="true"{% if control['mode'] not in ['Startup', 'Reignite'] %} style="display:none"{% endif %}><i class="fas fa-cloud"></i></button>
-            <button type="button" data-toggle="modal" data-target="#setpointModal" class="btn btn-outline-secondary border border-secondary" id="hold_inactive_btn"{% if control['mode'] not in ['Startup', 'Reignite'] %} style="display:none"{% endif %}><i class="fas fa-crosshairs"></i></button>
-            <button type="button" data-toggle="tooltip" title="Stop" class="btn btn-outline-secondary border border-secondary" id="stop_inactive_btn" name="setmodestop" value="true" onclick="cpStopCheck('{{settings['safety']['stop_check']}}');"><i class="fas fa-stop"></i></button>
-        </div>
-        <div id="error_group" class="btn-group" role="group" style="display:none">
-            <!-- ERROR Button Indicator -->
-            <button type="button" data-toggle="tooltip" title="Error!" class="btn btn-danger text-yellow" id="error_btn" name="error_btn" value="true"><i class="fas fa-exclamation-triangle"></i></button>
-        </div>
-    </div> <!-- End of Inactive Toolbar -->
-    
-    <!-- Active Toolbar -->
-
-    <div class="btn-toolbar justify-content-center" role="toolbar" id="active_group"{% if control['mode'] not in ['Smoke', 'Hold'] %} style="display:none"{% endif %}>
-        <div id="active_core_group" class="btn-group mr-2 shadow" role="group">
-            <button type="button" data-toggle="tooltip" title="Smoke Mode" class="btn btn-outline-secondary border border-secondary" id="smoke_active_btn" name="setmodesmoke" value="true" ><i class="fas fa-cloud"></i></button>
-            <button type="button" class="btn btn-outline-secondary border border-secondary" id="hold_active_btn" data-toggle="modal" data-target="#setpointModal" ><i class="fas fa-crosshairs"></i></button>
-            <button type="button" data-toggle="tooltip" title="Stop" class="btn btn-outline-secondary border border-secondary" id="stop_active_btn" name="setmodestop" value="true" onclick="cpStopCheck('{{settings['safety']['stop_check']}}');"><i class="fas fa-stop" ></i></button>
-            <button type="button" data-toggle="tooltip" title="Shutdown" class="btn btn-outline-secondary border border-secondary" id="shutdown_active_btn" name="setmodeshutdown" value="true" onclick="cpShutdownCheck('{{settings['safety']['shutdown_check']}}');"><i class="fas fa-flag-checkered"></i></button>
-        </div> <!-- End of Button Group -->
-        <div id="smoke_plus_group" class="btn-group mr-2 shadow" role="group">
-            <!-- Smoke Plus -->
-            <button type="button" data-toggle="tooltip" title="Smoke Plus" 
-            {% if control['s_plus'] %}
-            class="btn btn-success border border-secondary"
-            {% else %}
-            class="btn btn-outline-primary border border-secondary text-secondary"
-            {% endif %}
-            id="splus_btn" name="setmodesmokeplus" value="true"><i class="fas fa-fan"></i></button>
-        </div>
-        <div id="dc_fan_group" class="btn-group mr-2 shadow" role="group"{% if not settings['globals']['dc_fan'] %} style="display:none"{% endif %}>
-            <!-- Temp Fan Control -->
-            <button type="button" data-toggle="tooltip" title="Temp Fan Control" class="btn btn-outline-primary border border-secondary text-secondary" id="pwm_control_btn" name="pwm_control" value="true"><i class="fas fa-tachometer-alt"></i></button>
-        </div>
-    </div> <!-- End of Active Toolbar -->
-   
-    <!-- Recipe Toolbar -->
-    <div class="btn-toolbar justify-content-center" role="toolbar" id="recipe_group"{% if control['mode'] != 'Recipe'  %} style="display:none"{% endif %}>
-        <!-- Recipe Group -->
-        <div id="cp_recipe_group" class="btn-group mr-2 dropup shadow" role="group" data-toggle="tooltip" data-placement="top" title="Goto Recipe">     
-            <button type="button" data-toggle="tooltip" title="Goto Next Step" class="btn btn-info text-white" id="cp_recipe_next_step_btn">
-                <i class="fas fa-step-forward"></i>
-            </button>
-            <a href="/recipes" role="button" data-toggle="tooltip" title="Recipe Step" class="btn btn-outline-info outline-secondary text-secondary" id="cp_recipe_step_btn">
-                Step X
-            </a>
-            <button type="button" data-toggle="tooltip" title="Mode" class="btn btn-info text-white" id="cp_recipe_mode_btn"><i class="fas fa-cloud" ></i></button>
-            <button type="button" data-toggle="tooltip" title="Shutdown" class="btn btn-outline-info outline-secondary text-secondary" id="cp_recipe_shutdown_btn" onclick="cpShutdownCheck('{{settings['safety']['shutdown_check']}}');"><i class="fas fa-flag-checkered"></i></button>
-        </div>
-    </div>
-    </span>
+    <nav class="navbar fixed-bottom navbar-dark bg-dark border-top justify-content-center navbar-bottom" style="z-index:1010">
+		<span class="navbar-text">
+			
+			<!-- STOPPED / ERROR Toolbar -->
+			<div class="btn-toolbar justify-content-center" role="toolbar" id="stopped_group"{% if control['mode'] not in ['Stop', 'Error'] %} style="display:none"{% endif %}>
+				<div id="stopped_core_group" class="btn-group mr-2 shadow" role="group">
+					<button type="button" title="Startup" class="btn btn-outline-success border border-secondary" id="startup_btn" onclick="cpStartupCheck();"><i class="fas fa-play"></i></button>
+					<div id="prime_group" class="btn-group mr-2 dropup shadow" role="group" data-toggle="tooltip" data-placement="top" title="Prime the Firepot">
+						<button type="button" class="btn btn-outline-primary border border-secondary dropdown-toggle" id="prime_btn" data-toggle="dropdown" aria-expanded="false">
+							<i class="fas fa-angle-double-right"></i>
+						</button>
+						<div class="dropdown-menu">
+							<!-- Dropdown menu links -->
+							<button class="dropdown-item" type="button" onclick="setPrime(10, 'Stop')">Prime 10g</button>
+							<button class="dropdown-item" type="button" onclick="setPrime(25, 'Stop')">Prime 25g</button>
+							<button class="dropdown-item" type="button" onclick="setPrime(50, 'Stop')">Prime 50g</button>
+							<button class="dropdown-item" type="button" onclick="setPrime(10, 'Startup')">Prime 10g & Startup</button>
+							<button class="dropdown-item" type="button" onclick="setPrime(25, 'Startup')">Prime 25g & Startup</button>
+							<button class="dropdown-item" type="button" onclick="setPrime(50, 'Startup')">Prime 50g & Startup</button>
+						</div>
+					</div>  
+				</div>
+				<!-- Manual Mode -->
+				<button type="button" data-toggle="tooltip" title="Manual Mode" class="btn btn-outline-secondary border border-secondary" id="stop_manual_btn" name="setmodemanual" value="true" onclick="cpManual();"><i class="fas fa-glasses text-white"></i></button>
+				<!-- ERROR Button Indicator -->
+				<div id="error_group" class="btn-group" role="group" style="display:none">
+					<button type="button" data-toggle="tooltip" title="Error!" class="btn btn-danger text-yellow" id="error_btn" name="error_btn" value="true"><i class="fas fa-exclamation-triangle"></i></button>
+				</div>
+			</div> <!-- End of STOPPED / ERROR Toolbar -->
+			
+			<!-- STARTUP Toolbar -->
+			<div class="btn-toolbar justify-content-center" role="toolbar" id="startup_group"{% if control['mode'] not in ['Startup'] %} style="display:none"{% endif %}>
+				<!-- Core Group -->    
+				<div id="startup_core_group" class="btn-group mr-2 shadow" role="group">        
+					<!-- SMOKE Button -->
+					<button type="button" data-toggle="tooltip" title="Smoke Mode" class="btn btn-outline-warning border border-secondary text-white" id="smoke_inactive_btn" name="setmodesmoke" value="true"><i class="fas fa-cloud"></i></button>
+					<!-- HOLD Button -->
+					<button type="button" data-toggle="modal" data-target="#setpointModal" class="btn btn-outline-success border border-secondary text-white" id="hold_inactive_btn"><i class="fas fa-crosshairs"></i></button>
+					<!-- STOP Button -->
+					<button type="button" data-toggle="tooltip" title="Stop" class="btn btn-outline-danger border border-secondary" id="stop_inactive_btn" name="setmodestop" value="true" onclick="cpStopCheck();"><i class="fas fa-stop"></i></button>
+				</div>
+				<!-- Manual Mode -->
+				<button type="button" data-toggle="tooltip" title="Manual Mode" class="btn btn-outline-secondary border border-secondary text-white" id="stop_manual_btn" name="setmodemanual" value="true" onclick="cpManualCheck();"><i class="fas fa-glasses"></i></button>
+			</div> <!-- End of STARTUP Toolbar -->            
+			
+			<!-- ACTIVE Toolbar -->
+			<div class="btn-toolbar justify-content-center" role="toolbar" id="active_group"{% if control['mode'] not in ['Smoke', 'Hold'] %} style="display:none"{% endif %}>
+				<!-- Core Group -->
+				<div id="active_core_group" class="btn-group mr-2 shadow" role="group">
+					<!-- SMOKE Button -->
+					<button type="button" data-toggle="tooltip" title="Smoke Mode" class="btn btn-outline-warning border border-secondary text-white" id="smoke_active_btn" name="setmodesmoke" value="true" ><i class="fas fa-cloud"></i></button>
+					<!-- HOLD Button -->
+					<button type="button" class="btn btn-outline-success border border-secondary text-white" id="hold_active_btn" data-toggle="modal" data-target="#setpointModal" ><i class="fas fa-crosshairs"></i></button>
+					<!-- SHUTDOWN Button -->
+					<button type="button" data-toggle="tooltip" title="Shutdown" class="btn btn-outline-danger border border-secondary text-white" id="shutdown_active_btn" name="setmodeshutdown" value="true" onclick="cpShutdown();"><i class="fas fa-flag-checkered"></i></button>
+				</div> <!-- End of Active Core Group -->
+				
+				<!-- SMOKE PLUS Button -->
+				<button type="button" class="btn btn-outline-primary mr-2 border border-secondary text-white" id="splus_btn" name="setmodesmokeplus" value="true" data-toggle="s_plus"><i class="fas fa-cloud-upload"></i></button>
+				
+				<!-- PWM Button -->
+				<button type="button" class="btn btn-outline-primary mr-2 border border-secondary text-white" id="pwm_control_btn" name="pwm_control" value="true" data-toggle="pwm_control"{% if not settings['globals']['dc_fan'] %} style="display:none"{% endif %}><i class="fas fa-wave-square"></i></button>
+				<!-- Manual Mode -->
+				<button type="button" data-toggle="tooltip" title="Manual Mode" class="btn btn-outline-secondary border border-secondary text-white" id="manual_btn" name="setmodemanual" value="true" onclick="cpManualCheck();"><i class="fas fa-glasses"></i></button>
+			</div> <!-- End of Active Toolbar -->
+			
+			<!-- SHUTDOWN Toolbar -->
+			<div class="btn-toolbar justify-content-center" role="toolbar" id="shutdown_group"{% if control['mode'] not in ['Shutdown'] %} style="display:none"{% endif %}>
+				<!-- Core Group -->
+				<div id="active_core_group" class="btn-group mr-2 shadow" role="group">
+					<!-- SMOKE Button -->
+					<button type="button" data-toggle="tooltip" title="Smoke Mode" class="btn btn-outline-warning border border-secondary text-white" id="smoke_active_btn" name="setmodesmoke" ><i class="fas fa-cloud"></i></button>
+					<!-- HOLD Button -->
+					<button type="button" class="btn btn-outline-success border border-secondary text-white" id="hold_active_btn" data-toggle="modal" data-target="#setpointModal" ><i class="fas fa-crosshairs"></i></button>
+					<!-- STOP Button -->
+					<button type="button" data-toggle="tooltip" title="Stop" class="btn border btn-outline-danger border-secondary" id="stop_active_btn" name="setmodestop" onclick="cpStopCheck();"><i class="fas fa-stop"></i></button>
+				</div> <!-- End of Active Core Group -->
+				<!-- Manual Mode -->
+				<button type="button" data-toggle="tooltip" title="Manual Mode" class="btn btn-outline-secondary border border-secondary text-white" id="manual_btn" name="setmodemanual" value="true" onclick="cpManualCheck();"><i class="fas fa-glasses"></i></button>
+			</div> <!-- End of SHUTDOWN Toolbar -->
+			
+			<!-- MANUAL Toolbar -->
+            <div class="btn-toolbar justify-content-center" role="toolbar" id="manual_group"{% if control['mode'] != "Manual" %} style="display:none"{% endif %}>
+                <div id="stopped_core_group" class="btn-group mr-2 shadow" role="group">
+					<button type="button" title="Startup" class="btn btn-outline-secondary border border-secondary text-white" id="startup_btn" onclick="cpStartupCheck();"><i class="fas fa-play"></i></button>
+					<div id="prime_group" class="btn-group mr-2 dropup shadow" role="group" data-toggle="tooltip" data-placement="top" title="Prime the Firepot">
+						<button type="button" class="btn btn-outline-secondary border border-secondary dropdown-toggle text-white" id="prime_btn" data-toggle="dropdown" aria-expanded="false">
+							<i class="fas fa-angle-double-right"></i>
+						</button>
+						<div class="dropdown-menu">
+							<!-- Dropdown menu links -->
+							<button class="dropdown-item" type="button" onclick="setPrime(10, 'Stop')">Prime 10g</button>
+							<button class="dropdown-item" type="button" onclick="setPrime(25, 'Stop')">Prime 25g</button>
+							<button class="dropdown-item" type="button" onclick="setPrime(50, 'Stop')">Prime 50g</button>
+							<button class="dropdown-item" type="button" onclick="setPrime(10, 'Startup')">Prime 10g & Startup</button>
+							<button class="dropdown-item" type="button" onclick="setPrime(25, 'Startup')">Prime 25g & Startup</button>
+							<button class="dropdown-item" type="button" onclick="setPrime(50, 'Startup')">Prime 50g & Startup</button>
+						</div>
+						<!-- SMOKE Button -->
+						<button type="button" data-toggle="tooltip" title="Smoke Mode" class="btn btn-outline-secondary border border-secondary text-white" id="smoke_inactive_btn" name="setmodesmoke" value="true"><i class="fas fa-cloud"></i></button>
+						<!-- HOLD Button -->
+						<button type="button" data-toggle="modal" data-target="#setpointModal" class="btn btn-outline-secondary border border-secondary text-white" id="hold_inactive_btn"><i class="fas fa-crosshairs"></i></button>
+					</div>
+				</div>
+				
+				<div id="manual_output_group" class="btn-group mr-2 shadow" role="group">
+                    
+                    <!-- Fan Button -->
+                    <button type="button" id="manual_fan" data-output="fan" data-toggle="tooltip" title="Fan" class="btn btn-outline-primary border border-secondary" onclick="changeOutput('fan');"><i class="fas fa-fan"></i></button>
+                    
+                    <!-- Auger Button -->
+                    <button type="button" id="manual_auger" data-output="auger" data-toggle="tooltip" title="Auger" class="btn btn-outline-success border-secondary" onclick="changeOutput('auger');"><i class="fas fa-angle-double-right"></i></button>
+                    
+                    <!-- Igniter Button -->
+                    <button type="button" id="manual_igniter" data-output="igniter" data-toggle="tooltip" title="Igniter" class="btn btn-outline-warning border border-secondary" onclick="changeOutput('igniter');"><i class="fas fa-fire"></i></button>
+                </div>
+                <div id="manual_core_group" class="btn-group mr-2 shadow" role="group">
+                    <button type="button" data-toggle="tooltip" title="Stop" class="btn border btn-outline-danger border-secondary" id="manual_stop_btn" name="setmodestop" value="true" onclick="cpStop();"><i class="fas fa-stop"></i></button>
+                </div>
+            </div> <!-- End of Manual Toolbar -->
+			
+			<!-- RECIPE Toolbar -->
+			<div class="btn-toolbar justify-content-center" role="toolbar" id="recipe_group"{% if control['mode'] != "Recipe" %} style="display:none"{% endif %}>
+				<!-- Recipe Group -->
+				<div id="cp_recipe_group" class="btn-group mr-2 dropup shadow" role="group" data-toggle="tooltip" data-placement="top" title="Goto Recipe">     
+					<button type="button" data-toggle="tooltip" title="Goto Next Step" class="btn btn-info text-white" id="cp_recipe_next_step_btn">
+						<i class="fas fa-step-forward"></i>
+					</button>
+					<a href="/recipes" role="button" data-toggle="tooltip" title="Recipe Step" class="btn btn-outline-info outline-secondary text-white" id="cp_recipe_step_btn">
+						Step X
+					</a>
+					<button type="button" data-toggle="tooltip" title="Mode" class="btn btn-info text-white" id="cp_recipe_mode_btn"><i class="fas fa-cloud" ></i></button>
+					<!-- SHUTDOWN Button -->
+					<button type="button" data-toggle="tooltip" title="Shutdown" class="btn btn-outline-danger border border-secondary text-white" id="shutdown_active_btn" name="setmodeshutdown" value="true" onclick="cpShutdown();"><i class="fas fa-flag-checkered"></i></button>
+				</div>
+				<div id="cp_active_group" class="btn-group mr-2 dropup shadow" role="group" data-toggle="tooltip" data-placement="top" title="Active Mode">
+					<!-- SMOKE Button -->
+					<button type="button" data-toggle="tooltip" title="Smoke Mode" class="btn btn-outline-secondary border border-secondary text-white" id="smoke_inactive_btn" name="setmodesmoke" value="true"><i class="fas fa-cloud"></i></button>
+					<!-- HOLD Button -->
+					<button type="button" data-toggle="modal" data-target="#setpointModal" class="btn btn-outline-secondary border border-secondary text-white" id="hold_inactive_btn"><i class="fas fa-crosshairs"></i></button>
+					<!-- Manual Mode -->
+					<button type="button" data-toggle="tooltip" title="Manual Mode" class="btn btn-outline-secondary border border-secondary text-white" id="manual_btn" name="setmodemanual" value="true" onclick="cpManualCheck();"><i class="fas fa-glasses"></i></button>
+				</div>
+			</div>
+		</span>
     </nav>
 
     <!-- Hold Modal -->
@@ -150,11 +204,12 @@
             </div>
         </div>
     </div>
+	
     <!-- Startup Modal -->
     <div class="modal fade" id="startupModal" tabindex="-1" role="dialog" aria-labelledby="startupModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content shadow-lg border rounded border-warning">
-                <div class="modal-header bg-warning">
+            <div class="modal-content shadow-lg border rounded border-success">
+                <div class="modal-header bg-success">
                     <h5 class="modal-title" id="startupModalLabel"><i class="fa-solid fa-triangle-exclamation"></i> Startup Check</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
@@ -165,28 +220,7 @@
                 </div>
                 <div class="modal-footer list-group-item bg-light pl-2 pt-1 pb-1">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="cpStartup()">Startup</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Shutdown Modal -->
-    <div class="modal fade" id="shutdownModal" tabindex="-1" role="dialog" aria-labelledby="shutdownModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content shadow-lg border rounded border-warning">
-                <div class="modal-header bg-warning">
-                    <h5 class="modal-title" id="shutdownModalLabel"><i class="fa-solid fa-triangle-exclamation"></i> Shutdown Check</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body d-flex align-items-center justify-content-center text-center bg-dark">
-                    <h5>Confirm Shutdown Grill?</h5>
-                </div>
-                <div class="modal-footer list-group-item bg-light pl-2 pt-1 pb-1">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="cpShutdown()">Shutdown</button>
+                    <button type="button" class="btn btn-success" onclick="cpStartup()">Startup</button>
                 </div>
             </div>
         </div>
@@ -195,8 +229,8 @@
     <!-- Stop Modal -->
     <div class="modal fade" id="stopModal" tabindex="-1" role="dialog" aria-labelledby="stopModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content shadow-lg border rounded border-warning">
-                <div class="modal-header bg-warning">
+            <div class="modal-content shadow-lg border rounded border-danger">
+                <div class="modal-header bg-danger">
                     <h5 class="modal-title" id="stopModalLabel"><i class="fa-solid fa-triangle-exclamation"></i> Stop Check</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
@@ -207,9 +241,30 @@
                 </div>
                 <div class="modal-footer list-group-item bg-light pl-2 pt-1 pb-1">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="cpStop()">Stop</button>
+                    <button type="button" class="btn btn-danger" onclick="cpStop()">Stop</button>
                 </div>
             </div>
         </div>
     </div>
+
+	<!-- Manual Modal -->
+	<div class="modal fade" id="manualModal" tabindex="-1" role="dialog" aria-labelledby="manualModalLabel" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered" role="document">
+			<div class="modal-content shadow-lg border rounded border-primary">
+				<div class="modal-header bg-primary">
+					<h5 class="modal-title" id="manualModalLabel"><i class="fa-solid fa-triangle-exclamation"></i> Manual Mode Check</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div class="modal-body d-flex align-items-center justify-content-center text-center bg-dark">
+					<h5>Confirm Manual Mode?</h5>
+				</div>
+				<div class="modal-footer list-group-item bg-light pl-2 pt-1 pb-1">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+					<button type="button" class="btn btn-success" onclick="cpManual()">Manual Mode</button>
+				</div>
+			</div>
+		</div>
+	</div>
 {% endmacro %}

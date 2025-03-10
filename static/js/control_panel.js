@@ -44,87 +44,113 @@ function setPrime(prime_amount, next_mode) {
     api_post(postdata);
 };
 
-function update_mode() {
-    // Update control panel buttons if mode changed
-    console.log('Detected MODE change.')
-    $('#recipe_group').hide();
-    // Hide / Unhide relevant toolbar group
-    if ((cpMode == 'Startup') || (cpMode == 'Reignite')) {
-        // Select Inactive Group w/o Prime & Monitor Buttons
-        $("#active_group").hide();
-        $("#prime_group").hide();
-        $("#monitor_btn").hide();
-        $("#smoke_inactive_btn").show();
-        $("#hold_inactive_btn").show();
-        $("#inactive_group").show();
-    } else if (cpMode == 'Monitor') {
-        $("#prime_group").hide();
-        $("#active_group").hide();
-        $("#inactive_group").show();
-    } else if ((cpMode == 'Smoke') || (cpMode == 'Hold') || (cpMode == 'Shutdown')) {
-        // Select Active Group
-        $("#inactive_group").hide(); 
-        $("#active_group").show();
+function changeOutput(output) {
+    // Fetch the current state from the server
+    $.ajax({
+        url: '/api/control',
+        type: 'GET',
+        success: function (control) {
+            var state = control.control.manual[output] ? 'on' : 'off';
+            var newState = (state === 'on') ? 'off' : 'on';
+
+            var postdata = {};
+            postdata['change_output_' + output] = (newState === 'on') ? 'on' : 'off';
+
+            $.ajax({
+                url: '/manual',
+                type: 'POST',
+                data: postdata,
+                success: function(response) {
+                    console.log(output + ' changed to ' + newState);
+                    updateButtonStyle(output, newState);
+                },
+                error: function(error) {
+                    console.error('Error changing ' + output + ' to ' + newState);
+                }
+            });
+        },
+        error: function(error) {
+            console.error('Error fetching current state for ' + output);
+        }
+    });
+}
+
+function updateButtonStyle(output, state) {
+    var button = $("button[data-output='" + output + "']");
+    if (state === 'on') {
+        if (output === 'fan') {
+            button.removeClass('btn-outline-secondary text-primary').addClass('btn-primary text-white');
+        } else if (output === 'auger') {
+            button.removeClass('btn-outline-secondary text-success').addClass('btn-success text-white');
+        } else if (output === 'igniter') {
+            button.removeClass('btn-outline-secondary text-warning').addClass('btn-warning text-white');
+        }
     } else {
-        // Select Inactive Group w/Prime & Monitor Buttons
-        $("#active_group").hide();
-        $("#smoke_inactive_btn").hide();
-        $("#hold_inactive_btn").hide();
-        $("#monitor_btn").show();
-        $("#prime_group").show();
-        $("#inactive_group").show();
-    };
+        if (output === 'fan') {
+            button.removeClass('btn-primary text-white').addClass('btn-outline-secondary text-primary');
+        } else if (output === 'auger') {
+            button.removeClass('btn-success text-white').addClass('btn-outline-secondary text-success');
+        } else if (output === 'igniter') {
+            button.removeClass('btn-warning text-white').addClass('btn-outline-secondary text-warning');
+        }
+    }
+	$("#manual_fan").blur();
+	$("#manual_auger").blur();
+	$("#manual_igniter").blur();
+}
 
-    // Highlight Active Mode Button 
-    if((cpMode == 'Startup') || (cpMode == 'Reignite')) {
-        document.getElementById("startup_btn").className = "btn btn-success border border-secondary";
-    } else if (cpMode == 'Monitor') {
-        document.getElementById("monitor_btn").className = "btn btn-secondary border border-secondary";
-    } else if (cpMode == 'Smoke') {
-        document.getElementById("smoke_active_btn").className = "btn btn-warning border border-secondary";
-    } else if (cpMode == 'Hold') {
-        document.getElementById("hold_active_btn").className = "btn btn-primary border border-secondary text-white";
+function update_mode() {
+    console.log('Detected MODE change.');
+    // Hide all toolbars initially
+    $("#stopped_group, #startup_group, #active_group, #shutdown_group, #manual_group, #recipe_group").hide();
+
+    // Show relevant toolbar based on mode
+    if (cpMode === 'Startup' || cpMode === 'Reignite') {
+        $("#startup_group").show();
+    } else if (cpMode === 'Manual') {
+        $("#manual_group").show();
+    } else if (cpMode === 'Smoke' || cpMode === 'Hold') {
+        $("#active_group").show();
+    } else if (cpMode === 'Shutdown') {
+        $("#shutdown_group").show();
+    } else if (cpMode === 'Recipe') {
+        $("#recipe_group").show();
+    } else { // Stop or Error
+        $("#stopped_group").show();
+        if (cpMode === 'Error') $("#error_group").show();
+        else $("#error_group").hide();
+    }
+
+    // Reset all buttons to their default styles
+    $("#startup_btn").removeClass().addClass("btn btn-outline-secondary border border-secondary text-white");
+    $("#smoke_active_btn").removeClass().addClass("btn btn-outline-warning border border-secondary text-white");
+    $("#hold_active_btn").removeClass().addClass("btn btn-outline-success border border-secondary text-white").html('<i class="fas fa-crosshairs"></i>');
+    $("#prime_btn").removeClass().addClass("btn btn-outline-secondary border border-secondary dropdown-toggle text-white");
+
+    // Highlight Active Mode Button
+    if (cpMode === 'Startup' || cpMode === 'Reignite') {
+        document.getElementById("startup_btn").className = "btn btn-success border border-secondary text-white";
+    } else if (cpMode === 'Smoke') {
+        document.getElementById("smoke_active_btn").className = "btn btn-warning border border-secondary text-white";
+    } else if (cpMode === 'Hold') {
+        document.getElementById("hold_active_btn").className = "btn btn-success border border-secondary text-white";
         $("#hold_active_btn").html(cp_primary_setpoint + "°" + cp_units);
-    } else if (cpMode == 'Shutdown') {
-        document.getElementById("shutdown_active_btn").className = "btn btn-danger border border-secondary";
-    } else if (cpMode == 'Stop') {
-        document.getElementById("stop_inactive_btn").className = "btn btn-danger border border-secondary";
-    } else if (cpMode == 'Prime') {
+    } else if (cpMode === 'Shutdown') {
+        // Note: shutdown_active_btn is in active_group, not shutdown_group, so stop button is already btn-danger
+    } else if (cpMode === 'Stop') {
+        // No stop button in stopped_group, as per your requirement
+    } else if (cpMode === 'Prime') {
         document.getElementById("prime_btn").className = "btn btn-primary border border-secondary dropdown-toggle text-white";
-    } else if (cpMode == 'Error') {
-        $("#error_group").show();
-    };
+    } else if (cpMode === 'Error') {
+        // Error indicator is shown via toolbar logic
+    }
 
-    // Dim Last Mode Button 
-    if((cpLastMode == 'Startup') || (cpLastMode == 'Reignite')) {
-        document.getElementById("startup_btn").className = "btn btn-outline-secondary border border-secondary";
-    } else if (cpLastMode == 'Monitor') {
-        document.getElementById("monitor_btn").className = "btn btn-outline-secondary border border-secondary";
-    } else if (cpLastMode == 'Smoke') {
-        document.getElementById("smoke_active_btn").className = "btn btn-outline-secondary border border-secondary";
-    } else if (cpLastMode == 'Hold') {
-        document.getElementById("hold_active_btn").className = "btn btn-outline-secondary border border-secondary";
-        $("#hold_active_btn").html("<i class=\"fas fa-crosshairs\"></i>");
-    } else if (cpLastMode == 'Shutdown') {
-        document.getElementById("shutdown_active_btn").className = "btn btn-outline-secondary border border-secondary";
-    } else if (cpLastMode == 'Stop') {
-        document.getElementById("stop_inactive_btn").className = "btn btn-outline-secondary border border-secondary";
-    } else if (cpLastMode == 'Prime') {
-        document.getElementById("prime_btn").className = "btn btn-outline-primary border border-secondary dropdown-toggle";
-    } else if (cpLastMode == 'Error') {
-        $("#error_group").hide();
-    };
-
-    // Reset cpLastMode to current_mode
+	$("button").blur();
     cpLastMode = cpMode;
-};
+}
 
 function update_recipe_mode() {
     var cpRecipeModeIcon = '<i class="far fa-frown"></i>';
-    // Recipe Mode Hide/Unhide relevant groups
-    $("#active_group").hide();
-    $("#inactive_group").hide();
-    $('#recipe_group').show();
     // Update control panel buttons if step changed
     console.log('Detected MODE change.')
     $("#cp_recipe_step_btn").html("Step " + cpRecipeStep);
@@ -132,16 +158,13 @@ function update_recipe_mode() {
     if(['Startup', 'Reignite'].includes(cpMode)) {
         cpRecipeModeIcon = '<i class="fas fa-play"></i>';         
     } else if(cpMode == 'Prime') {
-        cpRecipeModeIcon = '<i class="fas fa-angle-double-right"></i>'; 
+        cpRecipeModeIcon = '<i class="fas fa-angle-double-right btn-primary"></i>'; 
     } else if(cpMode == 'Smoke') {
-        cpRecipeModeIcon = '<i class="fas fa-cloud"></i>'; 
+        cpRecipeModeIcon = '<i class="fas fa-cloud btn-warning"></i>'; 
     } else if(cpMode == 'Hold') {
-        cpRecipeModeIcon = '<i class="fas fa-crosshairs"></i>&nbsp; ' + cp_primary_setpoint + "°" + cp_units; 
+        cpRecipeModeIcon = '<i class="fas fa-crosshairs btn-success"></i>&nbsp; ' + cp_primary_setpoint + "°" + cp_units; 
     } else if(cpMode == 'Shutdown') {
-        $("#cp_recipe_mode_btn").hide();
-        document.getElementById("cp_recipe_shutdown_btn").className = "btn btn-info text-white";
-        // Change the next step button to a 'stop' icon
-        $("#cp_recipe_next_step_btn").html('<i class="fas fa-stop"></i>');
+        cpShutdown();
     };
     $("#cp_recipe_mode_btn").html(cpRecipeModeIcon);
     cpRecipeLastStep = cpRecipeStep;
@@ -167,13 +190,14 @@ function update_splus() {
         console.log('** Updating SPLUS. **')
         if (splus_state == true) {
             $("#splus_btn").show();
-            document.getElementById("splus_btn").className = "btn btn-success border border-secondary shadow";
+            document.getElementById("splus_btn").className = "btn btn-primary border border-secondary shadow mr-2";
         } else {
             $("#splus_btn").show();
-            document.getElementById("splus_btn").className = "btn btn-outline-primary border border-secondary text-secondary shadow";
+            document.getElementById("splus_btn").className = "btn btn-outline-primary border border-secondary text-white mr-2";
         };
     };
     last_splus_state = splus_state;
+	$("button").blur();
 };
 
 function update_setpoint() {
@@ -193,61 +217,62 @@ function update_pwm() {
     if (cpMode == 'Hold') {
         if (pwm_control == true) {
             $("#pwm_control_btn").show();
-            document.getElementById("pwm_control_btn").className = "btn btn-success border border-secondary";
+            document.getElementById("pwm_control_btn").className = "btn btn-primary border border-secondary mr-2";
         } else {
             $("#pwm_control_btn").show();
-            document.getElementById("pwm_control_btn").className = "btn btn-outline-primary border border-secondary text-secondary";
+            document.getElementById("pwm_control_btn").className = "btn btn-outline-primary border border-secondary text-white mr-2";
         };
     } else {
         $("#pwm_control_btn").hide();
     };
     last_pwm_control = pwm_control;
+	$("button").blur();
 };
 
 function check_state() {
     // Get control data and update control panel if needed
     $.ajax({
-        url : '/api/control',
-        type : 'GET',
-        success : function (control) {
+        url: '/api/control',
+        type: 'GET',
+        success: function (control) {
             if (control.control.mode == 'Recipe') {
                 cpMode = control.control.recipe.step_data.mode;
                 cpRecipeStep = control.control.recipe.step;
                 cpRecipeMode = true;
-                cpRecipeStepData = control.control.recipe.step_data; 
+                cpRecipeStepData = control.control.recipe.step_data;
                 cpRecipePause = control.control.recipe.step_data.pause;
                 cpRecipeTriggered = control.control.recipe.step_data.triggered;
             } else {
                 cpMode = control.control.mode;
                 cpRecipeStep = 0;
                 cpRecipeMode = false;
-            };
+            }
             splus_state = control.control.s_plus;
             pwm_control = control.control.pwm_control;
             cp_primary_setpoint = control.control.primary_setpoint;
-            if((cpRecipeMode) && (cpRecipeStep != cpRecipeLastStep)) {
+
+            if (cpRecipeMode && cpRecipeStep != cpRecipeLastStep) {
                 update_recipe_mode();
-            } else if((!cpRecipeMode) && (cpMode != cpLastMode)) {
+            } else if (!cpRecipeMode && cpMode != cpLastMode) {
                 update_mode();
-            };
-            if(splus_state != last_splus_state) {
+            }
+            if (splus_state != last_splus_state) {
                 update_splus();
-            };
-            if(pwm_control != last_pwm_control) {
+            }
+            if (pwm_control != last_pwm_control) {
                 update_pwm();
-            };
-            if(cp_primary_setpoint != last_primary_setpoint) {
+            }
+            if (cp_primary_setpoint != last_primary_setpoint) {
                 update_setpoint();
-            };
-            if((cpRecipePause != cpLastRecipePause) || (cpRecipeTriggered != cpLastRecipeTriggered)) {
+            }
+            if (cpRecipePause != cpLastRecipePause || cpRecipeTriggered != cpLastRecipeTriggered) {
                 update_recipe_pause();
-            };
+            }
         }
     });
-};
+}
 
 function check_current() {
-    // Get control data and update control panel if needed
     $.ajax({
         url : '/api/current',
         type : 'GET',
@@ -287,16 +312,7 @@ function cpStartup() {
     api_post(postdata);
 };
 
-function cpShutdownCheck(enable) {
-    if (enable == 'False') {
-        cpShutdown();
-    } else {
-        $('#shutdownModal').modal('show');
-    };
-};
-
 function cpShutdown() {
-    $('#shutdownModal').modal('hide');
     var postdata = { 
         'updated' : true,
         'mode' : 'Shutdown'	
@@ -323,9 +339,30 @@ function cpStop() {
     api_post(postdata);
 };
 
+function cpManualCheck(enable) {
+    if (enable == 'False') {
+        cpManual();
+    } else {
+        $('#manualModal').modal('show');
+    };
+};
+
+function cpManual() {
+    $('#manualModal').modal('hide');
+    var postdata = { 
+        'updated' : true,
+        'mode' : 'Manual'	
+    };
+	
+    console.log('Requesting Manual Mode.');
+    api_post(postdata);
+	updateButtonStyle();
+};
+
 // Main Loop
 $(document).ready(function(){
     check_current();
+	updateButtonStyle();
     
     // Setup Button Listeners
     $('#startupModal').on('shown.bs.modal', function (event) {
