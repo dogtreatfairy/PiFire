@@ -12,7 +12,7 @@
 
 APT_PACKAGES=("python3-dev" "python3-pip" "python3-venv" "python3-rpi.gpio" "python3-scipy" "nginx" "git" "supervisor" "ttf-mscorefonts-installer" "redis-server" "libatlas-base-dev" "libopenjp2-7" "rpi-hardware-pwm")
 GIT_REPO=("https://github.com/dogtreatfairy/pifire")
-GIT_BRANCH=("development")
+GIT_BRANCH=("stable-dev-pid2")
 
 # Must be root to install
 if [[ $EUID -eq 0 ]];then
