@@ -23,27 +23,25 @@
 			
 			<!-- STOPPED / ERROR Toolbar -->
 			<div class="btn-toolbar justify-content-center" role="toolbar" id="stopped_group"{% if control['mode'] not in ['Stop', 'Error'] %} style="display:none"{% endif %}>
-				<div id="stopped_core_group" class="btn-group mr-2 shadow" role="group">
-					<button type="button" title="Startup" class="btn btn-outline-success border border-secondary" id="startup_btn" onclick="cpStartupCheck();"><i class="fas fa-play"></i></button>
-					<div id="prime_group" class="btn-group mr-2 dropup shadow" role="group" data-toggle="tooltip" data-placement="top" title="Prime the Firepot">
-						<button type="button" class="btn btn-outline-primary border border-secondary dropdown-toggle" id="prime_btn" data-toggle="dropdown" aria-expanded="false">
-							<i class="fas fa-angle-double-right"></i>
-						</button>
-						<div class="dropdown-menu">
-							<!-- Dropdown menu links -->
-							<button class="dropdown-item" type="button" onclick="setPrime(10, 'Stop')">Prime 10g</button>
-							<button class="dropdown-item" type="button" onclick="setPrime(25, 'Stop')">Prime 25g</button>
-							<button class="dropdown-item" type="button" onclick="setPrime(50, 'Stop')">Prime 50g</button>
-							<button class="dropdown-item" type="button" onclick="setPrime(10, 'Startup')">Prime 10g & Startup</button>
-							<button class="dropdown-item" type="button" onclick="setPrime(25, 'Startup')">Prime 25g & Startup</button>
-							<button class="dropdown-item" type="button" onclick="setPrime(50, 'Startup')">Prime 50g & Startup</button>
-						</div>
-					</div>  
+				<div id="prime_group" class="btn-group mr-2 dropup shadow" role="group" data-toggle="tooltip" data-placement="top" title="Prime the Firepot">
+					<button type="button" class="btn btn-outline-primary border border-secondary dropdown-toggle" id="prime_btn" data-toggle="dropdown" aria-expanded="false">
+						<i class="fas fa-angle-double-right"></i>
+					</button>
+					<div class="dropdown-menu">
+						<!-- Dropdown menu links -->
+						<button class="dropdown-item" type="button" onclick="setPrime(10, 'Stop')">Prime 10g</button>
+						<button class="dropdown-item" type="button" onclick="setPrime(25, 'Stop')">Prime 25g</button>
+						<button class="dropdown-item" type="button" onclick="setPrime(50, 'Stop')">Prime 50g</button>
+						<button class="dropdown-item" type="button" onclick="setPrime(10, 'Startup')">Prime 10g & Startup</button>
+						<button class="dropdown-item" type="button" onclick="setPrime(25, 'Startup')">Prime 25g & Startup</button>
+						<button class="dropdown-item" type="button" onclick="setPrime(50, 'Startup')">Prime 50g & Startup</button>
+					</div>
 				</div>
+				<button type="button" title="Startup" class="btn btn-success mr-2 border border-secondary shadow" id="startup_btn" onclick="cpStartupCheck();"><i class="fas fa-play"></i></button>  
 				<!-- Manual Mode -->
-				<button type="button" data-toggle="tooltip" title="Manual Mode" class="btn btn-outline-secondary border border-secondary" id="stop_manual_btn" name="setmodemanual" value="true" onclick="cpManual();"><i class="fas fa-glasses text-white"></i></button>
+				<button type="button" data-toggle="tooltip" title="Manual Mode" class="btn btn-outline-secondary border border-secondary mr-2 shadow" id="stop_manual_btn" name="setmodemanual" value="true" onclick="cpManual();"><i class="fas fa-glasses text-white"></i></button>
 				<!-- ERROR Button Indicator -->
-				<div id="error_group" class="btn-group" role="group" style="display:none">
+				<div id="error_group" class="btn-group shadow" role="group" style="display:none">
 					<button type="button" data-toggle="tooltip" title="Error!" class="btn btn-danger text-yellow" id="error_btn" name="error_btn" value="true"><i class="fas fa-exclamation-triangle"></i></button>
 				</div>
 			</div> <!-- End of STOPPED / ERROR Toolbar -->
@@ -56,11 +54,13 @@
 					<button type="button" data-toggle="tooltip" title="Smoke Mode" class="btn btn-outline-warning border border-secondary text-white" id="smoke_inactive_btn" name="setmodesmoke" value="true"><i class="fas fa-cloud"></i></button>
 					<!-- HOLD Button -->
 					<button type="button" data-toggle="modal" data-target="#setpointModal" class="btn btn-outline-success border border-secondary text-white" id="hold_inactive_btn"><i class="fas fa-crosshairs"></i></button>
-					<!-- STOP Button -->
-					<button type="button" data-toggle="tooltip" title="Stop" class="btn btn-outline-danger border border-secondary" id="stop_inactive_btn" name="setmodestop" value="true" onclick="cpStopCheck();"><i class="fas fa-stop"></i></button>
 				</div>
+
+				<!-- STOP Button -->
+				<button type="button" data-toggle="tooltip" title="Stop" class="btn btn-danger border border-secondary mr-2 shadow" id="stop_inactive_btn" name="setmodestop" value="true" onclick="cpStopCheck();"><i class="fas fa-stop"></i></button>
+
 				<!-- Manual Mode -->
-				<button type="button" data-toggle="tooltip" title="Manual Mode" class="btn btn-outline-secondary border border-secondary text-white" id="stop_manual_btn" name="setmodemanual" value="true" onclick="cpManualCheck();"><i class="fas fa-glasses"></i></button>
+				<button type="button" data-toggle="tooltip" title="Manual Mode" class="btn btn-outline-secondary border border-secondary text-white shadow" id="stop_manual_btn" name="setmodemanual" value="true" onclick="cpManualCheck();"><i class="fas fa-glasses"></i></button>
 			</div> <!-- End of STARTUP Toolbar -->            
 			
 			<!-- ACTIVE Toolbar -->
@@ -71,17 +71,17 @@
 					<button type="button" data-toggle="tooltip" title="Smoke Mode" class="btn btn-outline-warning border border-secondary text-white" id="smoke_active_btn" name="setmodesmoke" value="true" ><i class="fas fa-cloud"></i></button>
 					<!-- HOLD Button -->
 					<button type="button" class="btn btn-outline-success border border-secondary text-white" id="hold_active_btn" data-toggle="modal" data-target="#setpointModal" ><i class="fas fa-crosshairs"></i></button>
-					<!-- SHUTDOWN Button -->
-					<button type="button" data-toggle="tooltip" title="Shutdown" class="btn btn-outline-danger border border-secondary text-white" id="shutdown_active_btn" name="setmodeshutdown" value="true" onclick="cpShutdown();"><i class="fas fa-flag-checkered"></i></button>
 				</div> <!-- End of Active Core Group -->
+				<!-- SHUTDOWN Button -->
+				<button type="button" data-toggle="tooltip" title="Shutdown" class="btn btn-danger border mr-2 border-secondary text-white shadow" id="shutdown_active_btn" name="setmodeshutdown" value="true" onclick="cpShutdown();"><i class="fas fa-flag-checkered"></i></button>
 				
 				<!-- SMOKE PLUS Button -->
-				<button type="button" class="btn btn-outline-primary mr-2 border border-secondary text-white" id="splus_btn" name="setmodesmokeplus" value="true" data-toggle="s_plus"><i class="fas fa-cloud-upload"></i></button>
+				<button type="button" class="btn btn-outline-primary mr-2 border border-secondary text-white shadow" id="splus_btn" name="setmodesmokeplus" value="true" data-toggle="s_plus"><i class="fas fa-cloud-upload"></i></button>
 				
 				<!-- PWM Button -->
-				<button type="button" class="btn btn-outline-primary mr-2 border border-secondary text-white" id="pwm_control_btn" name="pwm_control" value="true" data-toggle="pwm_control"{% if not settings['globals']['dc_fan'] %} style="display:none"{% endif %}><i class="fas fa-wave-square"></i></button>
+				<button type="button" class="btn btn-outline-primary mr-2 border border-secondary text-white shadow" id="pwm_control_btn" name="pwm_control" value="true" data-toggle="pwm_control"{% if not settings['globals']['dc_fan'] %} style="display:none"{% endif %}><i class="fas fa-wave-square"></i></button>
 				<!-- Manual Mode -->
-				<button type="button" data-toggle="tooltip" title="Manual Mode" class="btn btn-outline-secondary border border-secondary text-white" id="manual_btn" name="setmodemanual" value="true" onclick="cpManualCheck();"><i class="fas fa-glasses"></i></button>
+				<button type="button" data-toggle="tooltip" title="Manual Mode" class="btn btn-outline-secondary border border-secondary text-white shadow" id="manual_btn" name="setmodemanual" value="true" onclick="cpManualCheck();"><i class="fas fa-glasses"></i></button>
 			</div> <!-- End of Active Toolbar -->
 			
 			<!-- SHUTDOWN Toolbar -->
@@ -96,33 +96,36 @@
 					<button type="button" data-toggle="tooltip" title="Stop" class="btn border btn-outline-danger border-secondary" id="stop_active_btn" name="setmodestop" onclick="cpStopCheck();"><i class="fas fa-stop"></i></button>
 				</div> <!-- End of Active Core Group -->
 				<!-- Manual Mode -->
-				<button type="button" data-toggle="tooltip" title="Manual Mode" class="btn btn-outline-secondary border border-secondary text-white" id="manual_btn" name="setmodemanual" value="true" onclick="cpManualCheck();"><i class="fas fa-glasses"></i></button>
+				<button type="button" data-toggle="tooltip" title="Manual Mode" class="btn btn-outline-secondary border border-secondary text-white shadow" id="manual_btn" name="setmodemanual" value="true" onclick="cpManualCheck();"><i class="fas fa-glasses"></i></button>
 			</div> <!-- End of SHUTDOWN Toolbar -->
 			
 			<!-- MANUAL Toolbar -->
-            <div class="btn-toolbar justify-content-center" role="toolbar" id="manual_group"{% if control['mode'] != "Manual" %} style="display:none"{% endif %}>
-                <div id="stopped_core_group" class="btn-group mr-2 shadow" role="group">
+			<div class="btn-toolbar justify-content-center" role="toolbar" id="manual_group"{% if control['mode'] != "Manual" %} style="display:none"{% endif %}>
+				<div id="stopped_core_group" class="btn-group mr-2 shadow" role="group">
 					<button type="button" title="Startup" class="btn btn-outline-secondary border border-secondary text-white" id="startup_btn" onclick="cpStartupCheck();"><i class="fas fa-play"></i></button>
-					<div id="prime_group" class="btn-group mr-2 dropup shadow" role="group" data-toggle="tooltip" data-placement="top" title="Prime the Firepot">
-						<button type="button" class="btn btn-outline-secondary border border-secondary dropdown-toggle text-white" id="prime_btn" data-toggle="dropdown" aria-expanded="false">
-							<i class="fas fa-angle-double-right"></i>
-						</button>
-						<div class="dropdown-menu">
-							<!-- Dropdown menu links -->
-							<button class="dropdown-item" type="button" onclick="setPrime(10, 'Stop')">Prime 10g</button>
-							<button class="dropdown-item" type="button" onclick="setPrime(25, 'Stop')">Prime 25g</button>
-							<button class="dropdown-item" type="button" onclick="setPrime(50, 'Stop')">Prime 50g</button>
-							<button class="dropdown-item" type="button" onclick="setPrime(10, 'Startup')">Prime 10g & Startup</button>
-							<button class="dropdown-item" type="button" onclick="setPrime(25, 'Startup')">Prime 25g & Startup</button>
-							<button class="dropdown-item" type="button" onclick="setPrime(50, 'Startup')">Prime 50g & Startup</button>
-						</div>
-						<!-- SMOKE Button -->
-						<button type="button" data-toggle="tooltip" title="Smoke Mode" class="btn btn-outline-secondary border border-secondary text-white" id="smoke_inactive_btn" name="setmodesmoke" value="true"><i class="fas fa-cloud"></i></button>
-						<!-- HOLD Button -->
-						<button type="button" data-toggle="modal" data-target="#setpointModal" class="btn btn-outline-secondary border border-secondary text-white" id="hold_inactive_btn"><i class="fas fa-crosshairs"></i></button>
+					
+					<!-- Prime the Firepot Dropdown -->
+					<button type="button" class="btn btn-outline-secondary border border-secondary dropdown-toggle text-white" id="prime_btn" data-toggle="dropdown" aria-expanded="false">
+						<i class="fas fa-angle-double-right"></i>
+					</button>
+					<div class="dropdown-menu">
+						<!-- Dropdown menu links -->
+						<button class="dropdown-item" type="button" onclick="setPrime(10, 'Stop')">Prime 10g</button>
+						<button class="dropdown-item" type="button" onclick="setPrime(25, 'Stop')">Prime 25g</button>
+						<button class="dropdown-item" type="button" onclick="setPrime(50, 'Stop')">Prime 50g</button>
+						<button class="dropdown-item" type="button" onclick="setPrime(10, 'Startup')">Prime 10g & Startup</button>
+						<button class="dropdown-item" type="button" onclick="setPrime(25, 'Startup')">Prime 25g & Startup</button>
+						<button class="dropdown-item" type="button" onclick="setPrime(50, 'Startup')">Prime 50g & Startup</button>
 					</div>
+					
+					<!-- HOLD Button -->
+					<button type="button" data-toggle="modal" data-target="#setpointModal" class="btn btn-outline-secondary border border-secondary text-white" id="hold_inactive_btn"><i class="fas fa-crosshairs"></i></button>
 				</div>
 				
+                <div id="manual_core_group" class="btn-group mr-2 shadow" role="group">
+                    <button type="button" data-toggle="tooltip" title="Stop" class="btn border btn-danger border-secondary" id="manual_stop_btn" name="setmodestop" value="true" onclick="cpStop();"><i class="fas fa-stop"></i></button>
+                </div>
+
 				<div id="manual_output_group" class="btn-group mr-2 shadow" role="group">
                     
                     <!-- Fan Button -->
@@ -133,9 +136,6 @@
                     
                     <!-- Igniter Button -->
                     <button type="button" id="manual_igniter" data-output="igniter" data-toggle="tooltip" title="Igniter" class="btn btn-outline-warning border border-secondary" onclick="changeOutput('igniter');"><i class="fas fa-fire"></i></button>
-                </div>
-                <div id="manual_core_group" class="btn-group mr-2 shadow" role="group">
-                    <button type="button" data-toggle="tooltip" title="Stop" class="btn border btn-outline-danger border-secondary" id="manual_stop_btn" name="setmodestop" value="true" onclick="cpStop();"><i class="fas fa-stop"></i></button>
                 </div>
             </div> <!-- End of Manual Toolbar -->
 			
