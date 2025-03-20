@@ -122,27 +122,18 @@ function update_mode() {
     }
 
     // Reset all buttons to their default styles
-    $("#startup_btn").removeClass().addClass("btn btn-outline-secondary border border-secondary text-white");
     $("#smoke_active_btn").removeClass().addClass("btn btn-outline-warning border border-secondary text-white");
     $("#hold_active_btn").removeClass().addClass("btn btn-outline-success border border-secondary text-white").html('<i class="fas fa-crosshairs"></i>');
     $("#prime_btn").removeClass().addClass("btn btn-outline-secondary border border-secondary dropdown-toggle text-white");
 
     // Highlight Active Mode Button
-    if (cpMode === 'Startup' || cpMode === 'Reignite') {
-        document.getElementById("startup_btn").className = "btn btn-success border border-secondary text-white";
-    } else if (cpMode === 'Smoke') {
-        document.getElementById("smoke_active_btn").className = "btn btn-warning border border-secondary text-white";
+    if (cpMode === 'Smoke') {
+		document.getElementById("smoke_active_btn").className = "btn btn-warning border border-secondary text-white";
     } else if (cpMode === 'Hold') {
         document.getElementById("hold_active_btn").className = "btn btn-success border border-secondary text-white";
         $("#hold_active_btn").html(cp_primary_setpoint + "°" + cp_units);
-    } else if (cpMode === 'Shutdown') {
-        // Note: shutdown_active_btn is in active_group, not shutdown_group, so stop button is already btn-danger
-    } else if (cpMode === 'Stop') {
-        // No stop button in stopped_group, as per your requirement
     } else if (cpMode === 'Prime') {
         document.getElementById("prime_btn").className = "btn btn-primary border border-secondary dropdown-toggle text-white";
-    } else if (cpMode === 'Error') {
-        // Error indicator is shown via toolbar logic
     }
 
 	$("button").blur();
