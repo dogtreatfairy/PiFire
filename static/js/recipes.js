@@ -259,21 +259,20 @@ function recipeDeleteFile(delete_this) {
 };
 
 function recipeRunFile(filename) {
-	// Hide inactive rows
-	$('#recipe_welcome_row, #recipe_load_row, #recipe_show_row, #recipe_assets_row').hide();
-	// Setup and show the recipe toolbar items 
-	$('#recipe_toolbar_run_col').hide();
-	$('#recipe_toolbar_loadmenu_col, #recipe_toolbar_edit_col, #recipe_toolbar_new_col').show();
-	$('#recipe_toolbar_row').slideDown();
-	
-	// Send Run Recipe Command to API 
-	var postdata = {
-		'updated' : true, 
-		'mode' : 'Recipe', 
-		'recipe' : {
-			'filename' : RECIPE_FOLDER+filename
-		}
-	};
+    // Hide inactive rows
+    $('#recipe_welcome_row, #recipe_load_row, #recipe_show_row, #recipe_assets_row').hide();
+    $('#recipe_toolbar_run_col').hide();
+    $('#recipe_toolbar_loadmenu_col, #recipe_toolbar_edit_col, #recipe_toolbar_new_col').show();
+    $('#recipe_toolbar_row').slideDown();
+    
+    // Send Run Recipe Command to API 
+    var postdata = {
+        'updated' : true, 
+        'mode' : 'Recipe', 
+        'recipe' : {
+            'filename' : RECIPE_FOLDER + filename
+        }
+    };
     $.ajax({
         url : '/api/control',
         type : 'POST',
@@ -282,16 +281,21 @@ function recipeRunFile(filename) {
         traditional: true,
         success: function (data) {
             //console.log('API Post Call: ' + data.control);
-			var recipeDelayCall = setInterval(function() {
-				recipeRunStatus(filename);
-				recipeRunStatusInterval = setInterval(function(){
-					recipeRunStatus(filename);
-				}, 4000);
-				clearInterval(recipeDelayCall);
-			}, 1000);
-		}
+            var recipeDelayCall = setInterval(function() {
+                recipeRunStatus(filename);
+                recipeRunStatusInterval = setInterval(function(){
+                    recipeRunStatus(filename);
+                }, 4000);
+                clearInterval(recipeDelayCall);
+            }, 1000);
+            
+            // Add a small delay before calling check_state to ensure the mode change has been processed
+            setTimeout(function() {
+                check_state(); // Refresh the control panel after loading the recipe
+            }, 500);
+        }
     });
-};
+}
 
 function recipeRunStatus(filename) {
 	recipe_selected = filename;

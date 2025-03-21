@@ -146,14 +146,19 @@ function update_recipe_mode() {
     console.log('Detected MODE change.')
     $("#cp_recipe_step_btn").html("Step " + cpRecipeStep);
     // Update Mode button 
+    $("#cp_recipe_mode_btn").removeClass("btn-success btn-primary btn-warning btn-success btn-info"); // Remove all potential classes
     if(['Startup', 'Reignite'].includes(cpMode)) {
-        cpRecipeModeIcon = '<i class="fas fa-play"></i>';         
+        cpRecipeModeIcon = '<i class="fas fa-play"></i>';
+        $("#cp_recipe_mode_btn").addClass("btn btn-success");       
     } else if(cpMode == 'Prime') {
-        cpRecipeModeIcon = '<i class="fas fa-angle-double-right btn-primary"></i>'; 
+        cpRecipeModeIcon = '<i class="fas fa-angle-double-right"></i>';
+        $("#cp_recipe_mode_btn").addClass("btn btn-primary");
     } else if(cpMode == 'Smoke') {
-        cpRecipeModeIcon = '<i class="fas fa-cloud btn-warning"></i>'; 
+        cpRecipeModeIcon = '<i class="fas fa-cloud"></i>';
+        $("#cp_recipe_mode_btn").addClass("btn btn-warning"); 
     } else if(cpMode == 'Hold') {
-        cpRecipeModeIcon = '<i class="fas fa-crosshairs btn-success"></i>&nbsp; ' + cp_primary_setpoint + "°" + cp_units; 
+        cpRecipeModeIcon = '<i class="fas fa-crosshairs"></i>&nbsp; ' + cp_primary_setpoint + "°" + cp_units;
+        $("#cp_recipe_mode_btn").addClass("btn btn-success"); 
     } else if(cpMode == 'Shutdown') {
         cpShutdown();
     };
@@ -221,7 +226,6 @@ function update_pwm() {
 };
 
 function check_state() {
-    // Get control data and update control panel if needed
     $.ajax({
         url: '/api/control',
         type: 'GET',
@@ -242,11 +246,18 @@ function check_state() {
             pwm_control = control.control.pwm_control;
             cp_primary_setpoint = control.control.primary_setpoint;
 
-            if (cpRecipeMode && cpRecipeStep != cpRecipeLastStep) {
-                update_recipe_mode();
-            } else if (!cpRecipeMode && cpMode != cpLastMode) {
+            // Update toolbar visibility
+            if (cpRecipeMode) {
+                $("#stopped_group, #startup_group, #active_group, #shutdown_group, #manual_group").hide();
+				$("#recipe_group").show();
+                if (cpRecipeStep != cpRecipeLastStep) {
+                    update_recipe_mode();
+                }
+            } else {
                 update_mode();
             }
+
+            // Other updates
             if (splus_state != last_splus_state) {
                 update_splus();
             }

@@ -105,7 +105,7 @@ function updateProbeCards() {
 				for (key in current.current.F) {
 					updateTempCard(key, current.current.F[key]);
 				};
-
+				
 				// Check for an update to notifications data 
 				if (notify_data.length == 0) {
 					console.log('Initializing notify_data.')

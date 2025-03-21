@@ -15,6 +15,7 @@
 
         <!-- Navbar CSS -->
         <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}" type="text/css" /> 
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 
         {% block cssextend %} {% endblock %}
 
@@ -27,11 +28,14 @@
         <title>{% block title %}{% endblock %}{% if grill_name != '' %} | {{ grill_name }}{% endif %}</title>
 
     </head>
+
     <body class="{% block body_class %}{% endblock %}">
+
+		{% from '_macro_timer.html' import render_timer_modal %}
         
         <header class="border-bottom shadow sticky-top">
 <!-- Navbar -->
-            <nav class="navbar navbar-expand-lg border-bottom navbar-dark bg-dark d-flex align-items-center">
+            <nav class="navbar navbar-expand-lg border-bottom navbar-dark bg-dark d-flex align-items-center justify-content-between">
                 <!-- Navbar Brand -->
                 <a class="navbar-brand order-0" href="/">
                     <img src="{{ url_for('static', filename='img/launcher-icon-1x.png') }}" width="30" height="30" class="d-inline-block align-top" alt="">
@@ -40,28 +44,45 @@
                         | <small class="">{{ grill_name }}</small> 
                     {% endif %}
                 </a>
-                <!-- Navbar Debug Icon -->
-                <div class="ml-lg-2 mr-lg-1 mx-auto order-1 order-lg-5">
-                    {% if settings['globals']['debug_mode'] %}
-                    <a href="/admin#v-pills-debugManual">
-                        <button class="btn btn-warning d-flex justify-content-center align-items-center" style="height:37px; width:38px" type="button">
-                            <i class="fas fa-bug"></i>
-                        </button>
-                    </a>
-                    {% endif %}
-                </div>
-                <!-- Top Timer Toggler -->
-                {% block timer_toggler %}
-                <div class="btn-group ml-auto order-2 order-lg-4" role="group">
-                    <button type="button" class="btn btn-outline-secondary border-secondary" id="timerButton" onclick="timerToggle()">
+                <div id="right_buttons" class="d-flex align-items-right order-1 order-lg-2">
+                    <!-- Navbar Debug Icon -->
+                    <div class="ml-lg-2 mr-lg-1 mx-auto order-1">
+                        {% if settings['globals']['debug_mode'] %}
+                        <a href="/admin#v-pills-debugManual">
+                            <button class="btn btn-warning d-flex justify-content-center align-items-center" style="height:37px; width:38px" type="button">
+                                <i class="fas fa-bug"></i>
+                            </button>
+                        </a>
+                        {% endif %}
+                    </div>
+                    <!-- Temp Reading -->
+                    <div id="nav_temp_display" class="btn btn-outline-primary font-weight-bold ml-auto mr-2 order-2" style="pointer-events: none;">
+                    </div>
+                    <!-- Timer Toggler Button -->
+					<button class="btn btn-outline-warning order-3" id="timerInactiveGroup" onclick="timerModal();">
                         <i class="fas fa-stopwatch"></i>
                     </button>
+					<!-- timerActiveGroup -->
+					<div class="btn-group order-3 d-none" role="group" id="timerActiveGroup">
+						<button type="button" class="btn btn-outline-warning" id="timer_toggle_button" onclick="timerModal();">
+							<i class="fas fa-stopwatch mr-1"></i><i id="timer_time_remaining"></i>
+						</button>
+						<button type="button" data-toggle="tooltip" title="Pause the timer" class="btn btn-warning" onclick="timerPause();"><i class="fas fa-pause-circle"></i></button>
+						<button type="button" data-toggle="tooltip" title="Stop the timer" class="btn btn-warning" onclick="timerStop();"><i class="fas fa-stop-circle"></i></button>
+					</div>
+					<!-- timerPausedGroup Show play button and stop button -->
+					<div class="btn-group order-3 d-none animate__animated animate__pulse animate__infinite" role="group" id="timerPausedGroup">
+						<button type="button" class="btn btn-outline-warning" id="timer_toggle_button" onclick="timerModal();">
+							<i class="fas fa-stopwatch mr-1"></i><div id="timer_time_remaining"></div>
+						</button>
+						<button type="button" data-toggle="tooltip" title="Start the timer" class="btn btn-warning" onclick="timerUnPause();"><i class="fas fa-play-circle"></i></button>
+						<button type="button" data-toggle="tooltip" title="Stop the timer" class="btn btn-warning" onclick="timerStop();"><i class="fas fa-stop-circle"></i></button>
+					</div>
+                    <!-- Right Navbar Links -->
+                    <button class="btn btn-secondary border-light ml-2 order-4 d-lg-none d-flex justify-content-center align-items-center" data-toggle="collapse" data-target="#navbarNav">
+                        <i class="fas fa-bars"></i>
+                    </button>
                 </div>
-                {% endblock %}
-                <!-- Right Navbar Links -->
-                <button class="navbar-toggler ml-1 order-3 d-lg-none d-flex justify-content-center align-items-center" style="height:37px; width:38px" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <i class="fas fa-bars"></i>
-                </button>
                 <!-- Navbar Collapsible Menu -->
                 <div class="collapse navbar-collapse order-4 order-lg-1" id="navbarNav">
                     <ul class="navbar-nav text-center text-lg-start">
@@ -102,16 +123,6 @@
                             </a>
                         </li>
                     </ul>
-                </div>
-                <!-- Timer Dropdown -->
-                <div class="col-12 col-lg-2 mt-lg-0 order-5 order-lg-2 d-flex order-4 justify-content-center justify-content-lg-end">
-                    {% block navbar %}
-                    {% block timer_bar %}
-                        {% from '_macro_timer.html' import render_timer_bar, render_timer_modal %}
-                        {{ render_timer_bar() }}
-                        {{ render_timer_modal() }}
-                    {% endblock %}
-                    {% endblock %}
                 </div>
             </nav>
         </header>
@@ -233,6 +244,7 @@
         {% endblock %}
         
 
+
         <!-- Standard JavaScript -->
         <!-- jQuery --> 
         <script src="{{ url_for('static', filename='js/jquery-3.4.1.js') }}"></script>
@@ -246,6 +258,7 @@
         <script src="{{ url_for('static', filename='js/timer.js') }}"></script>
         {% endblock %}
 
+        <!-- Control Panel Scripts -->
         {% block controlpanel_scripts %}
             {% if settings['globals']['global_control_panel'] %}
                 <!-- Control Panel JS -->
@@ -262,36 +275,59 @@
             {% endif %}
         {% endblock %}
 
-        {% block scripts %} 
+
         <!--Select input text in modal dialogue-->
         <script>
             $(document).ready(function() {
-				$('#setpointModal').on('shown.bs.modal', function () {
-					setTimeout(function() {
-						var input = document.getElementById('tempOutputId');
-						input.focus();
-						input.select();
-					}, 1000);
-			
-					var selectedPill = sessionStorage.getItem('selectedPill');
-					if (selectedPill) {
-						// Remove the active class from all tabs
-						$('.nav-link').removeClass('active');
-						// Remove the show and active classes from all tab panes
-						$('.tab-pane').removeClass('show active');
-						// Select the new tab
-						var pillElement = new bootstrap.Tab(document.getElementById(selectedPill));
-						pillElement.show();
-						// Add the active class to the new tab
-						$('#' + selectedPill).addClass('active');
-						// Add the show and active classes to the new tab pane
-						$('#' + selectedPill.replace('-tab', '')).addClass('show active');
-						sessionStorage.removeItem('selectedPill');
-					}
-				});
-			});
+                $('#setpointModal').on('shown.bs.modal', function () {
+                    setTimeout(function() {
+                        var input = document.getElementById('tempOutputId');
+                        input.focus();
+                        input.select();
+                    }, 1000);
+                });
+
+                updateNavbarTemp();
+                setInterval(updateNavbarTemp, 500); // Update every 1/2 second
+                console.log('End of document ready');
+            });
+        
+
+            function updateNavbarTemp() {
+                console.log('updateNavbarTemp called');
+                req = $.ajax({
+                    url : '/api/current',
+                    type : 'GET',
+                    success : function(current){
+                        console.log('AJAX request successful');
+                        // Update navigation temperature display
+                        const units = current.status.units;
+                        const primary = Object.keys(current.current.P)[0]; // Assuming the first key is the primary probe
+                        const primaryTemp = current.current.P[primary];
+                        const tempWithUnits = `${primaryTemp} °${units}`;
+                        const navTempDisplay = document.getElementById('nav_temp_display');
+                        console.log('Temp: ', primaryTemp, " ", units);
+        
+                        // Check if the current URL is not /dash
+                        if (window.location.pathname !== '/dash') {
+                            console.log('Updating nav_temp_display:', tempWithUnits);
+                            navTempDisplay.innerHTML = tempWithUnits;
+                            navTempDisplay.style.display = 'block';
+                        } else {
+                            console.log('Hiding nav_temp_display');
+                            navTempDisplay.style.display = 'none';
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error fetching temperature data:', status, error);
+                    }
+                });
+            }
         </script>
-        {% endblock %}        
+        {% block scripts %} 
+        {% endblock %}
+		
+		{{ render_timer_modal() }}
 
     </body>
 </html>
