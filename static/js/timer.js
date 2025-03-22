@@ -13,19 +13,6 @@ var timerUpdateTimerStatus;  // Interval used to get the timer status
 var timerSuppressUpdate = false;  // Suppress update to timer buttons right after a button click
 var timerUserHidden = false;  // Flag that keeps the timer hidden if the user chose hidden
 
-// Toggles visibility of the timer status in the top-bar (triggered by pressing button in navbar)
-function timerToggle() {
-    if ($("#toggleTimer").html() == 'hidden') {
-        timerUserHidden = false;
-        $("#timer_bar").slideDown();
-        $("#toggleTimer").html('unhidden');
-    } else {
-        timerUserHidden = true;
-        $("#timer_bar").slideUp();
-        $("#toggleTimer").html('hidden');
-    };
-};
-
 function timerModal() {
     // Show timer settings modal 
     $('#timerModal').modal('show');
@@ -226,11 +213,10 @@ function timerButtonsInactive() {
 function timerButtonsPaused() {
     // Timer is paused 
     $("#timerActiveGroup").hide();
-    $("#timerStartGroup").hide();
+    $("#timerInactiveGroup").hide();
     $("#timerPausedGroup").show();
     $("#timerActiveGroup").removeClass("d-flex");
     $("#timerPausedGroup").addClass("d-flex");
-    timerUpdateTimeRemaining(); // Ensure the remaining time is displayed
 }
 
 // Launch a timer 

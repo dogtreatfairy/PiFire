@@ -170,10 +170,10 @@ function update_recipe_mode() {
 function update_recipe_pause() {
     if (cpRecipePause && cpRecipeTriggered) {
         //$("#cp_recipe_next_step_btn").html('<i class="fas fa-step-forward"></i>');
-        document.getElementById("cp_recipe_next_step_btn").className = "btn btn-info text-white glowbutton";
+        document.getElementById("cp_recipe_next_step_btn").className = "btn btn-outline-primary border border-secondary text-white glowbutton";
     } else {
         //$("#cp_recipe_next_step_btn").html('<i class="fas fa-step-forward"></i>');
-        document.getElementById("cp_recipe_next_step_btn").className = "btn btn-info text-white";
+        document.getElementById("cp_recipe_next_step_btn").className = "btn btn-outline-primary border border-secondary text-white text-white";
     };
     cpLastRecipePause = cpRecipePause;
     cpLastRecipeTriggered = cpRecipeTriggered;
