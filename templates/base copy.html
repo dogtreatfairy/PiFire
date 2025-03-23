@@ -34,11 +34,11 @@
     <body class="{% block body_class %}{% endblock %}">
 
 		{% from '_macro_timer.html' import render_timer_modal %}
-
+        
 		<header>
-			<nav class="navbar navbar-dark navbar-expand-lg bg-dark fixed-top border-bottom p-1 d-flex align-items-center">
-				<div class="d-flex align-items-center w-100">
-					<!-- Left Section (Logo + Branding) -->
+			<nav class="navbar navbar-dark bg-dark fixed-top border-bottom p-1">
+				<div class="container-fluid d-flex justify-content-between align-items-center">
+					<!-- Left Side: Logo, Branding, Grill Name -->
 					<div class="d-flex align-items-center flex-shrink-0">
 						<a href="/">
 							<img src="{{ url_for('static', filename='img/launcher-icon-1x.png') }}" height="25" class="d-inline-block mr-1">
@@ -46,119 +46,146 @@
 						<a class="navbar-brand mr-1" href="/">
 							<b>Pi<i class="text-danger">Fire</i></b>
 						</a>
+						{% if grill_name != '' %}
+							<span class="ml-1 text-white">{{ grill_name }}</span>
+						{% endif %}
 					</div>
-			
-					<!-- Middle Section (Grill Name - Flexible with Truncation) -->
-					{% if grill_name != '' %}
-						<div class="flex-grow-1 text-truncate mr-2" style="min-width: 0;">
-							<span class="ml-1">| {{ grill_name }}</span>
-						</div>
-					{% endif %}
-			
-					<!-- Right Section (Buttons) -->
-					<div class="d-flex justify-content-end flex-shrink-0 align-items-center">
-						<!-- Collapsible Menu Items Placeholder Large Screens -->
-						<div id="navbarPlaceholder" class="ml-lg-2 mr-lg-1 mx-auto order-1">
-						</div>
-						<!-- Navbar Debug Icon -->
-						<div class="ml-lg-2 mr-lg-1 mx-auto order-1">
-							{% if settings['globals']['debug_mode'] %}
-							<a href="/admin#v-pills-debugManual">
-								<button class="btn btn-warning d-flex justify-content-center align-items-center" style="height:37px; width:38px" type="button">
-									<i class="fas fa-bug"></i>
+					<!-- Navigation Menu (visible on large screens) -->
+					<div class="d-none d-lg-flex flex-grow-1 justify-content-end align-items-center">
+						<ul class="navbar-nav flex-row">
+							<li class="nav-item mx-2">
+								<a href="/" class="nav-link main-nav-link d-flex align-items-center">
+									<i class="nav-icon fas fa-tachometer-alt mr-2"></i>
+									<p class="mb-0">Dashboard</p>
+								</a>
+							</li>
+							<li class="nav-item mx-2">
+								<a href="/recipes" class="nav-link main-nav-link d-flex align-items-center">
+									<i class="nav-icon fas fa-utensils mr-2"></i>
+									<p class="mb-0">Recipes</p>
+								</a>
+							</li>
+							<li class="nav-item mx-2">
+								<a href="/history" class="nav-link main-nav-link d-flex align-items-center">
+									<i class="nav-icon fas fa-history mr-2"></i>
+									<p class="mb-0">History</p>
+								</a>
+							</li>
+							<li class="nav-item mx-2">
+								<a href="/events" class="nav-link main-nav-link d-flex align-items-center">
+									<i class="nav-icon fas fa-stream mr-2"></i>
+									<p class="mb-0">Events</p>
+								</a>
+							</li>
+							<li class="nav-item mx-2">
+								<a href="/settings" class="nav-link main-nav-link d-flex align-items-center">
+									<i class="nav-icon fas fa-cog mr-2"></i>
+									<p class="mb-0">Settings</p>
+								</a>
+							</li>
+							<li class="nav-item mx-2">
+								<a href="/admin" class="nav-link main-nav-link d-flex align-items-center">
+									<i class="nav-icon fas fa-hammer mr-2"></i>
+									<p class="mb-0">Admin</p>
+								</a>
+							</li>
+						</ul>
+					</div>
+					<!-- Right Side: Buttons and Toggler -->
+					<div class="d-flex align-items-center">
+						<!-- Buttons -->
+						<div class="d-flex">
+							<!-- Navbar Debug Icon -->
+							<div class="ml-lg-2 mr-lg-1 mx-auto">
+								{% if settings['globals']['debug_mode'] %}
+								<a href="/admin#v-pills-debugManual">
+									<button class="btn btn-warning d-flex justify-content-center align-items-center" style="height:37px; width:38px" type="button">
+										<i class="fas fa-bug"></i>
+									</button>
+								</a>
+								{% endif %}
+							</div>
+							<!-- Temp Reading -->
+							<div id="nav_temp_display" class="btn btn-outline-primary font-weight-bold ml-auto mr-2" style="pointer-events: none;">
+							</div>
+							<!-- Timer Toggler Button -->
+							<button class="btn btn-outline-warning d-flex justify-content-center align-items-center" id="timerInactiveGroup" onclick="timerModal();" style="height:37px; width:38px">
+								<i class="fas fa-stopwatch"></i>
+							</button>
+							<!-- timerActiveGroup -->
+							<div class="btn-group d-none" role="group" id="timerActiveGroup">
+								<button type="button" class="btn btn-outline-warning" id="timer_toggle_button" onclick="timerModal();">
+									<i class="fas fa-stopwatch mr-1"></i><i id="timer_time_remaining"></i>
 								</button>
-							</a>
-							{% endif %}
+								<button type="button" data-toggle="tooltip" title="Pause the timer" class="btn btn-warning" onclick="timerPause();">
+									<i class="fas fa-pause-circle"></i>
+								</button>
+								<button type="button" data-toggle="tooltip" title="Stop the timer" class="btn btn-warning" onclick="timerStop();">
+									<i class="fas fa-stop-circle"></i>
+								</button>
+							</div>
+							<!-- timerPausedGroup -->
+							<div class="btn-group d-none animate__animated animate__pulse animate__infinite" role="group" id="timerPausedGroup">
+								<button type="button" class="btn btn-outline-warning" id="timer_toggle_button" onclick="timerModal();">
+									<i class="fas fa-stopwatch mr-1"></i><div id="timer_time_remaining"></div>
+								</button>
+								<button type="button" data-toggle="tooltip" title="Start the timer" class="btn btn-warning" onclick="timerUnPause();">
+									<i class="fas fa-play-circle"></i>
+								</button>
+								<button type="button" data-toggle="tooltip" title="Stop the timer" class="btn btn-warning" onclick="timerStop();">
+									<i class="fas fa-stop-circle"></i>
+								</button>
+							</div>
 						</div>
-						<!-- Temp Reading -->
-						<div id="nav_temp_display" class="btn btn-outline-primary font-weight-bold ml-auto mr-2 order-2" style="pointer-events: none;">
-						</div>
-						<!-- Timer Toggler Button -->
-						<button class="btn btn-outline-warning order-3" id="timerInactiveGroup" onclick="timerModal();">
-							<i class="fas fa-stopwatch"></i>
-						</button>
-						<!-- timerActiveGroup -->
-						<div class="btn-group order-3 d-none" role="group" id="timerActiveGroup">
-							<button type="button" class="btn btn-outline-warning" id="timer_toggle_button" onclick="timerModal();">
-								<i class="fas fa-stopwatch mr-1"></i><i id="timer_time_remaining"></i>
-							</button>
-							<button type="button" data-toggle="tooltip" title="Pause the timer" class="btn btn-warning" onclick="timerPause();"><i class="fas fa-pause-circle"></i></button>
-							<button type="button" data-toggle="tooltip" title="Stop the timer" class="btn btn-warning" onclick="timerStop();"><i class="fas fa-stop-circle"></i></button>
-						</div>
-						<!-- timerPausedGroup Show play button and stop button -->
-						<div class="btn-group order-3 d-none animate__animated animate__pulse animate__infinite" role="group" id="timerPausedGroup">
-							<button type="button" class="btn btn-outline-warning" id="timer_toggle_button" onclick="timerModal();">
-								<i class="fas fa-stopwatch mr-1"></i><div id="timer_time_remaining"></div>
-							</button>
-							<button type="button" data-toggle="tooltip" title="Start the timer" class="btn btn-warning" onclick="timerUnPause();"><i class="fas fa-play-circle"></i></button>
-							<button type="button" data-toggle="tooltip" title="Stop the timer" class="btn btn-warning" onclick="timerStop();"><i class="fas fa-stop-circle"></i></button>
-						</div>
-						<!-- Right Navbar Links -->
-						<button class="btn btn-secondary border-light ml-2 order-4 d-lg-none d-flex justify-content-center align-items-center" data-toggle="collapse" data-target="#navbarNavContainer" style="height:37px; width:38px;">
+						<!-- Toggler (visible on small screens) -->
+						<button class="btn btn-secondary border-light d-flex justify-content-center align-items-center d-lg-none ml-2" type="button" data-toggle="collapse" data-target="#navbarNav" style="height:37px; width:38px">
 							<i class="fas fa-bars"></i>
 						</button>
 					</div>
 				</div>
-				<!-- Navbar Collapsible Menu Items -->
-				<div class="collapse navbar-collapse order-4 order-lg-2 align-items-center justify-content-around" id="navbarNavContainer">
-					<ul class="navbar-nav text-center text-lg-start" id="navbarNav">
+				<!-- Collapsible Menu for Small Screens -->
+				<div class="collapse navbar-collapse" id="navbarNav">
+					<ul class="navbar-nav text-center">
 						<li class="nav-item">
-							<a href="/" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+							<a href="/" class="nav-link main-nav-link d-flex align-items-center justify-content-center py-3 my-2">
 								<i class="nav-icon fas fa-tachometer-alt mr-2"></i>
 								<p class="mb-0">Dashboard</p>
 							</a>
 						</li>
 						<li class="nav-item">
-							<a href="/recipes" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+							<a href="/recipes" class="nav-link main-nav-link d-flex align-items-center justify-content-center py-3 my-2">
 								<i class="nav-icon fas fa-utensils mr-2"></i>
 								<p class="mb-0">Recipes</p>
 							</a>
 						</li>
 						<li class="nav-item">
-							<a href="/history" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+							<a href="/history" class="nav-link main-nav-link d-flex align-items-center justify-content-center py-3 my-2">
 								<i class="nav-icon fas fa-history mr-2"></i>
 								<p class="mb-0">History</p>
 							</a>
 						</li>
 						<li class="nav-item">
-							<a href="/events" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+							<a href="/events" class="nav-link main-nav-link d-flex align-items-center justify-content-center py-3 my-2">
 								<i class="nav-icon fas fa-stream mr-2"></i>
 								<p class="mb-0">Events</p>
 							</a>
 						</li>
-						<li class="nav-item dropdown" id="settingsNavItem">
-							<a class="nav-link dropdown-toggle main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0" href="#" id="settingsDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+						<li class="nav-item">
+							<a href="/settings" class="nav-link main-nav-link d-flex align-items-center justify-content-center py-3 my-2">
 								<i class="nav-icon fas fa-cog mr-2"></i>
 								<p class="mb-0">Settings</p>
 							</a>
-							<div class="dropdown-menu" aria-labelledby="settingsDropdown">
-								<a class="dropdown-item settings-nav-item text-center py3 my2" href="/settings#v-pills-misc" data-target="#v-pills-misc">Misc Settings</a>
-								<a class="dropdown-item settings-nav-item text-center py3 my2" href="/settings#v-pills-history" data-target="#v-pills-history">History</a>
-								<a class="dropdown-item settings-nav-item text-center py3 my2" href="/settings#v-pills-notifications" data-target="#v-pills-notifications">Notifications</a>
-								<a class="dropdown-item settings-nav-item text-center py3 my2" href="/settings#v-pills-pellets" data-target="#v-pills-pellets">Pellets</a>
-								<a class="dropdown-item settings-nav-item text-center py3 my2" href="/settings#v-pills-probes" data-target="#v-pills-probes">Probes</a>
-								{% if settings['globals']['dc_fan'] %}
-								<a class="dropdown-item settings-nav-item text-center py3 my2" href="/settings#v-pills-pwm" data-target="#v-pills-pwm">PWM Settings</a>
-								{% endif %}
-								<a class="dropdown-item settings-nav-item text-center py3 my2" href="/settings#v-pills-safety" data-target="#v-pills-safety">Safety</a>
-								<a class="dropdown-item settings-nav-item text-center py3 my2" href="/settings#v-pills-startup" data-target="#v-pills-startup">Startup & Shutdown</a>
-								<a class="dropdown-item settings-nav-item text-center py3 my2" href="/settings#v-pills-work-mode" data-target="#v-pills-work-mode">Work Mode</a>
-							</div>
 						</li>
 						<li class="nav-item">
-							<a href="/admin" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+							<a href="/admin" class="nav-link main-nav-link d-flex align-items-center justify-content-center py-3 my-2">
 								<i class="nav-icon fas fa-hammer mr-2"></i>
 								<p class="mb-0">Admin</p>
 							</a>
 						</li>
 					</ul>
 				</div>
-				<!-- End Collapsible Menu Items-->
 			</nav>
 		</header>
-
-		<!-- Spacer div to take up the space of the navbar -->
-        <div style="height: 56px;"></div>
 
 <!-- Notifications -->    
         <div class="col-12 col-lg-6 mt-1" style="position:fixed; right:0; z-index: 1020;">
@@ -308,6 +335,8 @@
             {% endif %}
         {% endblock %}
 
+
+        <!--Select input text in modal dialogue-->
         <script>
             $(document).ready(function() {
                 $('#setpointModal').on('shown.bs.modal', function () {
@@ -317,46 +346,11 @@
                         input.select();
                     }, 1000);
                 });
-				
-				// Hover functionality for dropdown
-				$('#settingsNavItem').hover(
-					function() {
-						// Show on hover
-						$(this).find('.dropdown-menu').addClass('show');
-					},
-					function() {
-						// Hide when mouse leaves
-						$(this).find('.dropdown-menu').removeClass('show');
-					}
-				);
-				
-				// Keep dropdown visible when clicking its items
-				$('.dropdown-item').on('click', function(e) {
-					e.stopPropagation();
-				});
-
-				// Call the function on page load
-				handleSettingsDropdown();
-
-				// Also call when window is resized
-				$(window).on('resize', handleSettingsDropdown);
 
                 updateNavbarTemp();
                 setInterval(updateNavbarTemp, 500); // Update every 1/2 second
                 console.log('End of document ready');
             });
-
-			function handleSettingsDropdown() {
-				if (window.location.pathname === '/settings' && window.innerWidth < 992) {
-					// Show settings dropdown on small screens
-					$('#settingsNavItem .dropdown-menu').addClass('show');
-					$('#settingsDropdown').attr('aria-expanded', 'true');
-				} else {
-					// Hide dropdown on large screens or non-settings pages
-					$('#settingsNavItem .dropdown-menu').removeClass('show');
-					$('#settingsDropdown').attr('aria-expanded', 'false');
-				}
-			}
         
 
             function updateNavbarTemp() {
@@ -389,27 +383,7 @@
                     }
                 });
             }
-			// Move Navbar to correct position on window resize. 
-			function moveNavbarItems() {
-				const navbarNav = document.getElementById('navbarNav');
-				const navbarPlaceholder = document.getElementById('navbarPlaceholder');
-				const navbarNavContainer = document.getElementById('navbarNavContainer');
-		
-				if (window.innerWidth >= 992) { // lg breakpoint is 992px
-					if (navbarPlaceholder && !navbarPlaceholder.contains(navbarNav)) {
-						navbarPlaceholder.appendChild(navbarNav);
-					}
-				} else {
-					if (navbarNavContainer && !navbarNavContainer.contains(navbarNav)) {
-						navbarNavContainer.appendChild(navbarNav);
-					}
-				}
-			}
-		
-			window.addEventListener('resize', moveNavbarItems);
-			window.addEventListener('DOMContentLoaded', moveNavbarItems);
         </script>
-
         {% block scripts %} 
         {% endblock %}
 		

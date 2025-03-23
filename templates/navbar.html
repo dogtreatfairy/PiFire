@@ -1,0 +1,92 @@
+<nav class="navbar navbar-expand-lg border-bottom navbar-dark bg-dark d-flex align-items-center justify-content-between">
+                <!-- Navbar Brand -->
+                <div id="left_buttons" class="d-flex flex-nowrap flex-grow-1 justify-content-start align-items-center order-0">
+					<a class="navbar-brand" href="/">
+						<img src="{{ url_for('static', filename='img/launcher-icon-1x.png') }}" width="30" height="30" class="d-inline-block align-top" alt="">
+						<b>Pi<i class="text-danger">Fire</i></b>
+					</a>
+					{% if grill_name != '' %}
+						<span class="d-flex text-truncate text-nowrap overflow-hidden">{{ grill_name }}</span>
+					{% endif %}
+				</div>
+                <div id="right_buttons" class="d-flex flex-nowrap flex-grow-1 align-items-center justify-content-end ml-auto order-2 order-lg-3">
+                    <!-- Navbar Debug Icon -->
+                    <div class="ml-lg-2 mr-lg-1 mx-auto order-1">
+                        {% if settings['globals']['debug_mode'] %}
+                        <a href="/admin#v-pills-debugManual">
+                            <button class="btn btn-warning d-flex justify-content-center align-items-center" style="height:37px; width:38px" type="button">
+                                <i class="fas fa-bug"></i>
+                            </button>
+                        </a>
+                        {% endif %}
+                    </div>
+                    <!-- Temp Reading -->
+                    <div id="nav_temp_display" class="btn btn-outline-primary font-weight-bold ml-auto mr-2 order-2" style="pointer-events: none;">
+                    </div>
+                    <!-- Timer Toggler Button -->
+					<button class="btn btn-outline-warning order-3" id="timerInactiveGroup" onclick="timerModal();">
+                        <i class="fas fa-stopwatch"></i>
+                    </button>
+					<!-- timerActiveGroup -->
+					<div class="btn-group order-3 d-none" role="group" id="timerActiveGroup">
+						<button type="button" class="btn btn-outline-warning" id="timer_toggle_button" onclick="timerModal();">
+							<i class="fas fa-stopwatch mr-1"></i><i id="timer_time_remaining"></i>
+						</button>
+						<button type="button" data-toggle="tooltip" title="Pause the timer" class="btn btn-warning" onclick="timerPause();"><i class="fas fa-pause-circle"></i></button>
+						<button type="button" data-toggle="tooltip" title="Stop the timer" class="btn btn-warning" onclick="timerStop();"><i class="fas fa-stop-circle"></i></button>
+					</div>
+					<!-- timerPausedGroup Show play button and stop button -->
+					<div class="btn-group order-3 d-none animate__animated animate__pulse animate__infinite" role="group" id="timerPausedGroup">
+						<button type="button" class="btn btn-outline-warning" id="timer_toggle_button" onclick="timerModal();">
+							<i class="fas fa-stopwatch mr-1"></i><div id="timer_time_remaining"></div>
+						</button>
+						<button type="button" data-toggle="tooltip" title="Start the timer" class="btn btn-warning" onclick="timerUnPause();"><i class="fas fa-play-circle"></i></button>
+						<button type="button" data-toggle="tooltip" title="Stop the timer" class="btn btn-warning" onclick="timerStop();"><i class="fas fa-stop-circle"></i></button>
+					</div>
+                    <!-- Right Navbar Links -->
+                    <button class="btn btn-secondary border-light ml-2 order-4 d-lg-none d-flex justify-content-center align-items-center" data-toggle="collapse" data-target="#navbarNav">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+                <!-- Navbar Collapsible Menu -->
+                <div class="collapse navbar-collapse order-4 order-lg-2 align-items-center justify-content-around" id="navbarNav">
+                    <ul class="navbar-nav text-center text-lg-start">
+                        <li class="nav-item">
+                            <a href="/" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+                                <i class="nav-icon fas fa-tachometer-alt mr-2"></i>
+                                <p class="mb-0">Dashboard</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="/recipes" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+                                <i class="nav-icon fas fa-utensils mr-2"></i>
+                                <p class="mb-0">Recipes</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="/history" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+                                <i class="nav-icon fas fa-history mr-2"></i>
+                                <p class="mb-0">History</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="/events" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+                                <i class="nav-icon fas fa-stream mr-2"></i>
+                                <p class="mb-0">Events</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="/settings" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+                                <i class="nav-icon fas fa-cog mr-2"></i>
+                                <p class="mb-0">Settings</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="/admin" class="nav-link main-nav-link d-flex align-items-center justify-content-center justify-content-lg-start py-3 py-lg-0 my-2 my-lg-0">
+                                <i class="nav-icon fas fa-hammer mr-2"></i>
+                                <p class="mb-0">Admin</p>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>

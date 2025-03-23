@@ -41,60 +41,7 @@
 
 {% endblock %}
 
-{% block content %}    
-    <div class="row">
-        <!-- Spacer for Left Nav on large screens -->
-        <div class="col-lg-2 d-none d-lg-block"></div>
-        <!-- Spacer for Sub Nav on everything but large screens -->
-        <div class="col-12 mt-5 d-lg-none d-block"></div>
-        <!-- Nav Content-->
-        <aside class="col-12 col-lg-2 navbar-dark bg-dark px-0 position-fixed vh-lg-100 border-bottom" style="z-index:1000;">
-            <nav class="navbar navbar-expand-lg px-0">   
-                <button class="ml-auto btn btn-warning mr-2 d-lg-none d-flex justify-content-center align-items-center" data-toggle="collapse" data-target="#settingsNav" aria-controls="settingsNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <b>Settings</b><span class="fa fa-chevron-down ml-2"></span>
-                </button>
-                <div class="collapse navbar-collapse overflow-auto mt-2 px-0 ml-auto col-12 col-lg-auto" style="z-index:1001;" id="settingsNav"> 
-                    <ul class="nav nav-pills flex-column mx-auto px-0">
-                        <li class="nav-item mt-1 px-1">
-                            <a class="nav-link subnav-link active d-flex align-items-start" id="v-pills-misc-tab" data-toggle="pill" href="#v-pills-misc" role="tab" aria-controls="v-pills-misc" aria-selected="true">Misc Settings</a>
-                        </li>
-                        <li class="nav-item mt-1 px-1">
-                            <a class="nav-link subnav-link d-flex align-items-start" id="v-pills-history-tab" data-toggle="pill" href="#v-pills-history" role="tab" aria-controls="v-pills-history" aria-selected="false">History</a>
-                        </li>
-                        <li class="nav-item mt-1 px-1">
-                            <a class="nav-link subnav-link d-flex align-items-start" id="v-pills-notifications-tab" data-toggle="pill" href="#v-pills-notifications" role="tab" aria-controls="v-pills-notifications" aria-selected="false">Notifications</a>
-                        </li>
-                        <li class="nav-item mt-1 px-1">
-                            <a class="nav-link subnav-link d-flex align-items-start" id="v-pills-pellets-tab" data-toggle="pill" href="#v-pills-pellets" role="tab" aria-controls="v-pills-pellets" aria-selected="false">Pellets</a>
-                        </li>
-                        <li class="nav-item mt-1 px-1">
-                            <a class="nav-link subnav-link d-flex align-items-start" id="v-pills-probes-tab" data-toggle="pill" href="#v-pills-probes" role="tab" aria-controls="v-pills-probes" aria-selected="false">Probes</a>
-                        </li>
-                            {% if settings['globals']['dc_fan'] %}
-                        <li class="nav-item mt-1 px-1">
-                            <a class="nav-link subnav-link d-flex align-items-start" id="v-pills-pwm-tab" data-toggle="pill" href="#v-pills-pwm" role="tab" aria-controls="v-pills-pwm" aria-selected="false">PWM Settings</a>
-                        </li>
-                        {% endif %}
-                        <li class="nav-item mt-1 px-1">
-                            <a class="nav-link subnav-link d-flex align-items-center" id="v-pills-safety-tab" data-toggle="pill" href="#v-pills-safety" role="tab" aria-controls="v-pills-safety" aria-selected="false">
-                                Safety
-                                {% if settings['safety']['startup_check'] %}
-                                    <i class="fas fa-check-circle text-success ml-auto"></i>
-                                {% else %}
-                                    <i class="fas fa-times-circle text-danger ml-auto"></i>
-                                {% endif %}
-                            </a>
-                        </li>
-                        <li class="nav-item mt-1 px-1">
-                            <a class="nav-link subnav-link d-flex align-items-start" id="v-pills-startup-tab" data-toggle="pill" href="#v-pills-startup" role="tab" aria-controls="v-pills-startup" aria-selected="false">Startup & Shutdown</a>
-                        </li>
-                        <li class="nav-item mt-1 px-1">
-                            <a class="nav-link subnav-link d-flex align-items-start" id="v-pills-work-mode-tab" data-toggle="pill" href="#v-pills-work-mode" role="tab" aria-controls="v-pills-work-mode" aria-selected="false">Work Mode</a>
-                        </li>
-                    </ul> 
-                </div>
-            </nav>
-        </aside> 
+{% block content %}
 
 <!-- Pills content -->
         <div class="col-12 col-lg-7 mx-auto mt-2" style="z-index: 0;">
@@ -2812,7 +2759,7 @@
                 </div><!-- End of Pills Tab Content -->
             </div>
         </div>
-    </div>
+
 {% endblock %}           
             
 {% block postcontainer %}
@@ -2835,7 +2782,7 @@
     $(document).ready(function() {
         toggleHoldTemp();  // Call the function on page load
 
-        $('.nav-link').on('click', function(){
+        $('.dropdown-item').on('click', function(){
             $('.navbar-collapse').collapse('hide');
         });
 
@@ -2878,6 +2825,29 @@
                 header.classList.add('bg-dark', 'text-white');
             }
         }); 
+		function activateTabFromHash() {
+			var hash = window.location.hash;
+			
+			// If there's a hash and it starts with #v-pills-
+			if(hash && hash.startsWith('#v-pills-')) {
+				// Show the tab content
+				$('.tab-pane').removeClass('show active');
+				$(hash).addClass('show active');
+				
+				// Scroll to the tab content
+				$('html, body').animate({
+					scrollTop: $(hash).offset().top - 70
+				}, 300);
+			}
+		}
+		
+		// Run on page load
+		activateTabFromHash();
+		
+		// Also run when hash changes (user clicks on a Settings menu item)
+		$(window).on('hashchange', function() {
+			activateTabFromHash();
+		});
     });
 </script>
 <script src="{{ url_for('static', filename='js/bootstrap-colorpicker.min.js') }}"></script>
