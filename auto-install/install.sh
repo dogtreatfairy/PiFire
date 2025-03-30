@@ -107,20 +107,20 @@ $SUDO chmod -R 775 pifire/
 
 echo " - Setting up VENV"
 # Setup VENV
-python -m venv --system-site-packages pifire
+python3 -m venv --system-site-packages pifire
 cd /usr/local/bin/pifire
 source bin/activate 
 
 echo " - Installing module dependencies... "
 # Install module dependencies 
-if ! python -c "import sys; assert sys.version_info[:2] >= (3,11)" > /dev/null; then
+if ! python3 -c "import sys; assert sys.version_info[:2] >= (3,11)" > /dev/null; then
     echo "System is running a python version lower than 3.11, installing eventlet==0.30.2";
-    python -m pip install "eventlet==0.30.2"
+    python3 -m pip install "eventlet==0.30.2"
 else
     echo "System is running a python version 3.11 or greater, installing latest eventlet"
-    python -m pip install eventlet
+    python3 -m pip install eventlet
 fi      
-python -m pip install -r /usr/local/bin/pifire/auto-install/requirements.txt
+python3 -m pip install -r /usr/local/bin/pifire/auto-install/requirements.txt
 
 # Find all bluepy-helper executables in various possible locations
 BLUEPY_HELPERS=$(find /usr/local/bin/pifire/lib/ -path "*/bluepy/bluepy-helper" 2>/dev/null)
