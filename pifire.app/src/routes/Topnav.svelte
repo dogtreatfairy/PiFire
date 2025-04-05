@@ -1,79 +1,172 @@
-<script lang="ts">
-  import { darkMode, toggleTheme } from '$lib/stores/themeStore';
-  export let page;
+<script lang="js">
+    import { darkMode, toggleTheme } from '$lib/stores/themeStore';
+    import { page } from '$app/stores'; // Import the `page` store from SvelteKit
+    import { modalTimer } from '$lib/stores/modalStore';
+    import { timerStatus, timerDisplay, timerUpdate, timerStop, timerPause, timerUnpause } from '$lib/stores/timerStore'; // Import the timer store
+    import { onMount } from 'svelte';
 
-  // Helper function to determine if a link is active
-  const isActive = (path: string): boolean => page.url.pathname === path;
+    $: currentTimerStatus = $timerStatus; // Reactive variable for timer status
+    $: currentTimerDisplay = $timerDisplay; // Reactive variable for timer display
+
+    // Function to toggle the timer modal
+    function toggleTimerModal() {
+        modalTimer.update((isOpen) => !isOpen);
+    }
+
+    // Function to check if the current path matches the given path
+    function isActive(path) {
+        return $page.url.pathname === path;
+    }
+
+    // Fetch and update the timer status periodically
+    onMount(() => {
+        const update = async () => {
+            await timerUpdate();
+        };
+
+        // Align the first update with the next second boundary
+        const now = Date.now();
+        const nextSecond = Math.ceil(now / 1000) * 1000; // Next second boundary
+        const delay = nextSecond - now;
+
+        // Perform the first update after the delay
+        const timeout = setTimeout(() => {
+            update();
+            // Start the interval to update every second
+            const interval = setInterval(update, 1000);
+
+            // Cleanup interval on component unmount
+            return () => clearInterval(interval);
+        }, delay);
+
+        // Cleanup timeout on component unmount
+        return () => clearTimeout(timeout);
+    });
 </script>
 
 <nav class="navbar navbar-expand-md py-0 border-bottom border-2 border-secondary { $darkMode ? 'navbar-dark bg-dark' : 'navbar-light bg-light' }">
-  <div class="container-fluid">
-    <!-- Logo and Brand -->
-    <div class="d-flex align-items-center order-md-first">
-      <img 
-        src="/img/launcher-icon-4x.png" 
-        alt="PiFire Logo" 
-        height="25" 
-        class="me-2" 
-      />
-      <div class="navbar-brand fs-4">
-        <b class="text-danger">Pi</b>Fire
-	  </div>
-    </div>
+    <div class="container-fluid">
+        <!-- Logo and Brand -->
+        <div class="d-flex align-items-center order-md-first me-2">
+            <a href="/">
+                <img 
+                    src="/static/img/logo_nt_1.svg" 
+                    alt="PiFire Logo" 
+                    height="30" 
+                    class="me-2 my-2" 
+                />
+            </a>
+            <a href="/" class="fw-semibold fs-4 text-decoration-none {$darkMode ? 'text-white':'text-dark'}">
+                Pi<i class="text-danger">Fire</i>
+            </a>
+        </div>
 
-	<div class="d-flex align-items-center justify-content-end order-md-last">
-		<!-- Hamburger Button for Collapsed Navbar -->
-		<button 
-		class="btn btn-outline-secondary nav-btn-square d-md-none" 
-		type="button"
-		data-bs-toggle="collapse" 
-		data-bs-target="#navbarNav" 
-		aria-controls="navbarNav" 
-		aria-expanded="false" 
-		aria-label="Toggle navigation"
-		>
-		<span class="fa-solid fa-bars fa-sm"></span>
-		</button>
-
-				<div class="ms-auto">
-		  <button 
-			class="btn btn-outline-secondary nav-btn-square" 
-			type="button" 
-			on:click={toggleTheme}
-			aria-label="Toggle theme"
-		  >
-			{#if $darkMode}
-			  <i class="fa-solid fa-moon"></i>
-			{:else}
-			  <i class="fa-solid fa-sun"></i>
-			{/if}
-		  </button>
-		</div>
-	</div>
-
-	<!-- Navigation Links -->
-    <div class="collapse navbar-collapse" id="navbarNav">
-		<ul class="nav d-flex justify-content-center nav-btn-height">
-		  {#each [
-			{ path: '/', label: 'Dashboard', icon: 'fa-gauge-high' },
-			{ path: '/history', label: 'History', icon: 'fa-clock' },
-			{ path: '/recipe', label: 'Recipe', icon: 'fa-utensils' },
-			{ path: '/settings', label: 'Settings', icon: 'fa-gear' }
-		  ] as link}
-			<li
-			  class="nav-item"
+        <div class="d-flex align-items-center justify-content-end order-md-last">
+            <!-- Timer Dynamic Section -->
+            <div class="btn-group border-primary me-1" role="group" aria-label="Timer Controls">
+				<!-- Timer Display -->
+				<button 
+					class="btn fs-6 nav-btn-height"
+					class:btn-outline-warning={$darkMode}
+					class:btn-outline-dark={!$darkMode}
+					class:d-none={currentTimerStatus !== 'running' && currentTimerStatus !== 'paused' && currentTimerStatus !== 'finished'}
+					on:click={toggleTimerModal}
+				>
+					<span class:pulse={currentTimerStatus === 'paused' || currentTimerStatus === 'finished'}>
+						<i class="fa-solid fa-stopwatch me-2"></i><span class="fw-semibold">{currentTimerDisplay}</span>
+					</span>
+				</button>
+				<button
+					class="btn nav-btn-square"
+					class:btn-outline-warning={$darkMode}
+					class:btn-outline-dark={!$darkMode}
+					class:d-none={currentTimerStatus !== 'running'}
+					on:click={timerPause}
+					aria-label="Pause Timer"
+				>
+					<i class="fa-solid fa-pause"></i>
+				</button>
+				<button
+					class="btn nav-btn-square"
+					class:btn-outline-warning={$darkMode}
+					class:btn-outline-dark={!$darkMode}
+					class:d-none={currentTimerStatus !== 'paused'}
+					on:click={timerUnpause}
+					aria-label="Unpause Timer"
+				>
+					<i class="fa-solid fa-play"></i>
+				</button>
+				<button
+					class="btn nav-btn-square"
+					class:btn-outline-warning={$darkMode}
+					class:btn-outline-dark={!$darkMode}
+					class:d-none={currentTimerStatus !== 'running' && currentTimerStatus !== 'paused' && currentTimerStatus !== 'finished'}
+					on:click={timerStop}
+					aria-label="Stop Timer"
+				>
+					<span class:pulse={currentTimerStatus === 'finished'}><i class="fa-solid fa-stop"></i></span>
+				</button>
+            </div>
+			<!-- Timer Button -->
+			<button 
+				class="btn btn-outline-secondary nav-btn-square me-1"
+				class:d-none={currentTimerStatus === 'running' || currentTimerStatus === 'paused' || currentTimerStatus === 'finished'}
+				on:click={toggleTimerModal}
+				aria-label="Show Timer Modal"
 			>
-			  <a
-				class="nav-link {isActive(link.path) ? ($darkMode ? 'text-warning fw-semibold border-bottom border-2 border-secondary' : 'text-dark fw-semibold bold border-bottom border-2 border-secondary') : ($darkMode ? 'text-secondary' : 'text-secondary')}"
-				href={link.path}
-				sveltekit:prefetch
-				sveltekit:noscroll
-			  >
-				<i class={`fa-solid ${link.icon} me-1`}></i> {link.label}
-			  </a>
-			</li>
-		  {/each}
-		</ul>
-	  </div>
-  </div>
+				<i class="fa-solid fa-stopwatch"></i>
+			</button>
+
+            <!-- Theme Toggle Button -->
+            <div class="ms-auto">
+                <button 
+                    class="btn btn-outline-secondary nav-btn-square" 
+                    type="button" 
+                    on:click={toggleTheme}
+                    aria-label="Toggle theme"
+                >
+                    {#if $darkMode}
+                        <i class="fa-solid fa-moon"></i>
+                    {:else}
+                        <i class="fa-solid fa-sun"></i>
+                    {/if}
+                </button>
+            </div>
+			<!-- Navbar Toggle Button -->
+			<div class="ms-1 d-md-none">
+				<button 
+					class="btn btn-outline-secondary nav-btn-square" 
+					type="button" 
+					data-bs-toggle="collapse" 
+					data-bs-target="#navbarNav" 
+					aria-controls="navbarNav" 
+					aria-expanded="false" 
+					aria-label="Toggle navigation"
+				>
+					<i class="fa-solid fa-bars"></i>
+				</button>
+			</div>
+        </div>
+
+        <!-- Navigation Links -->
+		<div class="collapse navbar-collapse" id="navbarNav">
+			<ul class="nav d-flex flex-column flex-md-row justify-content-center">
+				{#each [
+					{ path: '/', label: 'Dashboard', icon: 'fa-gauge-high' },
+					{ path: '/history', label: 'History', icon: 'fa-clock' },
+					{ path: '/recipe', label: 'Recipe', icon: 'fa-utensils' },
+					{ path: '/settings', label: 'Settings', icon: 'fa-gear' }
+				] as link}
+					<li class="nav-item">
+						<a
+							class="nav-link d-flex align-items-center justify-content-center nav-btn-height {isActive(link.path) ? ($darkMode ? 'text-warning fw-semibold' : 'text-dark fw-semibold') : ($darkMode ? 'text-secondary' : 'text-secondary')}"
+							href={link.path}
+						>
+							<i class={`fa-solid ${link.icon} me-1`}></i> {link.label}
+						</a>
+					</li>
+				{/each}
+			</ul>
+		</div>
+    </div>
 </nav>

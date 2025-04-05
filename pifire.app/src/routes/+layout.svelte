@@ -1,6 +1,7 @@
-<script lang="ts">
+<script lang="js">
   import { onMount } from 'svelte';
   import Topnav from './Topnav.svelte';
+  import Timer from './Timer.svelte';
   import '../app.css';
   import { applyTheme, darkMode } from '$lib/stores/themeStore';
   import { page } from '$app/state';
@@ -12,6 +13,7 @@
 </script>
 
 <Topnav {page} />
+<Timer />
 
 <main class="container mt-4">
   <slot />
