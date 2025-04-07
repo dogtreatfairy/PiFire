@@ -104,6 +104,7 @@ def check_notify(settings, control, in_data=None, pelletdb=None, grill_platform=
 					control['timer']['start'] = 0
 					control['timer']['paused'] = 0
 					control['timer']['end'] = 0
+					control['timer']['expired']= True
 					control['notify_data'][index]['req'] = False 
 
 			elif item['type'] == 'hopper':

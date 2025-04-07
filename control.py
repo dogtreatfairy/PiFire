@@ -320,6 +320,7 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 						control['timer']['start'] = timer_start
 						control['timer']['paused'] = 0
 						control['timer']['end'] = timer_start + (control['recipe']['step_data']['timer'] * 60)
+						control['timer']['expired'] = False
 						control['timer']['shutdown'] = False
 						control['notify_data'][index]['shutdown'] = False
 						control['notify_data'][index]['keep_warm'] = False
@@ -1159,9 +1160,11 @@ while True:
 				control['timer']['start'] = 0
 				control['timer']['paused'] = 0
 				control['timer']['end'] = 0
+				control['timer']['expired'] = True
 				control['notify_data'][index]['shutdown'] = False
 				control['notify_data'][index]['keep_warm'] = False
 				write_control(control, direct_write=True, origin='control')
+	
 
 	# Check if user changed hopper levels and update if required
 	if control['distance_update']:

@@ -506,6 +506,7 @@ def default_control():
 		'start' : 0,
 		'paused' : 0,
 		'end' : 0,
+		'expired' : False,
 		'shutdown' : False 
 	}
 
@@ -2179,6 +2180,7 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 				'start' : control['timer']['start'], 
 				'paused' : control['timer']['paused'],
 				'end' : control['timer']['end'], 
+				'expired' : control['timer']['expired'],
 				'shutdown' : control['notify_data'][]['shutdown'],
 				'keep_warm' : control['notify_data'][]['keep_warm'],
 			}
@@ -2186,6 +2188,7 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 			data['data']['start'] = control['timer']['start']
 			data['data']['paused'] = control['timer']['paused']
 			data['data']['end'] = control['timer']['end']
+			data['data']['expired'] = control['timer']['expired']
 			''' Get index of timer object '''
 			for index, notify_obj in enumerate(control['notify_data']):
 				if notify_obj['type'] == 'timer':
@@ -2492,6 +2495,7 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 				# If starting new timer
 				if control['timer']['paused'] == 0:
 					control['timer']['start'] = now
+					control['timer']['expired'] = False # Reset expired flag if new timer is started
 					if is_float(arglist[2]):
 						seconds = int(float(arglist[2]))
 						control['timer']['end'] = now + seconds
@@ -2515,6 +2519,7 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 					control['timer']['start'] = 0
 					control['timer']['end'] = 0
 					control['timer']['paused'] = 0
+					control['timer']['expired'] = False
 					control['notify_data'][index]['shutdown'] = False
 					control['notify_data'][index]['keep_warm'] = False
 					write_log('Timer cleared.')
@@ -2524,6 +2529,7 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 				control['timer']['start'] = 0
 				control['timer']['end'] = 0
 				control['timer']['paused'] = 0
+				control['timer']['expired'] = False
 				control['notify_data'][index]['shutdown'] = False
 				control['notify_data'][index]['keep_warm'] = False
 				write_log('Timer stopped.')

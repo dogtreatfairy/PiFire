@@ -1,46 +1,31 @@
 <script lang="js">
     import { darkMode, toggleTheme } from '$lib/stores/themeStore';
-    import { page } from '$app/stores'; // Import the `page` store from SvelteKit
+    import { page } from '$app/stores';
     import { modalTimer } from '$lib/stores/modalStore';
-    import { timerStatus, timerDisplay, timerUpdate, timerStop, timerPause, timerUnpause } from '$lib/stores/timerStore'; // Import the timer store
+    import { timerStatus, timerDisplay, computeDisplay, timerUpdate, timerStop, timerPause, timerUnpause } from '$lib/timer';
     import { onMount } from 'svelte';
 
-    $: currentTimerStatus = $timerStatus; // Reactive variable for timer status
-    $: currentTimerDisplay = $timerDisplay; // Reactive variable for timer display
+    $: currentTimerStatus = $timerStatus;
+    $: currentTimerDisplay = $timerDisplay;
 
-    // Function to toggle the timer modal
     function toggleTimerModal() {
         modalTimer.update((isOpen) => !isOpen);
     }
 
-    // Function to check if the current path matches the given path
     function isActive(path) {
         return $page.url.pathname === path;
     }
 
-    // Fetch and update the timer status periodically
     onMount(() => {
-        const update = async () => {
+		computeDisplay();
+        (async () => {
             await timerUpdate();
-        };
+        })();
 
-        // Align the first update with the next second boundary
-        const now = Date.now();
-        const nextSecond = Math.ceil(now / 1000) * 1000; // Next second boundary
-        const delay = nextSecond - now;
-
-        // Perform the first update after the delay
-        const timeout = setTimeout(() => {
-            update();
-            // Start the interval to update every second
-            const interval = setInterval(update, 1000);
-
-            // Cleanup interval on component unmount
-            return () => clearInterval(interval);
-        }, delay);
-
-        // Cleanup timeout on component unmount
-        return () => clearTimeout(timeout);
+		setInterval(async () => {
+			computeDisplay();
+			await timerUpdate();
+		}, 1000);
     });
 </script>
 
@@ -69,10 +54,10 @@
 					class="btn fs-6 nav-btn-height"
 					class:btn-outline-warning={$darkMode}
 					class:btn-outline-dark={!$darkMode}
-					class:d-none={currentTimerStatus !== 'running' && currentTimerStatus !== 'paused' && currentTimerStatus !== 'finished'}
+					class:d-none={currentTimerStatus !== 'running' && currentTimerStatus !== 'paused' && currentTimerStatus !== 'expired'}
 					on:click={toggleTimerModal}
 				>
-					<span class:pulse={currentTimerStatus === 'paused' || currentTimerStatus === 'finished'}>
+					<span class:pulse={currentTimerStatus === 'paused' || currentTimerStatus === 'expired'}>
 						<i class="fa-solid fa-stopwatch me-2"></i><span class="fw-semibold">{currentTimerDisplay}</span>
 					</span>
 				</button>
@@ -100,7 +85,7 @@
 					class="btn nav-btn-square"
 					class:btn-outline-warning={$darkMode}
 					class:btn-outline-dark={!$darkMode}
-					class:d-none={currentTimerStatus !== 'running' && currentTimerStatus !== 'paused' && currentTimerStatus !== 'finished'}
+					class:d-none={currentTimerStatus !== 'running' && currentTimerStatus !== 'paused' && currentTimerStatus !== 'expired'}
 					on:click={timerStop}
 					aria-label="Stop Timer"
 				>
@@ -110,7 +95,7 @@
 			<!-- Timer Button -->
 			<button 
 				class="btn btn-outline-secondary nav-btn-square me-1"
-				class:d-none={currentTimerStatus === 'running' || currentTimerStatus === 'paused' || currentTimerStatus === 'finished'}
+				class:d-none={currentTimerStatus === 'running' || currentTimerStatus === 'paused' || currentTimerStatus === 'expired'}
 				on:click={toggleTimerModal}
 				aria-label="Show Timer Modal"
 			>
