@@ -54,6 +54,8 @@ include/
 
 lib/
 
+!pifire.app/src/lib/
+
 share/
 
 lib64
