@@ -4,9 +4,12 @@
     import { modalTimer } from '$lib/stores/modalStore';
     import { timerStatus, timerDisplay, computeDisplay, timerUpdate, timerStop, timerPause, timerUnpause } from '$lib/timer';
     import { onMount } from 'svelte';
+	import { browserNotificationPermission } from '$lib/notify';
 
     $: currentTimerStatus = $timerStatus;
     $: currentTimerDisplay = $timerDisplay;
+
+	
 
     function toggleTimerModal() {
         modalTimer.update((isOpen) => !isOpen);
@@ -21,6 +24,8 @@
         (async () => {
             await timerUpdate();
         })();
+
+		browserNotificationPermission ()
 
 		setInterval(async () => {
 			computeDisplay();

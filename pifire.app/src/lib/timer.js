@@ -1,10 +1,12 @@
 import { writable } from 'svelte/store';
+import { browserNotification } from './notify';
 
 // API Variables
 let timerPaused = 0;
 let timerEnd = 0;
 let timerExpired = false;
 let remainingSeconds = 0;
+let notificationSent = false;
 
 // Svelte stores for reactive values
 export const timerStatus = writable('stopped'); // Timer status: stopped, running, paused, expired
@@ -91,6 +93,10 @@ function computeMode() {
 export function computeDisplay() {
     if (timerExpired) {
         timerDisplay.set("ALARM");
+		if (!notificationSent) {
+			browserNotification("PiFire Timer Expired", "PiFire Timer has expired.");
+			notificationSent = true;
+		}
     } else if (timerEnd === 0) {
         timerDisplay.set("--:--:--");
     } else {
@@ -131,6 +137,7 @@ export async function timerStop() {
         const response = await fetch('/api/set/timer/stop', { method: 'POST' });
         if (!response.ok) throw new Error(`Stop failed: ${response.statusText}`);
         await timerUpdate();
+		notificationSent = false;
     } catch (err) {
         console.error('Stop error:', err.message);
     }
@@ -138,6 +145,8 @@ export async function timerStop() {
 
 export async function timerLaunch(hours, minutes, modalTimer, setError) {
     const totalSeconds = (parseInt(hours) || 0) * 3600 + (parseInt(minutes) || 0) * 60;
+	
+	notificationSent = false;
 
     if (totalSeconds <= 0) {
         setError('ERROR: Please set a valid time.');
