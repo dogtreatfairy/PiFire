@@ -34,7 +34,7 @@
     });
 </script>
 
-<nav class="navbar navbar-expand-md py-0 border-bottom border-2 border-secondary { $darkMode ? 'navbar-dark bg-dark' : 'navbar-light bg-light' }">
+<nav class="navbar navbar-expand-md fixed-top py-0 border-bottom border-2 border-secondary { $darkMode ? 'navbar-dark bg-dark' : 'navbar-light bg-light' }">
     <div class="container-fluid">
         <!-- Logo and Brand -->
         <div class="d-flex align-items-center order-md-first me-2">
