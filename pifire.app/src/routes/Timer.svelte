@@ -1,8 +1,8 @@
 <script lang="js">
     import { Modal } from '@sveltestrap/sveltestrap';
     import { modalTimer } from '$lib/stores/modalStore';
-    import { onMount } from 'svelte';
-	import { timerLaunch } from '$lib/timer'; // Import the timer function
+    import { onMount, onDestroy } from 'svelte';
+    import { timerLaunch } from '$lib/timer'; // Import the timer function
 
     let hours = '';
     let minutes = '';
@@ -36,6 +36,13 @@
         }
     }
 
+    // Function to handle the Enter key press
+    function handleKeyDown(event) {
+        if (event.key === 'Enter') {
+            timerLaunch(hours, minutes, modalTimer, (message) => (error = message));
+        }
+    }
+
     // Automatically focus on the hours input and clear inputs when the modal opens
     onMount(() => {
         const unsubscribe = modalTimer.subscribe((isOpen) => {
@@ -48,7 +55,14 @@
                 }, 0);
             }
         });
-        return unsubscribe;
+
+        // Add global keydown listener
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            unsubscribe();
+            window.removeEventListener('keydown', handleKeyDown); // Clean up listener
+        };
     });
 </script>
 
@@ -57,6 +71,7 @@
         <div class="modal-body text-center">
             <div class="d-flex justify-content-center align-items-center">
                 <div class="me-2">
+                    <!-- svelte-ignore a11y_positive_tabindex -->
                     <input
                         id="hoursInput"
                         type="text"
@@ -65,11 +80,13 @@
                         maxlength="2"
                         bind:value={hours}
                         on:input={validateHours}
+                        tabindex="1"
                     />
                     <label for="hoursInput" class="form-label mt-2">Hours</label>
                 </div>
                 <span style="font-size: 2.5rem;">:</span>
                 <div class="ms-2">
+                    <!-- svelte-ignore a11y_positive_tabindex -->
                     <input
                         id="minutesInput"
                         type="text"
@@ -78,6 +95,7 @@
                         maxlength="2"
                         bind:value={minutes}
                         on:input={validateMinutes}
+                        tabindex="2"
                     />
                     <label for="minutesInput" class="form-label mt-2">Minutes</label>
                 </div>
@@ -87,21 +105,25 @@
             {/if}
         </div>
         <div class="modal-footer">
+            <!-- svelte-ignore a11y_positive_tabindex -->
             <button
                 type="button"
                 class="btn btn-outline-secondary"
                 on:click={() => modalTimer.set(false)}
+                tabindex="4"
             >
                 Cancel
             </button>
-			<button
-				id="setTimerButton"
-				type="button"
-				class="btn btn-danger"
-				on:click={() => timerLaunch(hours, minutes, modalTimer, (message) => error = message)}
-			>
-				Start
-			</button>
+            <!-- svelte-ignore a11y_positive_tabindex -->
+            <button
+                id="setTimerButton"
+                type="button"
+                class="btn btn-danger"
+                on:click={() => timerLaunch(hours, minutes, modalTimer, (message) => (error = message))}
+                tabindex="3"
+            >
+                Start
+            </button>
         </div>
     </Modal>
 </div>

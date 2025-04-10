@@ -13,7 +13,7 @@
         { id: '6', color: 'bg-secondary', icon: '🌸' }
     ];
 
-    // Create an 8-slot grid (4x2), filling empty slots with null
+    // Create an 8-slot grid (4x2 on large screens), filling empty slots with null
     let grid = [...cards, ...Array(8 - cards.length).fill(null)];
 
     function handleDrop(state) {
@@ -38,6 +38,16 @@
     }
 </script>
 
+<style>
+    /* Override styles for smaller screens */
+    @media (max-width: 576px) {
+        .grid-cell {
+            width: 100%;
+            height: auto;
+        }
+    }
+</style>
+
 <div class="d-flex flex-column">
     <!-- Centered grid section -->
     <div class="container-fluid p-1 d-flex justify-content-center align-items-center flex-grow-1 navbar-top-margin">
@@ -46,7 +56,7 @@
                 <div class="grid-cell {isDragging ? 'dragging-border' : ''}">
                     <div
                         use:droppable={{ container: index.toString(), callbacks: { onDrop: handleDrop } }}
-                        class="dnd-droppable"
+                        class="dnd-droppable {isDragging ? 'highlight-drop-zone' : ''}"
                     >
                         {#if slot}
                             <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -63,5 +73,5 @@
                 </div>
             {/each}
         </div>
-    </div>
+  </div>
 </div>

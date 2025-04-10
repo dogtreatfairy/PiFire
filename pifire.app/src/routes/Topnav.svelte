@@ -19,22 +19,23 @@
         return $page.url.pathname === path;
     }
 
+	function syncInterval(callback, interval) {
+        const now = Date.now();
+        const delay = interval - (now % interval);
+        setTimeout(() => {
+            callback();
+            setInterval(callback, interval);
+        }, delay);
+    }
+
     onMount(() => {
-		computeDisplay();
-        (async () => {
-            await timerUpdate();
-        })();
-
-		browserNotificationPermission ()
-
-		setInterval(async () => {
-			computeDisplay();
-			await timerUpdate();
+		syncInterval(() => {
+			timerUpdate();
 		}, 1000);
     });
 </script>
 
-<nav class="navbar navbar-expand-md fixed-top py-0 border-bottom border-2 border-secondary { $darkMode ? 'navbar-dark bg-dark' : 'navbar-light bg-light' }">
+<nav class="navbar navbar-expand-md py-0 border-bottom border-2 border-secondary { $darkMode ? 'navbar-dark bg-dark' : 'navbar-light bg-light' }">
     <div class="container-fluid">
         <!-- Logo and Brand -->
         <div class="d-flex align-items-center order-md-first me-2">
@@ -58,7 +59,7 @@
 				<button 
 					class="btn fs-6 nav-btn-height"
 					class:btn-outline-warning={$darkMode}
-					class:btn-outline-dark={!$darkMode}
+					class:btn-warning={!$darkMode}
 					class:d-none={currentTimerStatus !== 'running' && currentTimerStatus !== 'paused' && currentTimerStatus !== 'expired'}
 					on:click={toggleTimerModal}
 				>
@@ -69,7 +70,7 @@
 				<button
 					class="btn nav-btn-square"
 					class:btn-outline-warning={$darkMode}
-					class:btn-outline-dark={!$darkMode}
+					class:btn-warning={!$darkMode}
 					class:d-none={currentTimerStatus !== 'running'}
 					on:click={timerPause}
 					aria-label="Pause Timer"
@@ -79,7 +80,7 @@
 				<button
 					class="btn nav-btn-square"
 					class:btn-outline-warning={$darkMode}
-					class:btn-outline-dark={!$darkMode}
+					class:btn-warning={!$darkMode}
 					class:d-none={currentTimerStatus !== 'paused'}
 					on:click={timerUnpause}
 					aria-label="Unpause Timer"
@@ -89,7 +90,7 @@
 				<button
 					class="btn nav-btn-square"
 					class:btn-outline-warning={$darkMode}
-					class:btn-outline-dark={!$darkMode}
+					class:btn-warning={!$darkMode}
 					class:d-none={currentTimerStatus !== 'running' && currentTimerStatus !== 'paused' && currentTimerStatus !== 'expired'}
 					on:click={timerStop}
 					aria-label="Stop Timer"

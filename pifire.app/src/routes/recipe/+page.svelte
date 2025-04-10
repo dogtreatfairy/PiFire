@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { draggable, droppable, type DragDropState } from '$lib/index.js';
+	import { draggable, droppable, type DragDropState } from '$lib/index';
 	import { flip } from 'svelte/animate';
 
 	interface Card {

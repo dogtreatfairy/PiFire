@@ -5,30 +5,13 @@ import { browserNotification } from './notify';
 let timerPaused = 0;
 let timerEnd = 0;
 let timerExpired = false;
-let remainingSeconds = 0;
 let notificationSent = false;
+let localTimerInterval = null;
+let localTimerRunning = false;
 
 // Svelte stores for reactive values
 export const timerStatus = writable('stopped'); // Timer status: stopped, running, paused, expired
 export const timerDisplay = writable("--:--:--");
-
-// Real-time update loop
-let intervalId = null;
-function startTimerLoop() {
-    if (intervalId) return; // Prevent multiple intervals
-    intervalId = setInterval(() => {
-        computeTime(); // Update remaining time
-        computeMode(); // Update status (triggers 'expired' when needed)
-        computeDisplay(); // Update display
-    }, 1000);
-}
-
-function stopTimerLoop() {
-    if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-    }
-}
 
 // Fetch timer data from API
 export async function timerUpdate() {
@@ -44,70 +27,44 @@ export async function timerUpdate() {
         timerEnd = apiTimerData.end;
         timerExpired = apiTimerData.expired;
 
-        computeTime(); // Ensure remainingSeconds is up-to-date
         computeMode();
-        computeDisplay();
 
-        // Start/stop the loop based on timer state
-        if (timerEnd > 0 && !timerExpired) {
-            startTimerLoop();
-        } else {
-            stopTimerLoop();
-        }
+		if (timerExpired || timerStatus === 'expired') {
+			timerDisplay.set("ALARM");
+			if (!notificationSent) {
+				browserNotification("PiFire Timer Expired", "PiFire Timer has expired.");
+				notificationSent = true;
+			}
+			clearInterval(localTimerInterval);
+			localTimerInterval = null;
+			localTimerRunning = false;
+			return;
+		}
+		
+		if (timerEnd === 0 && !timerExpired) {
+			timerDisplay.set("--:--:--");
+			clearInterval(localTimerInterval);
+			localTimerInterval = null;
+			localTimerRunning = false;
+			return;
+		}
+
     } catch (error) {
         console.error('Error updating timer:', error);
     }
 }
-
-function computeTime() {
-    if (timerPaused > 0) {
-        // Use paused time as the reference point
-        remainingSeconds = Math.floor(timerEnd - timerPaused);
-    } else if (timerEnd > 0) {
-        // Calculate remaining seconds using current time
-        remainingSeconds = Math.floor(timerEnd - Date.now() / 1000);
-    } else {
-        remainingSeconds = 0;
-    }
-    if (remainingSeconds <= 0 && timerEnd > 0) {
-        // Locally detect expiration if timer has run out
-        timerExpired = true;
-    }
-    return remainingSeconds;
-}
-
 function computeMode() {
     if (timerExpired) {
         timerStatus.set('expired');
-        stopTimerLoop(); // Stop the loop when expired
     } else if (timerEnd === 0) {
         timerStatus.set('stopped');
-        stopTimerLoop();
     } else if (timerPaused === 0) {
         timerStatus.set('running');
+		if (!localTimerRunning) {
+			computeDisplay();
+		}
     } else {
         timerStatus.set('paused');
-    }
-}
-
-export function computeDisplay() {
-    if (timerExpired) {
-        timerDisplay.set("ALARM");
-		if (!notificationSent) {
-			browserNotification("PiFire Timer Expired", "PiFire Timer has expired.");
-			notificationSent = true;
-		}
-    } else if (timerEnd === 0) {
-        timerDisplay.set("--:--:--");
-    } else {
-        const hours = Math.floor(remainingSeconds / 3600);
-        const minutes = Math.floor((remainingSeconds % 3600) / 60);
-        const seconds = remainingSeconds % 60;
-        const tdHrs = String(hours).padStart(2, '0');
-        const tdMins = String(minutes).padStart(2, '0');
-        const tdSecs = String(seconds).padStart(2, '0');
-        const displayValue = `${tdHrs}:${tdMins}:${tdSecs}`;
-        timerDisplay.set(displayValue);
     }
 }
 
@@ -117,6 +74,7 @@ export async function timerPause() {
         const response = await fetch('/api/set/timer/pause', { method: 'POST' });
         if (!response.ok) throw new Error(`Pause failed: ${response.statusText}`);
         await timerUpdate();
+		timerStatus.set('paused');
     } catch (err) {
         console.error('Pause error:', err.message);
     }
@@ -127,6 +85,7 @@ export async function timerUnpause() {
         const response = await fetch('/api/set/timer/start', { method: 'POST' });
         if (!response.ok) throw new Error(`Unpause failed: ${response.statusText}`);
         await timerUpdate();
+		timerStatus.set('running');
     } catch (err) {
         console.error('Unpause error:', err.message);
     }
@@ -137,6 +96,7 @@ export async function timerStop() {
         const response = await fetch('/api/set/timer/stop', { method: 'POST' });
         if (!response.ok) throw new Error(`Stop failed: ${response.statusText}`);
         await timerUpdate();
+		timerStatus.set('stopped');
 		notificationSent = false;
     } catch (err) {
         console.error('Stop error:', err.message);
@@ -165,4 +125,46 @@ export async function timerLaunch(hours, minutes, modalTimer, setError) {
         console.error('Error starting timer:', err.message);
         setError('ERROR: Failed to start timer.');
     }
+}
+
+export function computeDisplay() {
+    if (localTimerInterval) return; // Prevent multiple intervals
+
+    const updateCountdown = () => {
+
+		if (timerEnd === 0 || timerPaused > 0) {
+            // Stop the timer if timerEnd is 0 or timer is paused
+            clearInterval(localTimerInterval);
+            localTimerInterval = null;
+            return;
+        }
+
+        // Calculate remaining seconds
+        const now = Math.floor(Date.now() / 1000); // Current time in seconds
+        const remainingSeconds = Math.max(0, Math.floor(timerEnd - now));
+
+        // Update the display
+        const hours = Math.floor(remainingSeconds / 3600);
+        const minutes = Math.floor((remainingSeconds % 3600) / 60);
+        const seconds = remainingSeconds % 60;
+        const tdHrs = String(hours).padStart(2, '0');
+        const tdMins = String(minutes).padStart(2, '0');
+        const tdSecs = String(seconds).padStart(2, '0');
+        const displayValue = `${tdHrs}:${tdMins}:${tdSecs}`;
+        timerDisplay.set(displayValue);
+
+        // Stop the timer if it reaches 0
+        if (remainingSeconds === 0) {
+            clearInterval(localTimerInterval);
+            localTimerInterval = null;
+        }
+    };
+
+    // Sync with the system clock
+    const now = Date.now();
+    const delay = 1000 - (now % 1000); // Calculate delay to align with the next second
+    setTimeout(() => {
+        updateCountdown(); // Initial update
+        localTimerInterval = setInterval(updateCountdown, 1000); // Update every second
+    }, delay);
 }
