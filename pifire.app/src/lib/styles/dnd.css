@@ -3,60 +3,91 @@
     width: 100%;
     height: 100%;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    overflow: hidden;
 }
 
 .dnd-draggable {
     width: 100%;
-    height: 100%;
     cursor: move;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 0.5rem;
+    margin-bottom: 0.25rem;
 }
 
 .dragging-border {
-    border: 2px dashed #6c757d; /* Visible only when dragging */
+    border: 2px dashed #6c757d;
     border-radius: 0.5rem;
 }
 
 /* Grid layout */
 .grid {
     display: grid;
-    grid-template-columns: repeat(1, 1fr); /* xs: 1 column */
-    grid-auto-rows: minmax(150px, 1fr); /* Set a minimum height for rows */
-    gap: 2rem; /* Adjust spacing between cards */
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
     width: 100%;
+    margin: 0 auto; /* Center the grid */
+	justify-content: center;
 }
 
-/* Small screens (sm): 2 columns */
-@media (min-width: 576px) {
-    .grid {
-        grid-template-columns: repeat(2, 1fr);
-        grid-auto-rows: minmax(200px, 1fr); /* Adjust row height for small screens */
-    }
+/* Height variations */
+.item-height-1-3 {
+    height: 34%;
 }
 
-/* Medium screens (md): 3 columns */
-@media (min-width: 768px) {
-    .grid {
-        grid-template-columns: repeat(3, 1fr);
-        grid-auto-rows: minmax(250px, 1fr); /* Adjust row height for medium screens */
-    }
+.item-height-2-3 {
+    height: 64%;
 }
 
-/* Large screens (lg): 4 columns */
-@media (min-width: 992px) {
-    .grid {
-        grid-template-columns: repeat(4, 1fr);
-        grid-auto-rows: minmax(300px, 1fr); /* Adjust row height for large screens */
-    }
+.item-height-3-3 {
+    height: 100%;
 }
 
+/* Grid cell */
 .grid-cell {
     position: relative;
-    aspect-ratio: 1 / 1; /* Ensures square shape */
-    /* Remove transform: scale to prevent overlapping */
+	aspect-ratio: 1/1;
+    border-radius: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+}
+
+/* Small screens (sm) - 1 column */
+@media (max-width: 576px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Medium screens (md) - 2 columns */
+@media (min-width: 577px) and (max-width: 992px) {
+    .grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Large screens (lg) - 3 columns */
+@media (min-width: 993px) and (max-width: 1199px) {
+    .grid {
+        grid-template-columns: repeat(3, 1fr);
+        max-width: 95vw; /* Ensure the grid fits within the viewport */
+    }
+}
+
+/* Extra-large screens (xl) - 4 columns */
+@media (min-width: 1200px) {
+    .grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr)); /* Ensure 4 flexible columns */
+        max-width: 95vw; /* Ensure the grid fits within the viewport */
+    }
+}
+
+/* Highlight for drop zone */
+.highlight-drop-zone {
+    background-color: rgba(0, 123, 255, 0.1);
+    transition: background-color 0.2s ease;
 }
