@@ -60,6 +60,8 @@ class Controller(ControllerBase):
 		self.i = 0.0
 		self.d = 0.0
 		self.u = 0
+		self.u_min = cycle_data('u_min')
+		self.u_max = cycle_data('u_max')
 
 		self.last_update = time.time()
 		self.error = 0.0
@@ -95,10 +97,6 @@ class Controller(ControllerBase):
 		self.inter += error * dt
 		self.i = self.ki * self.inter
 
-		# If Error is > PB/2 from Set Point, reset the integral term to 0.
-		if abs(error) < (self.pb / 2):
-			self.i = 0
-
 		# D
 		self.derv = (error - self.error_last) / dt
 		self.d = self.kd * self.derv
@@ -112,8 +110,9 @@ class Controller(ControllerBase):
 		# Resumes integration when either the sum of the block components exceeds the output limits 
 		# and the integrator output and block input have opposite sign or the sum no longer exceeds the output limits.
 		# 
-		# Implemented via reversing the addition to self.inter above if we are clamping.		
-		if not ((abs(self.u) >= 1) and (self.i * self.u > 0)):
+		# Implemented via reversing the addition to self.inter above if we are clamping.
+		# CHANGE: Will not integrate if U is greater than u_max or less than u_min. 		
+		if not ((abs(self.u) >= self.u_max) and (self.i * self.u > self.u_min)):
 			clamping_log = "false"
 			eventLogger.debug('Not clamping integrator.')
 		else:
