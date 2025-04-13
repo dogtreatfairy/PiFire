@@ -60,8 +60,8 @@ class Controller(ControllerBase):
 		self.i = 0.0
 		self.d = 0.0
 		self.u = 0
-		self.u_min = cycle_data('u_min')
-		self.u_max = cycle_data('u_max')
+		self.u_min = cycle_data['u_min']
+		self.u_max = cycle_data['u_max']
 
 		self.last_update = time.time()
 		self.error = 0.0
