@@ -54,6 +54,8 @@ class Controller(ControllerBase):
 
 		self._calculate_gains(config['PB'], config['Ti'], config['Td'])
 
+		self.pb = config['PB']
+
 		self.p = 0.0
 		self.i = 0.0
 		self.d = 0.0
@@ -92,6 +94,10 @@ class Controller(ControllerBase):
 		# I
 		self.inter += error * dt
 		self.i = self.ki * self.inter
+
+		# If Error is > PB/2 from Set Point, reset the integral term to 0.
+		if abs(error) < (self.pb / 2):
+			self.i = 0
 
 		# D
 		self.derv = (error - self.error_last) / dt
