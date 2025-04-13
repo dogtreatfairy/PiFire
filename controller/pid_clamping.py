@@ -112,7 +112,7 @@ class Controller(ControllerBase):
 		# 
 		# Implemented via reversing the addition to self.inter above if we are clamping.
 		# CHANGE: Will not integrate if U is greater than u_max or less than u_min. 		
-		if not ((abs(self.u) >= self.u_max) and (self.i * self.u > self.u_min)):
+		if ((self.u > self.u_max and self.error < 0) or (self.u < self.u_min and self.error > 0)):
 			clamping_log = "false"
 			eventLogger.debug('Not clamping integrator.')
 		else:
