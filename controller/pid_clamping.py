@@ -95,12 +95,12 @@ class Controller(ControllerBase):
 		self.p = self.kp * self.error
 
 		# Integral term
-		self.integral += self.error * dt
+		self.inter += self.error * dt
 		self.i = self.ki * self.integral
 
 		# Derivative term
-		self.derivative = (self.error - self.error_last) / dt if dt > 0 else 0.0
-		self.d = self.kd * self.derivative
+		self.derv = (self.error - self.error_last) / dt if dt > 0 else 0.0
+		self.d = self.kd * self.derv
 
 		# Total output
 		self.u = self.p + self.i + self.d
@@ -114,7 +114,7 @@ class Controller(ControllerBase):
 		# Implemented via reversing the addition to self.inter above if we are clamping.
 		# CHANGE: Will not integrate if U is greater than u_max or less than u_min. 		
 		if (self.u > self.u_max and self.error < 0) or (self.u < self.u_min and self.error > 0):
-			self.integral -= self.error * dt
+			self.inter -= self.error * dt
 			eventLogger.debug('Clamping integrator.')
 		else:
 			eventLogger.debug('Not clamping integrator.')
