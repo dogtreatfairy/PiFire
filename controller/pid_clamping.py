@@ -96,7 +96,7 @@ class Controller(ControllerBase):
 
 		# Integral term
 		self.inter += self.error * dt
-		self.i = self.ki * self.integral
+		self.i = self.ki * self.inter
 
 		# Derivative term
 		self.derv = (self.error - self.error_last) / dt if dt > 0 else 0.0
