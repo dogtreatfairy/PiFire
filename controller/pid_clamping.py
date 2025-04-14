@@ -52,6 +52,8 @@ class Controller(ControllerBase):
 	def __init__(self, config, units, cycle_data):
 		super().__init__(config, units, cycle_data)
 
+		eventLogger.info('Clamping PID Controller Loaded')
+
 		self.pb = config['PB']
 		self.ti = config['Ti']
 		self.td = config['Td']
@@ -92,6 +94,8 @@ class Controller(ControllerBase):
 			self.pb = config['PB']
 			self.ti = config['Ti']
 			self.td = config['Td']
+
+			eventLogger.info('PID Tuning Values Changed - Recalculating Gains - PB: ' + str(self.pb) + ', Ti: ' + str(self.ti) + ', Td: ' + str(self.td))
 
 			# Recalculate gains
 			self._calculate_gains(self.pb, self.ti, self.td)

@@ -35,7 +35,12 @@ Imported Libraries
 '''
 import time
 import math
+import logging
+from common import create_logger
 from controller.base import ControllerBase 
+
+log_level = logging.DEBUG
+eventLogger = create_logger('events', filename='/tmp/events.log', messageformat='%(asctime)s [%(levelname)s] %(message)s', level=log_level)
 
 '''
 Class Definition
@@ -43,6 +48,8 @@ Class Definition
 class Controller(ControllerBase):
 	def __init__(self, config, units, cycle_data):
 		super().__init__(config, units, cycle_data)
+
+		eventLogger.info('Smith Predictor PID Controller Loaded')
 			
 		
 		self.pb = config['PB']
@@ -96,6 +103,8 @@ class Controller(ControllerBase):
 			self.ti = config['Ti']
 			self.td = config['Td']
 			
+			eventLogger.info('PID Tuning Values Changed - Recalculating Gains - PB: ' + str(self.pb) + ', Ti: ' + str(self.ti) + ', Td: ' + str(self.td))
+
 			# Recalculate gains
 			self._calculate_gains(self.pb, self.ti, self.td)
 
