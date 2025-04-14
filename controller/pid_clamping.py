@@ -54,23 +54,19 @@ class Controller(ControllerBase):
 
 		self._calculate_gains(config['PB'], config['Ti'], config['Td'])
 
-		self.pb = config['PB']
-
 		self.p = 0.0
 		self.i = 0.0
 		self.d = 0.0
 		self.u = 0
-		self.u_min = cycle_data['u_min']
-		self.u_max = cycle_data['u_max']
 
-		self.last_update = time.time()
+		self.last_update = time.monotonic()
 		self.error = 0.0
 		self.error_last = 0.0
 		self.set_point = 0
 
 		self.derv = 0.0
 		self.inter = 0.0
-
+		
 		self.set_target(0.0)
 
 	def _calculate_gains(self, pb, ti, td):
@@ -86,43 +82,33 @@ class Controller(ControllerBase):
 		eventLogger.debug('kp: ' + str(self.kp) + ', ki: ' + str(self.ki) + ', kd: ' + str(self.kd))
 
 	def update(self, current):
-		# Calculate Time Delta
-		now = time.monotonic()
-		dt = now - self.last_update if self.last_update is not None else 0.0
-
+		dt = time.monotonic() - self.last_update
+		error = current - self.set_point
+		
 		# Proportional term
-		self.error = current - self.set_point
-		self.p = self.kp * self.error
-
-		# Integral term
-		self.inter += self.error * dt
+		self.p = self.kp * error
+		
+		# Integral term (initial update)
+		self.inter += error * dt
 		self.i = self.ki * self.inter
-
+		
 		# Derivative term
-		self.derv = (self.error - self.error_last) / dt if dt > 0 else 0.0
+		self.derv = (error - self.error_last) / dt
 		self.d = self.kd * self.derv
-
-		# Total output
+		
+		# Compute unclamped output
 		self.u = self.p + self.i + self.d
-
-		# Clamping anti-windup method. 
-		# Stops integration when the sum of the block components exceeds the output limits 
-		# and the integrator output and block input have the same sign. 
-		# Resumes integration when either the sum of the block components exceeds the output limits 
-		# and the integrator output and block input have opposite sign or the sum no longer exceeds the output limits.
-		# 
-		# Implemented via reversing the addition to self.inter above if we are clamping.
-		# CHANGE: Will not integrate if U is greater than u_max or less than u_min. 		
-		if (self.u > self.u_max and self.error < 0) or (self.u < self.u_min and self.error > 0):
-			self.inter -= self.error * dt
-			eventLogger.debug('Clamping integrator.')
-		else:
-			eventLogger.debug('Not clamping integrator.')
-
-		# Update for next cycle
-		self.error_last = self.error
-		self.last_update = time.time()
-
+		
+		# Apply saturation (clamping)
+		u_clamped = max(0, min(1, self.u))
+		
+		# Back-calculation anti-windup
+		if self.ki != 0:
+			self.inter += (u_clamped - self.u) / self.ki
+			self.i = self.ki * self.inter
+		
+		self.error_last = error
+		self.last_update = time.monotonic()
 		return self.u
 
 	def set_target(self, set_point):
@@ -130,7 +116,7 @@ class Controller(ControllerBase):
 		self.error = 0.0
 		self.inter = 0.0
 		self.derv = 0.0
-		self.last_update = time.time()
+		self.last_update = time.monotonic()
 
 	def set_gains(self, pb, ti, td):
 		self._calculate_gains(pb,ti,td)

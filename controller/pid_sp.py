@@ -55,9 +55,9 @@ class Controller(ControllerBase):
 
 		self.units = units
 
-		self.last_update = time.time()
-		self.last_set_time = time.time()
-		self.error = 0.0
+		self.last_update = time.monotonic()
+		self.last_set_time = time.monotonic()
+		self.error_last = 0.0
 		self.set_point = 0
 
 		self.center = 0.5
@@ -85,7 +85,7 @@ class Controller(ControllerBase):
 
 	def update(self, current):
 		# Elapsed time since last update
-		current_time = time.time()
+		current_time = time.monotonic()
 		dt = current_time - self.last_update
 	
 		# Fix self.last being set to 0.0 on set point change
@@ -129,8 +129,8 @@ class Controller(ControllerBase):
 			self.i = self.ki * self.inter
 			self.i = max(min(self.i, self.center), -self.center)
 	
-			# D
-			self.derv = (predicted_temp - self.last) / dt
+			# D -- Changed to calculate derivative on error
+			self.derv = (error - self.error_last) / dt if dt > 0 else 0.0
 			self.d = self.kd * self.derv
 
 			# If error is within PB, reduce output to prevent overshoots
@@ -141,7 +141,7 @@ class Controller(ControllerBase):
 			self.u = self.p + self.i + self.d
 	
 		# Update for next cycle
-		self.error = error
+		self.error_last = error
 		self.last = current
 		self.last_update = current_time
 	
@@ -149,10 +149,10 @@ class Controller(ControllerBase):
 	
 	def set_target(self, set_point):
 		self.set_point = set_point
-		self.error = 0.0
+		self.error_last = 0.0
 		self.inter = 0.0
 		self.derv = 0.0
-		self.last_update = time.time()
+		self.last_update = time.monotonic()
 		self.last_set_time = self.last_update
 		self.start_change_temp = self.last
 		self.new_target = True
