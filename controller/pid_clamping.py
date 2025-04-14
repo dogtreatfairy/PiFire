@@ -52,7 +52,11 @@ class Controller(ControllerBase):
 	def __init__(self, config, units, cycle_data):
 		super().__init__(config, units, cycle_data)
 
-		self._calculate_gains(config['PB'], config['Ti'], config['Td'])
+		self.pb = config['PB']
+		self.ti = config['Ti']
+		self.td = config['Td']
+
+		self._calculate_gains(self.pb, self.ti, self.td)
 
 		self.p = 0.0
 		self.i = 0.0
@@ -81,7 +85,17 @@ class Controller(ControllerBase):
 		self.kd = self.kp * td
 		eventLogger.debug('kp: ' + str(self.kp) + ', ki: ' + str(self.ki) + ', kd: ' + str(self.kd))
 
-	def update(self, current):
+	def update(self, current, config):
+		# Check if PB, Ti, or Td have changed
+		if self.pb != self.config['PB'] or self.ti != self.config['Ti'] or self.td != self.config['Td']:
+			# Update stored values
+			self.pb = config['PB']
+			self.ti = config['Ti']
+			self.td = config['Td']
+
+			# Recalculate gains
+			self._calculate_gains(self.pb, self.ti, self.td)
+		
 		dt = time.monotonic() - self.last_update
 		error = current - self.set_point
 		
