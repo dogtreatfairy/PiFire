@@ -170,7 +170,6 @@ class Controller(ControllerBase):
 			# I
 			self.inter += predicted_error * dt
 			self.i = self.ki * self.inter
-			self.i = max(min(self.i, self.center), -self.center)
 	
 			# D -- Changed to calculate derivative on error
 			self.derv = (error - self.error_last) / dt if dt > 0 else 0.0
@@ -180,6 +179,13 @@ class Controller(ControllerBase):
 			if error < self.pb and current_time - self.last_set_time < self.cycle_time * 3:
 				self.u = self.u * 0.65
 	
+			# Back-calculation anti-windup
+			# Here we subtracted the clamped output from the unclamped output to get the saturation error. 
+			# We then add the saturation error to the integral term.  This is a simple way to prevent windup.
+			u_clamped = max(0, min(1, self.u))
+			if self.ki != 0:
+				self.inter += (u_clamped - self.u) / self.ki
+			
 			# PID
 			self.u = self.p + self.i + self.d
 	
