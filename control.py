@@ -386,6 +386,7 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 		CycleRatio = RawCycleRatio = settings['cycle_data']['u_min']  # Ratio of OnTime to CycleTime
 		LidOpenDetect = False
 		LidOpenEventExpires = 0
+
 		'''
 			Load Controller Module (i.e. PID)
 		'''
@@ -395,10 +396,26 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 		except:
 			controlLogger.exception(f'Error occurred loading controller module({controller_type}). Trace dump: ')
 			status = 'Inactive'
-		controllerCore = controller_module.Controller(settings['controller']['config'][controller_type], settings['globals']['units'], settings['cycle_data'])
+
+		controllerCore = controller_module.Controller(
+			settings['controller']['config'][controller_type],
+			settings['globals']['units'],
+			settings['cycle_data']
+		)
 		controllerCore.set_target(control['primary_setpoint'])  # Initialize with Set Point for grill
 		eventLogger.debug('On Time = ' + str(OnTime) + ', OffTime = ' + str(OffTime) + ', CycleTime = ' + str(
 			CycleTime) + ', CycleRatio = ' + str(CycleRatio))
+
+		# Force immediate update after set_target
+		CycleRatio = controllerCore.update(ptemp, settings['controller']['config'][controller_type])
+		CycleRatio = max(CycleRatio, settings['cycle_data']['u_min'])
+		CycleRatio = min(CycleRatio, settings['cycle_data']['u_max'])
+		OnTime = settings['cycle_data']['HoldCycleTime'] * CycleRatio
+		OffTime = settings['cycle_data']['HoldCycleTime'] * (1 - CycleRatio)
+		CycleTime = OnTime + OffTime
+		auger_toggle_time = time.time()  # Reset the auger toggle time
+		eventLogger.debug('Immediate Hold Cycle Restart: On Time = ' + str(OnTime) + ', OffTime = ' + str(
+			OffTime) + ', CycleTime = ' + str(CycleTime) + ', CycleRatio = ' + str(CycleRatio))
 
 	if mode == 'Prime':
 		auger_rate = settings['globals']['augerrate']
