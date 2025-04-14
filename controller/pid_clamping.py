@@ -85,7 +85,7 @@ class Controller(ControllerBase):
 		else:
 			self.ki = self.kp / ti
 		self.kd = self.kp * td
-		eventLogger.info('kp: ' + str(self.kp) + ', ki: ' + str(self.ki) + ', kd: ' + str(self.kd))
+		eventLogger.info(f'kp: {self.kp:.6f}, ki: {self.ki:.6f}, kd: {self.kd:.6f}')
 
 	def update(self, current, config):
 		# Check if config is provided and if PID parameters have changed
@@ -99,8 +99,7 @@ class Controller(ControllerBase):
 			self.ti = config['Ti']
 			self.td = config['Td']
 
-			eventLogger.info('PID Tuning Values Changed - Recalculating Gains - PB: ' + str(self.pb) + ', Ti: ' + str(self.ti) + ', Td: ' + str(self.td))
-
+			eventLogger.info(f'PID Tuning Values Changed - Recalculating Gains - PB: {self.pb}, Ti: {self.ti}, Td: {self.td}')
 			# Recalculate gains if PB, Ti, or Td have changed
 			self._calculate_gains(self.pb, self.ti, self.td)
 		
