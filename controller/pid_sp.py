@@ -91,19 +91,38 @@ class Controller(ControllerBase):
 		self.set_target(0.0)
 
 	def _calculate_gains(self, pb, ti, td):
-		self.kp = -1 / pb
-		self.ki = self.kp / ti
+		if pb == 0:
+			self.kp = 0
+		else:
+			self.kp = -1 / pb
+		if ti == 0:
+			self.ki = 0
+		else:
+			self.ki = self.kp / ti
 		self.kd = self.kp * td
+		eventLogger.info('kp: ' + str(self.kp) + ', ki: ' + str(self.ki) + ', kd: ' + str(self.kd))
 
-	def update(self, current, config):
-		# Check if PB, Ti, or Td have changed
-		if self.pb != config['PB'] or self.ti != config['Ti'] or self.td != config['Td']:
-			# Update stored values
+	def update(self, current, config=None):
+		# Check if config is provided and if PID parameters have changed
+		if config and (
+			config['PB'] != self.pb or 
+			config['Ti'] != self.ti or 
+			config['Td'] != self.td or
+			config['stable_window'] != self.stable_window or
+			config['center_factor'] != self.center_factor or
+			config['tau'] != self.tau or
+			config['theta'] != self.theta
+		):
+			self._calculate_gains(config['PB'], config['Ti'], config['Td'])
 			self.pb = config['PB']
 			self.ti = config['Ti']
 			self.td = config['Td']
+			self.stable_window = config['stable_window']
+			self.center_factor = config['center_factor']
+			self.tau = config['tau']
+			self.theta = config['theta']
 			
-			eventLogger.info('PID Tuning Values Changed - Recalculating Gains - PB: ' + str(self.pb) + ', Ti: ' + str(self.ti) + ', Td: ' + str(self.td))
+			eventLogger.info('PID Tuning Values Changed - Recalculating Gains - PB: ' + str(self.pb) + ', Ti: ' + str(self.ti) + ', Td: ' + str(self.td) + ', stable_window: ' + str(self.stable_window) + ', center_factor: ' + str(self.center_factor) + ', tau: ' + str(self.tau) + ', theta: ' + str(self.theta))
 
 			# Recalculate gains
 			self._calculate_gains(self.pb, self.ti, self.td)

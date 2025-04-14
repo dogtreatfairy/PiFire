@@ -85,11 +85,16 @@ class Controller(ControllerBase):
 		else:
 			self.ki = self.kp / ti
 		self.kd = self.kp * td
-		eventLogger.debug('kp: ' + str(self.kp) + ', ki: ' + str(self.ki) + ', kd: ' + str(self.kd))
+		eventLogger.info('kp: ' + str(self.kp) + ', ki: ' + str(self.ki) + ', kd: ' + str(self.kd))
 
 	def update(self, current, config):
-		# Check if PB, Ti, or Td have changed
-		if self.pb != config['PB'] or self.ti != config['Ti'] or self.td != config['Td']:
+		# Check if config is provided and if PID parameters have changed
+		if config and (
+			config['PB'] != self.pb or 
+			config['Ti'] != self.ti or 
+			config['Td'] != self.td
+		):
+			self._calculate_gains(config['PB'], config['Ti'], config['Td'])
 			self.pb = config['PB']
 			self.ti = config['Ti']
 			self.td = config['Td']
