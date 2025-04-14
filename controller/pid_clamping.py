@@ -89,38 +89,37 @@ class Controller(ControllerBase):
 
 	def update(self, current, config):
 		# Check if PB, Ti, or Td have changed
-		if self.pb != self.config['PB'] or self.ti != self.config['Ti'] or self.td != self.config['Td']:
-			# Update stored values
+		if self.pb != config['PB'] or self.ti != config['Ti'] or self.td != config['Td']:
 			self.pb = config['PB']
 			self.ti = config['Ti']
 			self.td = config['Td']
 
 			eventLogger.info('PID Tuning Values Changed - Recalculating Gains - PB: ' + str(self.pb) + ', Ti: ' + str(self.ti) + ', Td: ' + str(self.td))
 
-			# Recalculate gains
+			# Recalculate gains if PB, Ti, or Td have changed
 			self._calculate_gains(self.pb, self.ti, self.td)
 		
-		dt = time.monotonic() - self.last_update
+		dt = time.monotonic() - self.last_update # Time monotonic is used to prevent time drift from system clock.
 		error = current - self.set_point
 		
-		# Proportional term
+		# P
 		self.p = self.kp * error
 		
-		# Integral term (initial update)
+		# I
 		self.inter += error * dt
 		self.i = self.ki * self.inter
 		
-		# Derivative term
+		# D (on error)
 		self.derv = (error - self.error_last) / dt
 		self.d = self.kd * self.derv
 		
 		# Compute unclamped output
 		self.u = self.p + self.i + self.d
 		
-		# Apply saturation (clamping)
-		u_clamped = max(0, min(1, self.u))
-		
 		# Back-calculation anti-windup
+		# Here we subtracted the clamped output from the unclamped output to get the saturation error. 
+		# We then add the saturation error to the integral term.  This is a simple way to prevent windup.
+		u_clamped = max(0, min(1, self.u))
 		if self.ki != 0:
 			self.inter += (u_clamped - self.u) / self.ki
 			self.i = self.ki * self.inter

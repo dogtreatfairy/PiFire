@@ -97,7 +97,7 @@ class Controller(ControllerBase):
 
 	def update(self, current, config):
 		# Check if PB, Ti, or Td have changed
-		if self.pb != self.config['PB'] or self.ti != self.config['Ti'] or self.td != self.config['Td']:
+		if self.pb != config['PB'] or self.ti != config['Ti'] or self.td != config['Td']:
 			# Update stored values
 			self.pb = config['PB']
 			self.ti = config['Ti']
