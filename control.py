@@ -623,7 +623,7 @@ def _work_cycle(mode, grill_platform, probe_complex, display_device, dist_device
 				eventLogger.debug('Cycle Event: Auger On')
 				# Reset Cycle Time for HOLD Mode
 				if mode == 'Hold':
-					CycleRatio = RawCycleRatio = settings['cycle_data']['u_min'] if LidOpenDetect else controllerCore.update(ptemp, ['controller']['config'][controller_type])
+					CycleRatio = RawCycleRatio = settings['cycle_data']['u_min'] if LidOpenDetect else controllerCore.update(ptemp, settings['controller']['config'][controller_type])
 					CycleRatio = max(CycleRatio, settings['cycle_data']['u_min'])
 					CycleRatio = min(CycleRatio, settings['cycle_data']['u_max'])
 					OnTime = settings['cycle_data']['HoldCycleTime'] * CycleRatio
