@@ -100,7 +100,7 @@ class Controller(ControllerBase):
 		else:
 			self.ki = self.kp / ti
 		self.kd = self.kp * td
-		eventLogger.info('kp: ' + str(self.kp) + ', ki: ' + str(self.ki) + ', kd: ' + str(self.kd))
+		eventLogger.info(f'kp: {self.kp:.6f}, ki: {self.ki:.6f}, kd: {self.kd:.6f}')
 
 	def update(self, current, config=None):
 		# Check if config is provided and if PID parameters have changed
@@ -122,7 +122,7 @@ class Controller(ControllerBase):
 			self.tau = config['tau']
 			self.theta = config['theta']
 			
-			eventLogger.info('PID Tuning Values Changed - Recalculating Gains - PB: ' + str(self.pb) + ', Ti: ' + str(self.ti) + ', Td: ' + str(self.td) + ', stable_window: ' + str(self.stable_window) + ', center_factor: ' + str(self.center_factor) + ', tau: ' + str(self.tau) + ', theta: ' + str(self.theta))
+			eventLogger.info(f'PID Tuning Values Changed - Recalculating Gains - PB: {self.pb}, Ti: {self.ti}, Td: {self.td}, stable_window: {self.stable_window}, center_factor: {self.center_factor}, tau: {self.tau}, theta: {self.theta}')
 
 			# Recalculate gains
 			self._calculate_gains(self.pb, self.ti, self.td)
