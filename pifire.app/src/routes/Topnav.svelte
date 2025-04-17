@@ -1,4 +1,4 @@
-<script lang="js">
+<script>
     import { darkMode, toggleTheme } from '$lib/stores/themeStore';
     import { page } from '$app/stores';
     import { modalTimer } from '$lib/stores/modalStore';

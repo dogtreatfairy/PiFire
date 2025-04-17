@@ -2,7 +2,7 @@
     import { draggable, droppable } from '@thisux/sveltednd';
     import { flip } from 'svelte/animate';
     import { onMount, onDestroy } from 'svelte';
-    import { settingsStore, getSettings, getCurrent } from '$lib/stores/apiDataStore.js';
+    import { settingStore, getSettings, getCurrent, getControl } from '$lib/stores/apiDataStore.js';
     import ProbeCard from './ProbeCard.svelte';
 
     // Initialize probes with runes
@@ -30,8 +30,8 @@
 
     // Initialize and update probes
     $effect(() => {
-        if ($settingsStore) {
-            probes = buildProbeCards($settingsStore);
+        if ($settingStore) {
+            probes = buildProbeCards($settingStore);
         }
     });
 
@@ -47,6 +47,7 @@
         const interval = setInterval(async () => {
             await getSettings();
             await getCurrent();
+			await getControl();
         }, 1000);
 
         return () => clearInterval(interval); // Cleanup on destroy

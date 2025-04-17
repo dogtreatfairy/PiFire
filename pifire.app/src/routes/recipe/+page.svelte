@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { draggable, droppable, type DragDropState } from '$lib/index';
+	import { draggable, droppable } from '@thisux/sveltednd';
 	import { flip } from 'svelte/animate';
 
 	interface Card {
@@ -17,7 +17,7 @@
 		{ id: '6', color: 'from-pink-400 to-pink-600', icon: '🌸' }
 	]);
 
-	function handleDrop(state: DragDropState<Card>) {
+	function handleDrop(state: { draggedItem: Card; sourceContainer: string; targetContainer: string }) {
 		const { draggedItem, sourceContainer, targetContainer } = state;
 		if (!targetContainer || sourceContainer === targetContainer) return; // Prevent self-placement
 

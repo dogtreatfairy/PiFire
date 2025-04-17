@@ -1,6 +1,5 @@
 <script>
-    import { probeDataStore, settingsStore } from '$lib/stores/apiDataStore.js';
-	import { darkMode } from '$lib/stores/themeStore';
+    import { currentStore, settingStore } from '$lib/stores/apiDataStore.js';
     import { derived } from 'svelte/store';
     import Gauge from 'svelte-gauge';
     import { cubicOut } from "svelte/easing";
@@ -12,9 +11,11 @@
     let gaugeValue = 0;
     let gaugeLabels;
     let gaugeRedZone;
+	let setPoint = 140; // Example setPoint value, you can set this dynamically
+	$: inRange = Math.abs(gaugeValue - setPoint) <= 10;
 
     // Set max gauge temp
-    $: maxTemp = type === 'Food' ? 250 : ($settingsStore?.safety?.maxtemp || 0);
+    $: maxTemp = type === 'Food' ? 250 : ($settingStore?.safety?.maxtemp || 0);
     gaugeLabels = type === 'Food' ? 50 : 100;
     gaugeRedZone = type === 'Food' ? 25 : 50;
     $: isDanger = gaugeValue > maxTemp;
@@ -31,10 +32,10 @@
     }
 
     // Derive the value for the specific probe from probeDataStore
-    const gaugeValueStore = derived(probeDataStore, ($probeDataStore) => {
+    const gaugeValueStore = derived(currentStore, ($currentStore) => {
         const storeKey = mapTypeToStoreKey(type); // Map the store key
-        if (!$probeDataStore || !storeKey || !name) return 0;
-        return $probeDataStore[storeKey]?.[name] || 0;
+        if (!$currentStore || !storeKey || !name) return 0;
+        return $currentStore[storeKey]?.[name] || 0;
     });
 
     // Function to generate labels at intervals
@@ -67,15 +68,15 @@
                 stroke={20}
                 easing={cubicOut}
                 value={gaugeValue}
-                color="var(--bs-primary)"
-                class="gauge-dotted"
-                segments={[
-                    {start:maxTemp, stop:maxTemp+gaugeRedZone, color:"var(--bs-danger)"},
+				color={isDanger ? "var(--bs-danger)" : (inRange ? "var(--bs-success)" : "var(--bs-primary)")}
+                class="gauge-dotted {isDanger ? 'pulse' : ''}"
+				segments={[
+					{start:maxTemp, stop:maxTemp+gaugeRedZone, color:"rgb(238, 136, 145)"}, // Solid red blended with 50% white
                 ]}
                 let:value
             >
                 <div class="gauge-content">
-                    <span class="fw-bold" class:pulse={isDanger} class:text-danger={isDanger}>
+                    <span class="fw-bold" class:pulse={isDanger} class:text-danger={isDanger} class:text-success={inRange}>
                         {Math.round(value)}
                     </span>
                 </div>
@@ -95,10 +96,10 @@
     }
 
     .gauge-container {
-        width: 80%; /* Scale gauge to 80% of card */
-        height: 80%;
+        width: 90%; /* Scale gauge to 80% of card */
+        height: 90%;
         display: block;
-		transform: translate(-0%, -10%);
+		transform: translate(-0%, -2%);
     }
 
     .gauge-content {
