@@ -1,4 +1,15 @@
-/* Base styles for drag-and-drop */
+/* Ensure the grid background is transparent */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+    margin: 0 auto; /* Center the grid */
+    justify-content: center;
+    background-color: transparent; /* Ensure no background color */
+}
+
+/* Ensure droppable areas have no background color */
 .dnd-droppable {
     width: 100%;
     height: 100%;
@@ -7,8 +18,10 @@
     align-items: center;
     justify-content: flex-start;
     overflow: hidden;
+    background-color: transparent; /* Ensure no background color */
 }
 
+/* Ensure draggable items have no background color */
 .dnd-draggable {
     width: 100%;
     cursor: move;
@@ -17,21 +30,7 @@
     justify-content: center;
     border-radius: 0.5rem;
     margin-bottom: 0.25rem;
-}
-
-.dragging-border {
-    border: 2px dashed #6c757d;
-    border-radius: 0.5rem;
-}
-
-/* Grid layout */
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
-    width: 100%;
-    margin: 0 auto; /* Center the grid */
-	justify-content: center;
+    background-color: transparent; /* Ensure no background color */
 }
 
 /* Height variations */
@@ -45,15 +44,6 @@
 
 .item-height-3-3 {
     height: 100%;
-}
-
-/* Grid cell */
-.grid-cell {
-    position: relative;
-	aspect-ratio: 1/1;
-    border-radius: 0.5rem;
-    background-color: rgba(255, 255, 255, 0.05);
-    transition: all 0.2s ease;
 }
 
 /* Small screens (sm) - 1 column */
@@ -84,10 +74,4 @@
         grid-template-columns: repeat(4, minmax(0, 1fr)); /* Ensure 4 flexible columns */
         max-width: 95vw; /* Ensure the grid fits within the viewport */
     }
-}
-
-/* Highlight for drop zone */
-.highlight-drop-zone {
-    background-color: rgba(0, 123, 255, 0.1);
-    transition: background-color 0.2s ease;
 }

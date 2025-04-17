@@ -1,106 +1,96 @@
 <script>
     import { draggable, droppable } from '$lib/index.js';
-    import '$lib/styles/dnd.css';
+    import { flip } from 'svelte/animate';
+    import { onMount, onDestroy } from 'svelte';
+    import { settingsStore, getSettings, getCurrent } from '$lib/stores/apiDataStore.js';
+    import ProbeCard from './ProbeCard.svelte';
 
-    let isDragging = false;
+    // Initialize probes with runes
+    let probes = $state([]);
+    let isDragging = $state(false);
 
-    let cards = [
-        { id: '1', color: 'bg-danger', icon: '🎨', height: '1-3' },
-        { id: '2', color: 'bg-primary', icon: '🌊', height: '1-3' },
-        { id: '3', color: 'bg-success', icon: '🌿', height: '2-3' },
-        { id: '4', color: 'bg-warning', icon: '⭐', height: '1-3' },
-        { id: '5', color: 'bg-info', icon: '🔮', height: '2-3' },
-        { id: '6', color: 'bg-secondary', icon: '🌸', height: '1-3' }
-    ];
+    function buildProbeCards(settings) {
+        const probeData = settings?.probe_settings?.probe_map?.probe_info?.map((probe, index) => ({
+            id: index.toString(),
+            name: probe.name,
+            type: probe.type,
+            enabled: probe.enabled
+        })) || [];
 
-    // Initialize grid with 4 cells
-    let grid = Array(4).fill().map(() => []);
-    
-    // Distribute cards to grid cells initially
-    cards.forEach((card, index) => {
-        const cellIndex = index % grid.length;
-        grid[cellIndex].push(card);
+        // Load saved order from local storage
+        const savedOrder = localStorage.getItem('probeOrder');
+        if (savedOrder) {
+            const order = JSON.parse(savedOrder);
+            return order
+                .map(id => probeData.find(probe => probe.id === id))
+                .filter(probe => probe)
+                .concat(probeData.filter(probe => !order.includes(probe.id)));
+        }
+        return probeData;
+    }
+
+    // Initialize and update probes
+    $effect(() => {
+        if ($settingsStore) {
+            probes = buildProbeCards($settingsStore);
+        }
     });
 
-    function calculateAvailableHeight(cellItems) {
-        // Calculate total height units used (1/3 or 2/3)
-        const usedHeight = cellItems.reduce((total, item) => {
-            return total + (item.height === '2-3' ? 2 : 1);
-        }, 0);
-        
-        // Return available height units (max 3)
-        return 3 - usedHeight;
-    }
+    // Save probe order whenever probes change
+    $effect(() => {
+        if (probes.length) {
+            localStorage.setItem('probeOrder', JSON.stringify(probes.map(probe => probe.id)));
+        }
+    });
 
-    function canAddToCellWithHeight(cellItems, newItem) {
-        const availableHeight = calculateAvailableHeight(cellItems);
-        const requiredHeight = newItem.height === '2-3' ? 2 : 1;
-        
-        return availableHeight >= requiredHeight;
-    }
+    // Periodic updates
+    onMount(() => {
+        const interval = setInterval(async () => {
+            await getSettings();
+            await getCurrent();
+        }, 1000);
 
+        return () => clearInterval(interval); // Cleanup on destroy
+    });
+
+    // Handle drag and drop for probes
     function handleDrop(state) {
         const { draggedItem, sourceContainer, targetContainer } = state;
-        if (!targetContainer || sourceContainer === targetContainer) return;
+        if (!targetContainer || !draggedItem || sourceContainer === targetContainer) return;
 
-        const sourceIndex = parseInt(sourceContainer);
+        const draggedIndex = probes.findIndex(probe => probe.id === draggedItem.id);
         const targetIndex = parseInt(targetContainer);
-        
-        // Find the dragged item in the source container
-        const sourceCell = grid[sourceIndex];
-        const itemIndex = sourceCell.findIndex(item => item.id === draggedItem.id);
-        
-        if (itemIndex === -1) return;
-        
-        const item = sourceCell[itemIndex];
-        
-        // Check if target cell has enough space for this item
-        if (canAddToCellWithHeight(grid[targetIndex], item)) {
-            // Remove from source cell
-            sourceCell.splice(itemIndex, 1);
-            
-            // Add to target cell
-            grid[targetIndex].push(item);
-            
-            // Update grid to trigger reactivity
-            grid = [...grid];
-        }
-    }
 
-    function handleDragStart() {
-        isDragging = true;
-    }
+        if (draggedIndex === -1 || targetIndex === draggedIndex) return;
 
-    function handleDragEnd() {
-        isDragging = false;
+        // Reorder probes
+        const newProbes = [...probes];
+        const [movedProbe] = newProbes.splice(draggedIndex, 1);
+        newProbes.splice(targetIndex, 0, movedProbe);
+
+        // Update state
+        probes = newProbes;
     }
 </script>
 
-<div class="d-flex flex-column">
-    <!-- Centered grid section -->
-    <div class="container-fluid p-3 d-flex justify-content-center align-items-center flex-grow-1">
-        <div class="grid">
-            {#each grid as cellItems, cellIndex (cellIndex)}
-                <div class="grid-cell {isDragging ? 'dragging-border' : ''}">
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
+    <div class="max-w-2x mt-4">
+        <div class="grid grid-cols-3 gap-6">
+            {#each probes as probe, index (probe.id)}
+                <div
+                    use:droppable={{ container: index.toString(), callbacks: { onDrop: handleDrop } }}
+                    class="relative aspect-square rounded-xl bg-white/50 p-1 backdrop-blur-sm
+                           transition-all duration-300 hover:bg-white/60"
+                    animate:flip={{ duration: 300 }}
+                >
                     <div
-                        use:droppable={{ container: cellIndex.toString(), callbacks: { onDrop: handleDrop } }}
-                        class="dnd-droppable {isDragging ? 'highlight-drop-zone' : ''}"
+                        use:draggable={{
+                            container: index.toString(),
+                            dragData: probe
+                        }}
+                        class="h-full w-full cursor-move rounded-lg shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl active:scale-95 active:brightness-110"
                     >
-                        {#if cellItems.length === 0}
-                            <div class="empty-cell-placeholder"></div>
-                        {:else}
-                            {#each cellItems as item (item.id)}
-                                <!-- svelte-ignore a11y_no_static_element_interactions -->
-                                <div
-                                    use:draggable={{ container: cellIndex.toString(), dragData: item }}
-                                    on:dragstart={handleDragStart}
-                                    on:dragend={handleDragEnd}
-                                    class="dnd-draggable {item.color} item-height-{item.height}"
-                                >
-                                    <span class="fs-1">{item.icon}</span>
-                                </div>
-                            {/each}
-                        {/if}
+                        <ProbeCard name={probe.name} type={probe.type} units="F" />
                     </div>
                 </div>
             {/each}

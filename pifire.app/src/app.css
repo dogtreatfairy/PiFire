@@ -36,3 +36,74 @@
 		opacity: 1;
 	}
 }
+
+:global(.gauge-dotted) {
+    --stroke-color: #d43008; /* Matches the gauge color */
+    color: var(--stroke-color);
+    :global(.gauge-background) {
+      stroke: #777777; /* Background color similar to original styling */
+    }
+
+    :global(.gauge-progress),
+    :global(.gauge-background) {
+      stroke-dasharray: 2, 4; /* Dashed lines for visual similarity */
+      stroke-linecap: butt;
+    }
+
+    :global(.gauge-slot-content) {
+      -webkit-filter: drop-shadow(0px 0px 3px var(--stroke-color)); /* Neon glow effect */
+      filter: drop-shadow(0px 0px 3px var(--stroke-color));
+    }
+}
+
+.gauge-content {
+	position: absolute;
+	top: 45%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	font-size: calc(var(--gauge-radius) / 2);
+	text-align: center;
+	font-weight: 600;
+}
+
+.gauge-wrapper {
+	display: flex;
+	justify-content: center;
+	margin-top: 50px;
+}
+
+.card {
+	height: 100%; /* Ensure the card fills the grid square */
+	display: flex;
+	flex-direction: column;
+}
+
+.card-body {
+	flex-grow: 1; /* Allow the body to grow and take available space */
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	overflow: hidden; /* Prevent overflow */
+}
+
+.gauge-container {
+	width: 70%; /* Gauge takes 80% of the card's width */
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.gauge-dotted {
+	width: 100%; /* Ensure the gauge resizes dynamically */
+	height: auto; /* Maintain aspect ratio */
+}
+
+.card-footer {
+	flex-shrink: 0; /* Ensure the footer is always visible */
+}
+.gauge-units {
+	margin-top:80%; /* Add spacing below the gauge */
+	font-size: 2rem; /* Adjust font size as needed */
+	font-weight: 600; /* Semi-bold for better visibility */
+	text-align: center;
+}

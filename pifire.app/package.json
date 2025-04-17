@@ -32,6 +32,7 @@
 	},
 	"dependencies": {
 		"@sveltestrap/sveltestrap": "^7.1.0",
-		"@thisux/sveltednd": "^0.0.20"
+		"@thisux/sveltednd": "^0.0.20",
+		"svelte-gauge": "^2.0.1"
 	}
 }
