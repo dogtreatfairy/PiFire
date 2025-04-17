@@ -9,8 +9,6 @@
     $: currentTimerStatus = $timerStatus;
     $: currentTimerDisplay = $timerDisplay;
 
-	
-
     function toggleTimerModal() {
         modalTimer.update((isOpen) => !isOpen);
     }

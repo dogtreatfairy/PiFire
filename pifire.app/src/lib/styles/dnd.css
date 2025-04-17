@@ -6,7 +6,6 @@
     width: 100%;
     margin: 0 auto; /* Center the grid */
     justify-content: center;
-    background-color: transparent; /* Ensure no background color */
 }
 
 /* Ensure droppable areas have no background color */
@@ -17,8 +16,6 @@
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    overflow: hidden;
-    background-color: transparent; /* Ensure no background color */
 }
 
 /* Ensure draggable items have no background color */
@@ -28,9 +25,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 0.5rem;
-    margin-bottom: 0.25rem;
-    background-color: transparent; /* Ensure no background color */
+	
 }
 
 /* Height variations */
