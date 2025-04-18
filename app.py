@@ -22,6 +22,7 @@ from flask import Flask, request, abort, render_template, make_response, send_fi
 from flask_mobility import Mobility
 from flask_socketio import SocketIO
 from flask_qrcode import QRcode
+from flask_cors import CORS
 from io import BytesIO
 from werkzeug.utils import secure_filename
 from collections.abc import Mapping
@@ -54,6 +55,7 @@ app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 QRcode(app)
 Mobility(app)
+CORS(app)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['HISTORY_FOLDER'] = HISTORY_FOLDER
 app.config['RECIPE_FOLDER'] = RECIPE_FOLDER

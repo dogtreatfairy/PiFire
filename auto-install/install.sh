@@ -202,6 +202,7 @@ echo " - Installing module dependencies... "
 python -m pip install "flask==2.3.3" 
 python -m pip install flask-mobility
 python -m pip install flask-qrcode
+python -m pip install flask-cors
 python -m pip install flask-socketio
 if ! python -c "import sys; assert sys.version_info[:2] >= (3,11)" > /dev/null; then
     echo "System is running a python version lower than 3.11, installing eventlet==0.30.2";
