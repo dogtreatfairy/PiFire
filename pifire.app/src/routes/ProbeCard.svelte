@@ -1,5 +1,5 @@
 <script>
-    import { currentStore, settingStore } from '$lib/stores/apiDataStore.js';
+    import { currentStore, settingsStore } from '$lib/stores/apiDataStore.js';
     import { derived } from 'svelte/store';
     import Gauge from 'svelte-gauge';
     import { cubicOut } from "svelte/easing";
@@ -15,7 +15,7 @@
 	$: inRange = Math.abs(gaugeValue - setPoint) <= 10;
 
     // Set max gauge temp
-    $: maxTemp = type === 'Food' ? 250 : ($settingStore?.safety?.maxtemp || 0);
+    $: maxTemp = type === 'Food' ? 250 : ($settingsStore?.safety?.maxtemp || 0);
     gaugeLabels = type === 'Food' ? 50 : 100;
     gaugeRedZone = type === 'Food' ? 25 : 50;
     $: isDanger = gaugeValue > maxTemp;

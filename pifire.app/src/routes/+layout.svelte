@@ -2,18 +2,28 @@
   import { onMount } from 'svelte';
   import Topnav from './Topnav.svelte';
   import Timer from './Timer.svelte';
+  import Controlbar from './Controlbar.svelte';
   import '../app.css';
-  import { applyTheme, darkMode } from '$lib/stores/themeStore';
-  import { page } from '$app/state';
+  import { colorMode } from '@sveltestrap/sveltestrap';
+  import { browser } from '$app/environment'; // Import the browser variable
 
-  // Apply the theme on initial load
+  // Ensure the theme is applied on initial load
   onMount(() => {
-    applyTheme($darkMode); // Apply the current theme immediately
+    if (browser) {
+      const theme = localStorage.getItem('theme') || 'auto';
+      colorMode.set(theme); // Set the initial theme for Sveltestrap
+    }
   });
+
+  // Watch for changes to colorMode and persist them in localStorage
+  $: if (browser) {
+    localStorage.setItem('theme', $colorMode);
+  }
 </script>
 
-<Topnav {page} />
+<Topnav />
 <Timer />
+<Controlbar />
 
 <main class="container-fluid d-flex flex-column flex-grow-1">
   <slot />
