@@ -7,6 +7,7 @@ export const statusStore = writable({});
 export const hopperStore = writable({});
 export const pfAddress = writable('http://pifire.local'); // Base address of your Flask API
 
+
 // Generic function to fetch data from the API
 export async function getApiData(endpoint, store, dataKey) {
     try {
@@ -68,6 +69,40 @@ export async function writeApiData(path, value) {
     } catch (error) {
         console.error(`Error writing data to ${path}:`, error);
     }
+}
+
+
+export async function setMode(mode, primeAmount = null, nextMode = null) {
+	const postdata = {
+		updated: true,
+		mode: mode,
+	};
+
+	// Add primeAmount and nextMode if provided
+	if (mode === 'Prime' && primeAmount !== null && nextMode) {
+		postdata.prime_amount = primeAmount;
+		postdata.next_mode = nextMode;
+	}
+
+	try {
+		const address = get(pfAddress);
+		const response = await fetch(`${address}/api/control`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(postdata),
+		});
+
+		if (!response.ok) {
+			throw new Error(`Failed to set mode to: ${mode}. HTTP status: ${response.status}`);
+		}
+
+		const data = await response.json();
+		console.log(`API Post Call: Mode set to ${data.control}`);
+	} catch (error) {
+		console.error(`Error setting mode to ${mode}:`, error.message);
+	}
 }
 
 // Calls to fetch specific data

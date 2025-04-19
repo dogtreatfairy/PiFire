@@ -3,11 +3,15 @@
     import { flip } from 'svelte/animate';
     import { onMount, onDestroy } from 'svelte';
     import { settingsStore, pfAddress, getSettings, getCurrent, getControl, getHopper } from '$lib/stores/apiDataStore.js';
-    import ProbeCard from './ProbeCard.svelte';
-    import InfoCard from './InfoCard.svelte';
+    import ProbeCard from '$lib/components/ProbeCard.svelte';
+    import InfoCard from '$lib/components/InfoCard.svelte';
 
-    // Initialize items with runes (combines probes and InfoCard)
+    // Initialize items with runes
     let items = $state([]);
+    // Track which drop zone is active (hovered)
+    let activeDropZone = $state(null);
+	let interval;
+	let interval2;
 
     // Sanitize pfAddress for use in localStorage key
     function sanitizeKey(address) {
@@ -15,67 +19,66 @@
     }
 
     // Get server-specific storage key
-    function getStorageKey() {
-        const address = $pfAddress || 'localhost';
-        return `itemOrder_${sanitizeKey(address)}`;
+    function getStorageKey(address) {
+        return `itemOrder_${sanitizeKey(address || 'localhost')}`;
     }
 
-    function buildItems(settings) {
+    // Build items from settings, ensuring stable IDs
+    function buildItems(settings, address) {
+        if (!settings || !address) return [];
+
         const probeData = settings?.probe_settings?.probe_map?.probe_info
             ?.filter(probe => probe.enabled)
-            ?.map((probe, index) => ({
-                id: `probe-${index}`,
+            ?.map(probe => ({
+                id: `${address}-${probe.port}`, // Stable ID: pfAddress-probe.port
                 name: probe.name,
+                port: probe.port,
                 type: 'probe',
                 probeType: probe.type,
                 enabled: probe.enabled
             })) || [];
 
-        // Add InfoCard as an item
+        // Add InfoCard with a fixed ID
         const infoCard = {
             id: 'info-card',
             type: 'info'
         };
 
         // Load saved order from server-specific local storage
-        const savedOrder = localStorage.getItem(getStorageKey());
+        const savedOrder = localStorage.getItem(getStorageKey(address));
         if (savedOrder) {
             const order = JSON.parse(savedOrder);
             const orderedItems = order
                 .map(id => {
-                    if
-
-(id === 'info-card') return infoCard;
+                    if (id === 'info-card') return infoCard;
                     return probeData.find(probe => probe.id === id);
                 })
-                .filter(item => item);
+                .filter(item => item); // Remove undefined items
             // Append any new probes not in saved order
-            return orderedItems.concat(
-                probeData.filter(probe => !order.includes(probe.id)),
-                !order.includes('info-card') ? [infoCard] : []
-            );
+            return [
+                ...orderedItems,
+                ...probeData.filter(probe => !order.includes(probe.id)),
+                ...(order.includes('info-card') ? [] : [infoCard])
+            ];
         }
+
+        // Default order: probes followed by info card
         return [...probeData, infoCard];
     }
 
-    // Initialize and update items
+    // Clear and rebuild items when settings or pfAddress change
     $effect(() => {
-        if ($settingsStore) {
-            items = buildItems($settingsStore);
+        if ($settingsStore && $pfAddress) {
+            items = buildItems($settingsStore, $pfAddress);
+        } else {
+            items = []; // Clear items if no settings or address
         }
     });
 
     // Save item order whenever items change
     $effect(() => {
-        if (items.length) {
-            localStorage.setItem(getStorageKey(), JSON.stringify(items.map(item => item.id)));
-        }
-    });
-
-    // Update items when pfAddress changes
-    $effect(() => {
-        if ($settingsStore && $pfAddress) {
-            items = buildItems($settingsStore);
+        if (items.length && $pfAddress) {
+            localStorage.setItem(getStorageKey($pfAddress), JSON.stringify(items.map(item => item.id)));
         }
     });
 
@@ -85,21 +88,46 @@
             await getSettings();
             await getCurrent();
             await getControl();
-			await getHopper();
         }, 1000);
 
-        return () => clearInterval(interval);
+		const interval2 = setInterval(async () => {
+			await getHopper();
+		}, 10000);
+
+        // Reset activeDropZone when drag ends (drop or cancel)
+        const handleDragEnd = () => {
+            activeDropZone = null;
+        };
+
+        document.addEventListener('dragend', handleDragEnd);
+
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('dragend', handleDragEnd);
+        };
+    });
+
+	// Cleanup on destroy
+	onDestroy(() => {
+        clearInterval(interval);
+        clearInterval(interval2);
     });
 
     // Handle drag and drop for items
     function handleDrop(state) {
         const { draggedItem, sourceContainer, targetContainer } = state;
-        if (!targetContainer || !draggedItem || sourceContainer === targetContainer) return;
+        if (!targetContainer || !draggedItem || sourceContainer === targetContainer) {
+            activeDropZone = null; // Clear on invalid drop
+            return;
+        }
 
         const draggedIndex = items.findIndex(item => item.id === draggedItem.id);
         const targetIndex = parseInt(targetContainer);
 
-        if (draggedIndex === -1 || targetIndex === draggedIndex) return;
+        if (draggedIndex === -1 || targetIndex === draggedIndex) {
+            activeDropZone = null; // Clear if no valid reorder
+            return;
+        }
 
         // Reorder items
         const newItems = [...items];
@@ -108,6 +136,19 @@
 
         // Update state
         items = newItems;
+        activeDropZone = null; // Clear after successful drop
+    }
+
+    // Handle drag enter for drop zone highlighting
+    function handleDragEnter(state) {
+        if (state.targetContainer) {
+            activeDropZone = state.targetContainer;
+        }
+    }
+
+    // Handle drag leave for drop zone highlighting
+    function handleDragLeave() {
+        activeDropZone = null;
     }
 </script>
 
@@ -116,9 +157,17 @@
         <div class="grid grid-cols-3 gap-6">
             {#each items as item, index (item.id)}
                 <div
-                    use:droppable={{ container: index.toString(), callbacks: { onDrop: handleDrop } }}
+                    use:droppable={{
+                        container: index.toString(),
+                        callbacks: {
+                            onDrop: handleDrop,
+                            onDragEnter: handleDragEnter,
+                            onDragLeave: handleDragLeave
+                        }
+                    }}
                     class="relative aspect-square rounded-xl bg-white/50 p-1 backdrop-blur-sm
-                           transition-all duration-300 hover:bg-white/60"
+                           transition-all duration-300 hover:bg-white/60
+                           {activeDropZone === index.toString() ? 'drop-zone-active' : ''}"
                     animate:flip={{ duration: 300 }}
                 >
                     <div
@@ -126,7 +175,9 @@
                             container: index.toString(),
                             dragData: item
                         }}
-                        class="h-full w-full cursor-move transition-all duration-300 hover:scale-[1.02] hover:shadow-xl active:scale-95 active:brightness-110"
+                        class="h-full w-full cursor-move transition-all duration-300
+                               hover:scale-[1.02] hover:shadow-xl active:scale-95 active:brightness-110
+                               dragging"
                     >
                         {#if item.type === 'probe'}
                             <ProbeCard name={item.name} type={item.probeType} units="F" />
@@ -148,6 +199,27 @@
     width: 100%;
     margin: 0 auto;
     justify-content: center;
+}
+
+/* Style for drop zone when active (hovered) */
+.drop-zone-active {
+    border: 2px dashed #3b82f6; /* Blue dashed border */
+    background-color: rgba(59, 130, 246, 0.1); /* Light blue background */
+    transform: scale(0.98); /* Slight shrink to emphasize drop zone */
+}
+
+/* Style for dragged item */
+:global(.dragging.dragged) {
+    opacity: 1 !important; /* Ensure full visibility */
+    transform: scale(1.05); /* Slightly larger to indicate dragging */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Add shadow for depth */
+    z-index: 1000; /* Ensure dragged item is on top */
+    cursor: grabbing; /* Grabbing cursor */
+}
+
+/* Prevent border on click */
+:global(.dragging) {
+    border: none !important; /* No border on click */
 }
 
 @media (max-width: 576px) {

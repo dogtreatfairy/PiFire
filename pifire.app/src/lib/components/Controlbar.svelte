@@ -1,0 +1,65 @@
+<script>
+    import { onMount } from 'svelte';
+    import { pfAddress, statusStore, getStatus} from '$lib/stores/apiDataStore';
+    import { get } from 'svelte/store';
+	import { colorMode } from '@sveltestrap/sveltestrap';
+	import ButtonPrime from '$lib/components/ButtonPrime.svelte';
+	import ButtonStart from '$lib/components/ButtonStart.svelte';
+	import ButtonSmoke from '$lib/components/ButtonSmoke.svelte';
+	import ButtonHold from '$lib/components/ButtonHold.svelte';
+	import ButtonStop from '$lib/components/ButtonStop.svelte';
+	import ButtonFinish from '$lib/components/ButtonFinish.svelte';
+	import ButtonManual from '$lib/components/ButtonManual.svelte';
+
+
+    // Reactive statement to get the current mode from the status store
+	$: currentMode = $statusStore?.mode || 'Unknown'; // No need for `data.` prefix
+
+
+	onMount(() => {
+		const interval = setInterval(async () => {
+			await getStatus(); // Fetch status and update the store
+		}, 1000);
+
+		return () => clearInterval(interval); // Cleanup on destroy
+	});
+</script>
+
+<footer class="navbar fixed-bottom border-top text-center border-2 border-secondary { $colorMode === 'dark' ? 'bg-dark' : 'bg-light' }">
+    <div class="container d-flex justify-content-center">
+
+		<div class="btn-toolbar justify-content-center" role="toolbar" id="stopped_group">
+			<div class="btn-group mr-2 shadow" role="group">
+			  <ButtonPrime />
+			  <ButtonStart />
+			</div>
+			<ButtonManual />
+			<div class="btn-group shadow" role="group" id="error_group" style={{ display: 'none' }}>
+			</div>
+		</div>
+
+		<div class="btn-toolbar justify-content-center" class:d-none={currentMode ==='Stop'} role="toolbar" id="startup_group">
+			<div class="btn-group mr-2 shadow" role="group">
+			  <ButtonSmoke />
+			  <ButtonHold />
+			</div>
+			<ButtonStop />
+			<ButtonManual />
+		</div>
+		<div class="btn-toolbar justify-content-center" role="toolbar" id="active_group">
+			<div class="btn-group mr-2 shadow" role="group">
+			  <ButtonSmoke /> 
+			  <ButtonHold /> 
+			</div>
+			<ButtonFinish /> 
+			<ButtonManual />
+		</div>
+		<div class="btn-toolbar justify-content-center" role="toolbar" id="shutdown_group">
+			<div class="btn-group mr-2 shadow" role="group">
+			  <ButtonSmoke /> 
+			  <ButtonHold /> 
+			  <ButtonStop />
+			</div>
+			<ButtonManual /> 
+		</div>
+</footer>

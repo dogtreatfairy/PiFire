@@ -1,8 +1,8 @@
 <script lang="js">
   import { onMount } from 'svelte';
-  import Topnav from './Topnav.svelte';
-  import Timer from './Timer.svelte';
-  import Controlbar from './Controlbar.svelte';
+  import Topnav from '$lib/components/Topnav.svelte';
+  import Timer from '$lib/components/Timer.svelte';
+  import Controlbar from '$lib/components/Controlbar.svelte';
   import '../app.css';
   import { colorMode } from '@sveltestrap/sveltestrap';
   import { browser } from '$app/environment'; // Import the browser variable
