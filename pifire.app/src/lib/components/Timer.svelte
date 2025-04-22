@@ -1,40 +1,15 @@
 <script lang="js">
     import { Modal } from '@sveltestrap/sveltestrap';
     import { modalTimer } from '$lib/stores/modalStore';
-    import { onMount, onDestroy } from 'svelte';
+    import { grillControlData } from '$lib/stores/apiDataStore';
+    import { onMount } from 'svelte';
     import { timerLaunch } from '$lib/timer'; // Import the timer function
 
-    let hours = '';
-    let minutes = '';
     let error = '';
 
-    // Function to validate hours input
-    function validateHours() {
-        if (hours.length === 2) {
-            if (parseInt(hours) < 0 || parseInt(hours) > 23) {
-                error = 'ERROR: Hours Out of Range [0 - 23]';
-                hours = ''; // Clear the hours input
-                document.getElementById('hoursInput').focus(); // Re-focus on hours input
-            } else {
-                error = ''; // Clear error
-                document.getElementById('minutesInput').focus(); // Move focus to minutes input
-            }
-        }
-    }
-
-    // Function to validate minutes input
-    function validateMinutes() {
-        if (minutes.length === 2) {
-            if (parseInt(minutes) < 0 || parseInt(minutes) > 59) {
-                error = 'ERROR: Minutes Out of Range [0 - 59]';
-                minutes = ''; // Clear the minutes input
-                document.getElementById('minutesInput').focus(); // Re-focus on minutes input
-            } else {
-                error = ''; // Clear error
-                document.getElementById('setTimerButton').focus(); // Move focus to the "Set Timer" button
-            }
-        }
-    }
+    $: timerInfo = $grillControlData?.timer_info || {};
+    $: hours = Math.floor((timerInfo.timer_end_time || 0) / 3600);
+    $: minutes = Math.floor(((timerInfo.timer_end_time || 0) % 3600) / 60);
 
     // Function to handle the Enter key press
     function handleKeyDown(event) {
@@ -43,17 +18,9 @@
         }
     }
 
-    // Automatically focus on the hours input and clear inputs when the modal opens
     onMount(() => {
-        const unsubscribe = modalTimer.subscribe((isOpen) => {
-            if (isOpen) {
-                setTimeout(() => {
-                    hours = ''; // Clear hours input
-                    minutes = ''; // Clear minutes input
-                    error = ''; // Clear any existing error
-                    document.getElementById('hoursInput').focus(); // Focus on hours input
-                }, 0);
-            }
+        const unsubscribe = grillControlData.subscribe((data) => {
+            timerInfo = data?.timer_info || {};
         });
 
         // Add global keydown listener
@@ -78,8 +45,8 @@
 					style="width: 100px;"
 					maxlength="2"
 					bind:value={hours}
-					on:input={validateHours}
 					tabindex="1"
+					disabled
 				/>
 				<label for="hoursInput" class="form-label mt-2">Hours</label>
 			</div>
@@ -93,8 +60,8 @@
 					style="width: 100px;"
 					maxlength="2"
 					bind:value={minutes}
-					on:input={validateMinutes}
 					tabindex="2"
+					disabled
 				/>
 				<label for="minutesInput" class="form-label mt-2">Minutes</label>
 			</div>

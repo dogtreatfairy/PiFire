@@ -1,7 +1,7 @@
 <script>
-	import { statusStore, setMode } from '$lib/stores/apiDataStore.js';
+	import { grillControlData, setMode } from '$lib/stores/apiDataStore.js';
 
-	$: currentMode = $statusStore?.mode || 'Unknown'; // No need for `data.` prefix
+	$: currentMode = $grillControlData?.current_mode || 'Unknown';
 </script>
 
 <!-- Prime Button Group -- Visible: Stop, Manual -->

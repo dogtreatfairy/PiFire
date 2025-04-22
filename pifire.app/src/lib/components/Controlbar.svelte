@@ -1,6 +1,6 @@
 <script>
     import { onMount } from 'svelte';
-    import { pfAddress, statusStore, getStatus} from '$lib/stores/apiDataStore';
+    import { grillControlData } from '$lib/stores/apiDataStore';
     import { get } from 'svelte/store';
 	import { colorMode } from '@sveltestrap/sveltestrap';
 	import ButtonPrime from '$lib/components/ButtonPrime.svelte';
@@ -11,14 +11,12 @@
 	import ButtonFinish from '$lib/components/ButtonFinish.svelte';
 	import ButtonManual from '$lib/components/ButtonManual.svelte';
 
-
-    // Reactive statement to get the current mode from the status store
-	$: currentMode = $statusStore?.mode || 'Unknown'; // No need for `data.` prefix
-
+    // Reactive statement to get the current mode from the grillControlData
+	$: currentMode = $grillControlData?.current_mode || 'Unknown'; // Use grillControlData for current mode
 
 	onMount(() => {
-		const interval = setInterval(async () => {
-			await getStatus(); // Fetch status and update the store
+		const interval = setInterval(() => {
+			// No need to fetch status manually; data is updated via WebSocket
 		}, 1000);
 
 		return () => clearInterval(interval); // Cleanup on destroy

@@ -1,12 +1,16 @@
 <script>
-	import { statusStore, setMode } from '$lib/stores/apiDataStore.js';
+	import { grillControlData, setMode } from '$lib/stores/apiDataStore.js';
 
-	$: currentMode = $statusStore?.mode || 'Unknown'; // No need for `data.` prefix
+	$: currentMode = $grillControlData?.current_mode || 'Unknown';
 </script>
-<!-- Startup Button -- Visible: Stop, Prime, Monitor, Manual -->
+
+<!-- Start Button -->
 <button 
-	class="btn btn-success nav-btn-square me-2" 
-	on:click={() => setMode('Startup')}
-	aria-label="Startup Grill">
+	type="button" 
+	class="btn btn-outline-success border border-success nav-btn-height"
+	id="start_btn" 
+	on:click={() => setMode('Start')}
+	aria-label="Start Grill"
+>
 	<i class="fas fa-play"></i>
 </button>

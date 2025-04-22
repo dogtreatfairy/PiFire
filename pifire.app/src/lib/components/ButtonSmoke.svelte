@@ -1,13 +1,16 @@
 <script>
-	import { statusStore, setMode } from '$lib/stores/apiDataStore.js';
+	import { grillControlData, setMode } from '$lib/stores/apiDataStore.js';
 
-	$: currentMode = $statusStore?.mode || 'Unknown'; // No need for `data.` prefix
+	$: currentMode = $grillControlData?.current_mode || 'Unknown';
 </script>
 
-<!-- Smoke Mode Button -- Visible: Hold, Smoke, Recipe, Startup, Manual, Reignite -->
+<!-- Smoke Button -->
 <button 
-	class="btn btn-outline-warning border-secondary nav-btn-square me-2"
-	on:click={() => setMode('Smoke')} 
-	aria-label="Smoke Mode">
-	<i class="fas fa-cloud"></i>
+	type="button" 
+	class="btn btn-outline-primary border border-primary nav-btn-height"
+	id="smoke_btn" 
+	on:click={() => setMode('Smoke')}
+	aria-label="Smoke Mode"
+>
+	<i class="fas fa-smog"></i>
 </button>

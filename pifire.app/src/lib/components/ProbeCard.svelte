@@ -1,6 +1,5 @@
 <script>
-    import { currentStore, settingsStore } from '$lib/stores/apiDataStore.js';
-    import { derived } from 'svelte/store';
+    import { grillControlData, settingsData } from '$lib/stores/apiDataStore.js';
     import Gauge from 'svelte-gauge';
     import { cubicOut } from "svelte/easing";
 
@@ -8,35 +7,20 @@
     export let type; // The type of the probe (e.g., "Food", "Primary", "Auxiliary")
     export let units; // The units of the probe (e.g., "F" or "C")
 
-    let gaugeValue = 0;
     let gaugeLabels;
     let gaugeRedZone;
 	let setPoint = 140; // Example setPoint value, you can set this dynamically
 	$: inRange = Math.abs(gaugeValue - setPoint) <= 10;
 
     // Set max gauge temp
-    $: maxTemp = type === 'Food' ? 250 : ($settingsStore?.safety?.maxtemp || 0);
-    gaugeLabels = type === 'Food' ? 50 : 100;
-    gaugeRedZone = type === 'Food' ? 25 : 50;
+    $: maxTemp = type === 'F' ? 250 : 100; // Example max temp logic
+    gaugeLabels = type === 'F' ? 50 : 100;
+    gaugeRedZone = type === 'F' ? 25 : 50;
     $: isDanger = gaugeValue > maxTemp;
 
-    // Subscribe to the derived store to update gaugeValue
-    $: gaugeValue = $gaugeValueStore;
-
-    // Map the passed type to the corresponding key in probeDataStore
-    function mapTypeToStoreKey(type) {
-        if (type === 'Food') return 'F';
-        if (type === 'Primary') return 'P';
-        if (type === 'Auxiliary') return 'AUX';
-        return null; // Return null if the type doesn't match
-    }
-
-    // Derive the value for the specific probe from probeDataStore
-    const gaugeValueStore = derived(currentStore, ($currentStore) => {
-        const storeKey = mapTypeToStoreKey(type); // Map the store key
-        if (!$currentStore || !storeKey || !name) return 0;
-        return $currentStore[storeKey]?.[name] || 0;
-    });
+    // Access probe data dynamically based on type and name
+    $: probeData = $grillControlData?.probe_info?.[type] || {};
+    $: gaugeValue = probeData?.[name] || 0;
 
     // Function to generate labels at intervals
     const generateLabels = (step, max) =>

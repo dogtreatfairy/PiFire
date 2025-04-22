@@ -1,19 +1,22 @@
 <script>
     import { page } from '$app/stores';
     import { modalTimer, modalServer } from '$lib/stores/modalStore';
-    import { timerStatus, timerDisplay, timerUpdate, timerStop, timerPause, timerUnpause } from '$lib/timer';
-    import { onMount } from 'svelte';
     import { Modal, colorMode } from '@sveltestrap/sveltestrap';
-    import { pfAddress } from '$lib/stores/apiDataStore';
+    import { serverAddress, grillControlData, switchServer, requestSettings } from '$lib/stores/apiDataStore';
+    import { get } from 'svelte/store';
+    
+    $: currentTimerStatus = get(grillControlData)?.timer_info?.timer_active === 'true' ? 'running' :
+        get(grillControlData)?.timer_info?.timer_paused === 'true' ? 'paused' :
+        get(grillControlData)?.timer_info?.timer_expired === 'true' ? 'expired' : 'stopped';
 
-    $: currentTimerStatus = $timerStatus;
-    $: currentTimerDisplay = $timerDisplay;
+    $: currentTimerDisplay = get(grillControlData)?.timer_info?.timer_end_time || '--:--:--'; // Use grillControlData for timer display
 
-    let localPfAddress = ''; // Temporary variable to hold the value
+    let localserverAddress = ''; // Temporary variable to hold the value
     let selectedOption = '';
 
-    $: if ($modalServer) {
-        localPfAddress = $pfAddress;
+
+    $: if (get(modalServer)) {
+        localserverAddress = get(serverAddress);
     }
 
     function toggleTimerModal() {
@@ -24,33 +27,18 @@
         return $page.url.pathname === path;
     }
 
-    $: if ($modalServer) {
-        if ($pfAddress === 'http://localhost') {
+    $: if (get(modalServer)) {
+        if (get(serverAddress) === 'http://localhost') {
             selectedOption = 'localhost';
-            localPfAddress = 'http://localhost';
-        } else if ($pfAddress === 'http://pifire.local') {
+            localserverAddress = 'http://localhost';
+        } else if (get(serverAddress) === 'http://pifire.local') {
             selectedOption = 'pifire.local';
-            localPfAddress = 'http://pifire.local';
+            localserverAddress = 'http://pifire.local';
         } else {
             selectedOption = 'custom';
-            localPfAddress = $pfAddress;
+            localserverAddress = get(serverAddress);
         }
     }
-
-    function syncInterval(callback, interval) {
-        const now = Date.now();
-        const delay = interval - (now % interval);
-        setTimeout(() => {
-            callback();
-            setInterval(callback, interval);
-        }, delay);
-    }
-
-    onMount(() => {
-        syncInterval(() => {
-            timerUpdate();
-        }, 1000);
-    });
 </script>
 
 <nav class="navbar navbar-expand-md py-0 border-bottom border-2 border-secondary { $colorMode === 'dark' ? 'bg-dark' : 'bg-light' }">
@@ -74,7 +62,9 @@
                 Pi<i class="text-danger">Fire</i>
             </a>
         </div>
-
+		<div>
+			
+		</div>
         <div class="d-flex align-items-center justify-content-end order-md-last">
             <!-- Timer Dynamic Section -->
             <div class="btn-group border-primary me-1" role="group" aria-label="Timer Controls">
@@ -121,6 +111,12 @@
                     <span class:pulse={currentTimerStatus === 'finished'}><i class="fa-solid fa-stop"></i></span>
                 </button>
             </div>
+			<button
+				class="btn btn-outline-secondary nav-btn-square me-1"
+				on:click={() => requestSettings()}
+				aria-label="Get Settigns"
+				><i class="fa-solid fa-gear"></i>
+			</button>
             <!-- Timer Button -->
             <button 
                 class="btn btn-outline-secondary nav-btn-square me-1"
@@ -197,7 +193,7 @@
                     name="serverAddress"
                     value="localhost"
                     bind:group={selectedOption}
-                    on:change={() => localPfAddress = 'http://localhost'}
+                    on:change={() => localserverAddress = 'http://localhost'}
                 />
                 <label class="form-check-label fs-5 ms-3" for="localhostOption">
                     localhost
@@ -211,7 +207,7 @@
                     name="serverAddress"
                     value="pifire.local"
                     bind:group={selectedOption}
-                    on:change={() => localPfAddress = 'http://pifire.local'}
+                    on:change={() => localserverAddress = 'http://pifire.local'}
                 />
                 <label class="form-check-label fs-5 ms-3" for="pifireLocalOption">
                     pifire.local
@@ -237,7 +233,7 @@
 							id="customAddressInput"
 							type="text"
 							class="form-control"
-							bind:value={localPfAddress}
+							bind:value={localserverAddress}
 							placeholder="Enter custom address"
 						/>
 					</div>
@@ -259,8 +255,8 @@
             type="button"
             class="btn btn-primary"
             on:click={() => {
-                pfAddress.set(localPfAddress);
-                modalServer.set(false);
+                switchServer(localserverAddress); // Save the new server address and reconnect to the WebSocket server
+                modalServer.set(false); // Close the modal
             }}
             tabindex="3"
         >

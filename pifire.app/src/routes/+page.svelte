@@ -1,123 +1,40 @@
 <script>
     import { draggable, droppable } from '@thisux/sveltednd';
     import { flip } from 'svelte/animate';
-    import { onMount, onDestroy } from 'svelte';
-    import { settingsStore, pfAddress, getSettings, getCurrent, getControl, getHopper } from '$lib/stores/apiDataStore.js';
+    import { grillControlData} from '$lib/stores/apiDataStore.js';
     import ProbeCard from '$lib/components/ProbeCard.svelte';
     import InfoCard from '$lib/components/InfoCard.svelte';
 
-    // Initialize items with runes
-    let items = $state([]);
-    // Track which drop zone is active (hovered)
-    let activeDropZone = $state(null);
-	let interval;
-	let interval2;
+    let items = [];
+    let activeDropZone = null;
 
-    // Sanitize pfAddress for use in localStorage key
-    function sanitizeKey(address) {
-        return address.replace(/[^a-zA-Z0-9-_]/g, '_');
-    }
+    // Update items to build all probes under P, F, and AUX
+    $: items = (() => {
+        const probeData = $grillControlData?.probe_info || {};
+        const probeTypes = ['P', 'F', 'AUX'];
 
-    // Get server-specific storage key
-    function getStorageKey(address) {
-        return `itemOrder_${sanitizeKey(address || 'localhost')}`;
-    }
-
-    // Build items from settings, ensuring stable IDs
-    function buildItems(settings, address) {
-        if (!settings || !address) return [];
-
-        const probeData = settings?.probe_settings?.probe_map?.probe_info
-            ?.filter(probe => probe.enabled)
-            ?.map(probe => ({
-                id: `${address}-${probe.port}`, // Stable ID: pfAddress-probe.port
-                name: probe.name,
-                port: probe.port,
+        const probes = probeTypes.flatMap(type => {
+            return Object.entries(probeData[type] || {}).map(([name, value]) => ({
+                id: `probe-${type}-${name}`,
+                name,
                 type: 'probe',
-                probeType: probe.type,
-                enabled: probe.enabled
-            })) || [];
+                probeType: type,
+                value
+            }));
+        });
 
-        // Add InfoCard with a fixed ID
         const infoCard = {
             id: 'info-card',
             type: 'info'
         };
 
-        // Load saved order from server-specific local storage
-        const savedOrder = localStorage.getItem(getStorageKey(address));
-        if (savedOrder) {
-            const order = JSON.parse(savedOrder);
-            const orderedItems = order
-                .map(id => {
-                    if (id === 'info-card') return infoCard;
-                    return probeData.find(probe => probe.id === id);
-                })
-                .filter(item => item); // Remove undefined items
-            // Append any new probes not in saved order
-            return [
-                ...orderedItems,
-                ...probeData.filter(probe => !order.includes(probe.id)),
-                ...(order.includes('info-card') ? [] : [infoCard])
-            ];
-        }
+        return [...probes, infoCard];
+    })();
 
-        // Default order: probes followed by info card
-        return [...probeData, infoCard];
-    }
-
-    // Clear and rebuild items when settings or pfAddress change
-    $effect(() => {
-        if ($settingsStore && $pfAddress) {
-            items = buildItems($settingsStore, $pfAddress);
-        } else {
-            items = []; // Clear items if no settings or address
-        }
-    });
-
-    // Save item order whenever items change
-    $effect(() => {
-        if (items.length && $pfAddress) {
-            localStorage.setItem(getStorageKey($pfAddress), JSON.stringify(items.map(item => item.id)));
-        }
-    });
-
-    // Periodic updates
-    onMount(() => {
-        const interval = setInterval(async () => {
-            await getSettings();
-            await getCurrent();
-            await getControl();
-        }, 1000);
-
-		const interval2 = setInterval(async () => {
-			await getHopper();
-		}, 10000);
-
-        // Reset activeDropZone when drag ends (drop or cancel)
-        const handleDragEnd = () => {
-            activeDropZone = null;
-        };
-
-        document.addEventListener('dragend', handleDragEnd);
-
-        return () => {
-            clearInterval(interval);
-            document.removeEventListener('dragend', handleDragEnd);
-        };
-    });
-
-	// Cleanup on destroy
-	onDestroy(() => {
-        clearInterval(interval);
-        clearInterval(interval2);
-    });
-
-    // Handle drag and drop for items
     function handleDrop(state) {
         const { draggedItem, sourceContainer, targetContainer } = state;
         if (!targetContainer || !draggedItem || sourceContainer === targetContainer) {
-            activeDropZone = null; // Clear on invalid drop
+            activeDropZone = null;
             return;
         }
 
@@ -125,28 +42,24 @@
         const targetIndex = parseInt(targetContainer);
 
         if (draggedIndex === -1 || targetIndex === draggedIndex) {
-            activeDropZone = null; // Clear if no valid reorder
+            activeDropZone = null;
             return;
         }
 
-        // Reorder items
         const newItems = [...items];
         const [movedItem] = newItems.splice(draggedIndex, 1);
         newItems.splice(targetIndex, 0, movedItem);
 
-        // Update state
         items = newItems;
-        activeDropZone = null; // Clear after successful drop
+        activeDropZone = null;
     }
 
-    // Handle drag enter for drop zone highlighting
     function handleDragEnter(state) {
         if (state.targetContainer) {
             activeDropZone = state.targetContainer;
         }
     }
 
-    // Handle drag leave for drop zone highlighting
     function handleDragLeave() {
         activeDropZone = null;
     }
@@ -201,25 +114,22 @@
     justify-content: center;
 }
 
-/* Style for drop zone when active (hovered) */
 .drop-zone-active {
-    border: 2px dashed #3b82f6; /* Blue dashed border */
-    background-color: rgba(59, 130, 246, 0.1); /* Light blue background */
-    transform: scale(0.98); /* Slight shrink to emphasize drop zone */
+    border: 2px dashed #3b82f6;
+    background-color: rgba(59, 130, 246, 0.1);
+    transform: scale(0.98);
 }
 
-/* Style for dragged item */
 :global(.dragging.dragged) {
-    opacity: 1 !important; /* Ensure full visibility */
-    transform: scale(1.05); /* Slightly larger to indicate dragging */
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Add shadow for depth */
-    z-index: 1000; /* Ensure dragged item is on top */
-    cursor: grabbing; /* Grabbing cursor */
+    opacity: 1 !important;
+    transform: scale(1.05);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    cursor: grabbing;
 }
 
-/* Prevent border on click */
 :global(.dragging) {
-    border: none !important; /* No border on click */
+    border: none !important;
 }
 
 @media (max-width: 576px) {

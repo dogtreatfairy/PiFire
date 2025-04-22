@@ -7,6 +7,7 @@ const backendAddress = process.env.BACKEND_ADDRESS || 'http://localhost:8000';
 export default defineConfig({
     plugins: [sveltekit()],
     server: {
+		hmr: true,
         proxy: {
             '/api': {
                 target: backendAddress, // Dynamically use the backend address

@@ -1,13 +1,16 @@
 <script>
-	import { statusStore, setMode } from '$lib/stores/apiDataStore.js';
+	import { grillControlData, setMode } from '$lib/stores/apiDataStore.js';
 
-	$: currentMode = $statusStore?.mode || 'Unknown'; // No need for `data.` prefix
+	$: currentMode = $grillControlData?.current_mode || 'Unknown';
 </script>
 
-<!-- Manual Mode Button -- Visible: Hold, Smoke, Recipe, Stop, Manual, Error, Reignite-->
+<!-- Manual Button -->
 <button 
-	class="btn btn-outline-secondary nav-btn-square"
-	on:click={() => setMode('Manual')} 
-	aria-label="Manual Mode">
-	<i class="fas fa-glasses"></i>
+	type="button" 
+	class="btn btn-outline-secondary border border-secondary nav-btn-height"
+	id="manual_btn" 
+	on:click={() => setMode('Manual')}
+	aria-label="Manual Mode"
+>
+	<i class="fas fa-tools"></i>
 </button>

@@ -1,13 +1,16 @@
 <script>
-	import { statusStore, setMode } from '$lib/stores/apiDataStore.js';
+	import { grillControlData, setMode } from '$lib/stores/apiDataStore.js';
 
-	$: currentMode = $statusStore?.mode || 'Unknown'; // No need for `data.` prefix
+	$: currentMode = $grillControlData?.current_mode || 'Unknown';
 </script>
 
-<!-- Finish Mode Button -- Visible: Hold, Smoke, Recipe -->
+<!-- Finish Button -->
 <button 
-	class="btn btn-danger nav-btn-square me-2"
-	on:click={() => setMode('Finish')} 
-	aria-label="Stop Mode">
-	<i class="fas fa-stop"></i>
+	type="button" 
+	class="btn btn-outline-info border border-info nav-btn-height"
+	id="finish_btn" 
+	on:click={() => setMode('Finish')}
+	aria-label="Finish Mode"
+>
+	<i class="fas fa-flag-checkered"></i>
 </button>
