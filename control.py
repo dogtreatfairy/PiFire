@@ -6,10 +6,10 @@
 ==============================================================================
 
 Description: This script will start at boot, initialize the relays and
-  wait for further commands from the web user interface.
+	wait for further commands from the web user interface.
 
- This script runs as a separate process from the Flask / Gunicorn
- implementation which handles the web interface.
+	This script runs as a separate process from the Flask / Gunicorn
+	implementation which handles the web interface.
 
 ==============================================================================
 '''
@@ -233,7 +233,7 @@ eventLogger.info(f'Hopper Level Checked @ {pelletdb["current"]["hopper_level"]}%
 
 '''
 *****************************************
- 	Function Definitions
+	Function Definitions
 *****************************************
 '''
 def _start_fan(settings, duty_cycle=None):
@@ -1164,7 +1164,6 @@ while True:
 				control['notify_data'][index]['shutdown'] = False
 				control['notify_data'][index]['keep_warm'] = False
 				write_control(control, direct_write=True, origin='control')
-	
 
 	# Check if user changed hopper levels and update if required
 	if control['distance_update']:

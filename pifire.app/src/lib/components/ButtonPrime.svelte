@@ -1,14 +1,12 @@
 <script>
 	import { grillControlData, setMode } from '$lib/stores/apiDataStore.js';
-
-	$: currentMode = $grillControlData?.current_mode || 'Unknown';
 </script>
 
 <!-- Prime Button Group -- Visible: Stop, Manual -->
 <div class="btn-group dropup shadow" role="group" aria-label="Prime Options">
 	<button 
 		type="button" 
-		class="btn btn-outline-secondary border border-secondary dropdown-toggle me-2 nav-btn-height"
+		class="btn btn-outline-secondary dropdown-toggle nav-btn-height"
 		id="prime_btn" 
 		data-bs-toggle="dropdown" 
 		aria-expanded="false"

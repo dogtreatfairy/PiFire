@@ -7,19 +7,27 @@
     export let type; // The type of the probe (e.g., "Food", "Primary", "Auxiliary")
     export let units; // The units of the probe (e.g., "F" or "C")
 
-    let gaugeLabels;
-    let gaugeRedZone;
+	$: maxTemp = $settingsData.safety?.maxtemp;
+    let gaugeLabels = 100;
+    let gaugeRedZone = 50;
 	let setPoint = 140; // Example setPoint value, you can set this dynamically
 	$: inRange = Math.abs(gaugeValue - setPoint) <= 10;
 
-    // Set max gauge temp
-    $: maxTemp = type === 'F' ? 250 : 100; // Example max temp logic
-    gaugeLabels = type === 'F' ? 50 : 100;
-    gaugeRedZone = type === 'F' ? 25 : 50;
+	$: {
+		if (type === 'Food') {
+			maxTemp = 250;
+			gaugeLabels = 50;
+			gaugeRedZone = 25;
+		}
+	}
+	
     $: isDanger = gaugeValue > maxTemp;
 
-    // Access probe data dynamically based on type and name
-    $: probeData = $grillControlData?.probe_info?.[type] || {};
+    // Convert probe type
+    $: convertedType = type === 'Primary' ? 'P' : type === 'Food' ? 'F' : 'Aux';
+
+    // Access probe data dynamically based on converted type and name
+    $: probeData = $grillControlData?.probe_info?.[convertedType] || {};
     $: gaugeValue = probeData?.[name] || 0;
 
     // Function to generate labels at intervals

@@ -1,27 +1,27 @@
 <script>
     import { draggable, droppable } from '@thisux/sveltednd';
     import { flip } from 'svelte/animate';
-    import { grillControlData} from '$lib/stores/apiDataStore.js';
+    import { grillControlData, settingsData} from '$lib/stores/apiDataStore.js';
     import ProbeCard from '$lib/components/ProbeCard.svelte';
     import InfoCard from '$lib/components/InfoCard.svelte';
 
     let items = [];
     let activeDropZone = null;
 
-    // Update items to build all probes under P, F, and AUX
+    // Update items to build all probes under probe_info
     $: items = (() => {
-        const probeData = $grillControlData?.probe_info || {};
-        const probeTypes = ['P', 'F', 'AUX'];
+        const probeInfo = $settingsData?.probe_settings?.probe_map?.probe_info || [];
 
-        const probes = probeTypes.flatMap(type => {
-            return Object.entries(probeData[type] || {}).map(([name, value]) => ({
-                id: `probe-${type}-${name}`,
-                name,
-                type: 'probe',
-                probeType: type,
-                value
-            }));
-        });
+        const probes = probeInfo.map(probe => ({
+            id: `probe-${probe.port}`,
+            name: probe.name,
+            type: 'probe',
+            probeType: probe.type,
+            value: probe.profile,
+            label: probe.label,
+            enabled: probe.enabled,
+            device: probe.device
+        }));
 
         const infoCard = {
             id: 'info-card',

@@ -1,94 +1,216 @@
 <script lang="js">
     import { Modal } from '@sveltestrap/sveltestrap';
     import { modalTimer } from '$lib/stores/modalStore';
+    import { timerLaunch, timerStore } from '$lib/timer';
     import { grillControlData } from '$lib/stores/apiDataStore';
-    import { onMount } from 'svelte';
-    import { timerLaunch } from '$lib/timer'; // Import the timer function
 
     let error = '';
+    let _hours ='0';
+    let _minutes = '0';
+    let _shutdown = false;
+    let _keepWarm = false;
+    let _initialLoad = true;
+	let hoursInputRef;
+    let minutesInputRef;
 
-    $: timerInfo = $grillControlData?.timer_info || {};
-    $: hours = Math.floor((timerInfo.timer_end_time || 0) / 3600);
-    $: minutes = Math.floor(((timerInfo.timer_end_time || 0) % 3600) / 60);
+	$: if (!$modalTimer) {
+		_initialLoad = true;
+	}
+	
 
-    // Function to handle the Enter key press
-    function handleKeyDown(event) {
+    // Initialize modal state when modal opens
+    $: if ($modalTimer && _initialLoad) {
+        error = '';
+        _hours =  $timerStore.hours || '0';
+        _minutes = $timerStore.minutes || '0';
+        _shutdown = $grillControlData?.timer_info?.timer_shutdown || false;
+        _keepWarm = $grillControlData?.timer_info?.timer_keep_warm || false;
+		_initialLoad = false;
+        setTimeout(() => {
+            if (hoursInputRef) {
+                hoursInputRef.focus();
+                hoursInputRef.select();
+            }
+        }, 100);
+    }
+
+    // Add event listener for Enter key to submit the modal
+    function handleKeyPress(event) {
         if (event.key === 'Enter') {
-            timerLaunch(hours, minutes, modalTimer, (message) => (error = message));
+            _timerLaunch();
         }
     }
 
-    onMount(() => {
-        const unsubscribe = grillControlData.subscribe((data) => {
-            timerInfo = data?.timer_info || {};
-        });
+    // Handle toggle changes to enforce mutual exclusivity
+    function handleShutdownChange() {
+        if (_shutdown) {
+            _keepWarm = false; // Disaible keepWarm if shutdown is enabled
+        }
+    }
 
-        // Add global keydown listener
-        window.addEventListener('keydown', handleKeyDown);
+    function handleKeepWarmChange() {
+        if (_keepWarm) {
+            _shutdown = false; // Disable shutdown if keepWarm is enabled
+        }
+    }
 
-        return () => {
-            unsubscribe();
-            window.removeEventListener('keydown', handleKeyDown); // Clean up listener
+    // Focus and input handling (unchanged)
+    function _focusAndSelectMinutes() {
+        setTimeout(() => {
+            if (minutesInputRef) {
+                minutesInputRef.focus();
+                minutesInputRef.select();
+            }
+        }, 0);
+    }
+
+    function _handleHoursFocus() {
+        if (_hours === '0') {
+            _hours = '';
+        }
+    }
+
+    function _handleMinutesFocus() {
+        if (_minutes === '0') {
+            _minutes = '';
+        }
+    }
+
+    function _timerLaunch() {
+
+        const options = {
+            timer_shutdown: _shutdown,
+            timer_keep_warm: _keepWarm
         };
-    });
+
+        // Post to API
+        timerLaunch(_hours, _minutes, options);
+
+        // Update the store
+        grillControlData.update((data) => ({
+            ...data,
+            timer_info: {
+                ...data?.timer_info,
+                timer_shutdown: _shutdown,
+                timer_keep_warm: _keepWarm
+            }
+        }));
+
+        // Close the modal
+        modalTimer.set(false);
+		_initialLoad = true;
+    }
 </script>
 
-<Modal body autofocus keyboard centered header="Set Timer" isOpen={$modalTimer} toggle={() => modalTimer.set(false)}>
-	<div class="modal-body text-center">
-		<div class="d-flex justify-content-center align-items-center">
-			<div class="me-2">
-				<!-- svelte-ignore a11y_positive_tabindex -->
-				<input
-					id="hoursInput"
-					type="text"
-					class="form-control text-center fs-5"
-					style="width: 100px;"
-					maxlength="2"
-					bind:value={hours}
-					tabindex="1"
-					disabled
-				/>
-				<label for="hoursInput" class="form-label mt-2">Hours</label>
-			</div>
-			<span class="fs-5">:</span>
-			<div class="ms-2">
-				<!-- svelte-ignore a11y_positive_tabindex -->
-				<input
-					id="minutesInput"
-					type="text"
-					class="form-control text-center fs-5"
-					style="width: 100px;"
-					maxlength="2"
-					bind:value={minutes}
-					tabindex="2"
-					disabled
-				/>
-				<label for="minutesInput" class="form-label mt-2">Minutes</label>
-			</div>
-		</div>
-		{#if error}
-			<div class="text-danger mt-3">{error}</div>
-		{/if}
-	</div>
-	<div class="modal-footer">
-		<!-- svelte-ignore a11y_positive_tabindex -->
-		<button
-			type="button"
-			class="btn btn-outline-secondary"
-			on:click={() => modalTimer.set(false)}
-			tabindex="4"
-		>
-			Cancel
-		</button>
-		<!-- svelte-ignore a11y_positive_tabindex -->
-		<button
-			id="setTimerButton"
-			type="button"
-			class="btn btn-danger"
-			on:click={() => timerLaunch(hours, minutes, modalTimer, (message) => (error = message))}
-			tabindex="3"
-		>
-			Start
-		</button>
-	</div>
+<Modal
+    body
+    keyboard
+    centered
+    header="Set Timer"
+    isOpen={$modalTimer}
+    toggle={() => modalTimer.set(false)}
+    autofocus={false}
+>
+    <div class="modal-body text-center" on:keypress={handleKeyPress}>
+        <div class="d-flex justify-content-center align-items-center mb-3">
+            <div class="me-2">
+                <label for="hoursInput" class="form-label">Hours</label>
+                <input
+                    id="hoursInput"
+                    bind:this={hoursInputRef}
+                    type="number"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    max="99"
+                    class="form-control text-center fs-4"
+                    style="width: 80px;"
+                    bind:value={_hours}
+                    on:focus={_handleHoursFocus}
+                    on:input={() => {
+                        const valStr = String(_hours);
+                        if (valStr.length >= 2) {
+                            _hours = valStr.slice(0, 2);
+                            _focusAndSelectMinutes();
+                        }
+                    }}
+                    tabindex="1"
+                    placeholder="0"
+                />
+            </div>
+            <span class="fs-4 mx-1">:</span>
+            <div class="ms-2">
+                <label for="minutesInput" class="form-label">Minutes</label>
+                <input
+                    id="minutesInput"
+                    bind:this={minutesInputRef}
+                    type="number"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    min="0"
+                    max="59"
+                    class="form-control text-center fs-4"
+                    style="width: 80px;"
+                    bind:value={_minutes}
+                    on:focus={_handleMinutesFocus}
+                    on:input={() => {
+                        const valStr = String(_minutes);
+                        if (valStr.length >= 2) {
+                            _minutes = valStr.slice(0, 2);
+                            document.getElementById('setTimerButton')?.focus();
+                        }
+                    }}
+                    tabindex="2"
+                    placeholder="00"
+                />
+            </div>
+        </div>
+
+        <div class="form-check form-switch">
+            <input
+                class="form-check-input"
+                type="checkbox"
+                id="shutdownCheckbox"
+                bind:checked={_shutdown}
+                on:change={handleShutdownChange}
+            />
+            <label class="form-check-label" for="shutdownCheckbox">Shutdown</label>
+        </div>
+        <div class="form-check form-switch">
+            <input
+                class="form-check-input"
+                type="checkbox"
+                id="keepWarmCheckbox"
+                bind:checked={_keepWarm}
+                on:change={handleKeepWarmChange}
+            />
+            <label class="form-check-label" for="keepWarmCheckbox">Keep Warm</label>
+        </div>
+
+        {#if error}
+            <div class="text-danger mt-2">{error}</div>
+        {/if}
+    </div>
+    <div class="modal-footer">
+        <button
+            type="button"
+            class="btn btn-outline-secondary"
+            on:click={() => {
+                            modalTimer.set(false);
+                            _initialLoad = true;
+                        }}
+            tabindex="4"
+        >
+            Cancel
+        </button>
+        <button
+            id="setTimerButton"
+            type="button"
+            class="btn btn-danger"
+            on:click={_timerLaunch}
+            tabindex="3"
+        >
+            Start Timer
+        </button>
+    </div>
 </Modal>
