@@ -35,10 +35,6 @@
 		}
 	}
 
-	function toggleTimerModal() {
-		modalTimer.update((isOpen) => !isOpen);
-	}
-
 	function isActive(path) {
 		return $page.url.pathname === path;
 	}
@@ -75,7 +71,7 @@
 					class="btn fs-6 nav-btn-height"
 					class:btn-outline-warning={$colorMode === 'dark'}
 					class:btn-warning={$colorMode !== 'dark'}
-					class:d-none={timerStatus === 'stopped'} on:click={toggleTimerModal}  title="Timer Status / Settings"
+					class:d-none={timerStatus === 'stopped'} on:click={modalTimer.set(true)}  title="Timer Status / Settings"
 				>
 					<span class:pulse={timerStatus === 'paused' || timerStatus === 'expired'}>
 						<i class="fa-solid fa-stopwatch me-2"></i>
@@ -130,7 +126,8 @@
 
 			<button
 				class="btn btn-outline-secondary nav-btn-square me-1"
-				class:d-none={timerStatus !== 'stopped'} on:click={toggleTimerModal}
+				class:d-none={timerStatus !== 'stopped'}
+				on:click={() => modalTimer.set(true)}
 				aria-label="Set Timer"
                 title="Set Timer"
 			>

@@ -1,6 +1,6 @@
 <script lang="js">
     import { Modal } from '@sveltestrap/sveltestrap';
-    import { modalTimer } from '$lib/stores/modalStore';
+    import { modalTimer, enterSubmit } from '$lib/stores/modalStore';
     import { timerLaunch, timerStore } from '$lib/timer';
     import { grillControlData } from '$lib/stores/apiDataStore';
 
@@ -17,7 +17,6 @@
 		_initialLoad = true;
 	}
 	
-
     // Initialize modal state when modal opens
     $: if ($modalTimer && _initialLoad) {
         error = '';
@@ -34,13 +33,6 @@
         }, 100);
     }
 
-    // Add event listener for Enter key to submit the modal
-    function handleKeyPress(event) {
-        if (event.key === 'Enter') {
-            _timerLaunch();
-        }
-    }
-
     // Handle toggle changes to enforce mutual exclusivity
     function handleShutdownChange() {
         if (_shutdown) {
@@ -54,15 +46,7 @@
         }
     }
 
-    // Focus and input handling (unchanged)
-    function _focusAndSelectMinutes() {
-        setTimeout(() => {
-            if (minutesInputRef) {
-                minutesInputRef.focus();
-                minutesInputRef.select();
-            }
-        }, 0);
-    }
+	
 
     function _handleHoursFocus() {
         if (_hours === '0') {
@@ -104,14 +88,14 @@
 
 <Modal
     body
-    keyboard
     centered
+    keyboard
     header="Set Timer"
     isOpen={$modalTimer}
     toggle={() => modalTimer.set(false)}
-    autofocus={false}
 >
-    <div class="modal-body text-center" on:keypress={handleKeyPress}>
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="modal-body text-center" on:keypress={enterSubmit(_timerLaunch)}>
         <div class="d-flex justify-content-center align-items-center mb-3">
             <div class="me-2">
                 <label for="hoursInput" class="form-label">Hours</label>
@@ -131,11 +115,10 @@
                         const valStr = String(_hours);
                         if (valStr.length >= 2) {
                             _hours = valStr.slice(0, 2);
-                            _focusAndSelectMinutes();
+                            _focusSelect();
                         }
                     }}
                     tabindex="1"
-                    placeholder="0"
                 />
             </div>
             <span class="fs-4 mx-1">:</span>
@@ -161,7 +144,6 @@
                         }
                     }}
                     tabindex="2"
-                    placeholder="00"
                 />
             </div>
         </div>

@@ -8,16 +8,24 @@
     export let units; // The units of the probe (e.g., "F" or "C")
 
 	$: maxTemp = $settingsData.safety?.maxtemp;
-    let gaugeLabels = 100;
-    let gaugeRedZone = 50;
-	let setPoint = 140; // Example setPoint value, you can set this dynamically
-	$: inRange = Math.abs(gaugeValue - setPoint) <= 10;
+
+    let _gaugeLabels = 100;
+    let _gaugeRedZone = 50;
+	let _setPoint = 0; 
+	let primarySetPoint;
+	$: inRange = Math.abs(gaugeValue - _setPoint) <= 10;
+
 
 	$: {
 		if (type === 'Food') {
 			maxTemp = 250;
-			gaugeLabels = 50;
-			gaugeRedZone = 25;
+			_gaugeLabels = 50;
+			_gaugeRedZone = 25;
+		}
+
+		else if (type === 'Primary') {
+			primarySetPoint = $grillControlData?.probe_info?.PSP || 0;
+			_setPoint = primarySetPoint;
 		}
 	}
 	
@@ -53,8 +61,8 @@
     <div class="card-body d-flex flex-column justify-content-center align-items-center p-2">
         <div class="gauge-container">
             <Gauge
-                stop={maxTemp+gaugeRedZone}
-                labels={generateLabels(gaugeLabels, maxTemp+gaugeRedZone)}
+                stop={maxTemp+_gaugeRedZone}
+                labels={generateLabels(_gaugeLabels, maxTemp+_gaugeRedZone)}
                 startAngle={45}
                 stopAngle={315}
                 stroke={20}
@@ -63,15 +71,18 @@
 				color={isDanger ? "var(--bs-danger)" : (inRange ? "var(--bs-success)" : "var(--bs-primary)")}
                 class="gauge-dotted {isDanger ? 'pulse' : ''}"
 				segments={[
-					{start:maxTemp, stop:maxTemp+gaugeRedZone, color:"rgb(238, 136, 145)"}, // Solid red blended with 50% white
+					{start:maxTemp, stop:maxTemp+_gaugeRedZone, color:"rgb(238, 136, 145)"}, // Solid red blended with 50% white
                 ]}
                 let:value
             >
                 <div class="gauge-content">
-                    <span class="fw-bold" class:pulse={isDanger} class:text-danger={isDanger} class:text-success={inRange}>
+                    <span class="fw-bold mb-0 pb-0" class:pulse={isDanger} class:text-danger={isDanger} class:text-success={inRange}>
                         {Math.round(value)}
                     </span>
                 </div>
+				<div class="gauge-target">
+					<span class="fs-1" class:d-none={type !== 'Primary'}>&gt;{primarySetPoint}&lt;</span>
+				</div>
                 <div class="gauge-units">
                     <span>°{units}</span>
                 </div>
@@ -102,6 +113,16 @@
         font-size: calc(var(--gauge-radius) / 2.5); /* Scale font with gauge */
         text-align: center;
         font-weight: 600;
+    }
+	
+	.gauge-target {
+        position: absolute;
+        bottom: 25%;
+        left: 50%;
+		transform: translateX(-50%);
+        font-size: calc(var(--gauge-radius) / 3); /* Scale units with gauge */
+        font-weight: 600;
+        text-align: center;
     }
 
     .gauge-units {
