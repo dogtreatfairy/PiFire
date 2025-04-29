@@ -8,13 +8,14 @@
     export let units; // The units of the probe (e.g., "F" or "C")
 
 	$: maxTemp = $settingsData.safety?.maxtemp;
+	$: convertedType = type === 'Primary' ? 'P' : type === 'Food' ? 'F' : 'Aux';
+	$: probeData = $grillControlData?.probe_info?.[convertedType] || {};
+    $: gaugeValue = probeData?.[name] || 0;
 
     let _gaugeLabels = 100;
     let _gaugeRedZone = 50;
-	let _setPoint = 0; 
-	let primarySetPoint;
-	$: inRange = Math.abs(gaugeValue - _setPoint) <= 10;
-
+	let _gaugeTarget = 0; 
+	let _gaugeGreenRange = 10;
 
 	$: {
 		if (type === 'Food') {
@@ -24,21 +25,14 @@
 		}
 
 		else if (type === 'Primary') {
-			primarySetPoint = $grillControlData?.probe_info?.PSP || 0;
-			_setPoint = primarySetPoint;
+			_gaugeTarget = $grillControlData?.probe_info?.PSP || 0;
 		}
 	}
-	
+
+	//Boolean Values	
+	$: inRange = Math.abs(gaugeValue - _gaugeTarget) <= _gaugeGreenRange;
     $: isDanger = gaugeValue > maxTemp;
 
-    // Convert probe type
-    $: convertedType = type === 'Primary' ? 'P' : type === 'Food' ? 'F' : 'Aux';
-
-    // Access probe data dynamically based on converted type and name
-    $: probeData = $grillControlData?.probe_info?.[convertedType] || {};
-    $: gaugeValue = probeData?.[name] || 0;
-
-    // Function to generate labels at intervals
     const generateLabels = (step, max) =>
         Array.from({ length: Math.floor(max / step) + 1 }, (_, i) => (i * step).toString());
 </script>
@@ -68,20 +62,28 @@
                 stroke={20}
                 easing={cubicOut}
                 value={gaugeValue}
-				color={isDanger ? "var(--bs-danger)" : (inRange ? "var(--bs-success)" : "var(--bs-primary)")}
+				color={isDanger ? "var(--bs-danger)" : (inRange && _gaugeTarget !== 0 ? "var(--bs-success)" : "var(--bs-primary)")}
                 class="gauge-dotted {isDanger ? 'pulse' : ''}"
 				segments={[
-					{start:maxTemp, stop:maxTemp+_gaugeRedZone, color:"rgb(238, 136, 145)"}, // Solid red blended with 50% white
-                ]}
+					...(_gaugeTarget !== 0 ? [{start:_gaugeTarget-_gaugeGreenRange, stop:_gaugeTarget+_gaugeGreenRange, color:"var(--bs-success)"}] : []),
+					{start:maxTemp, stop:maxTemp+_gaugeRedZone, color:"rgb(238, 136, 145)"} // Solid red blended with 50% white
+				]}
                 let:value
             >
                 <div class="gauge-content">
-                    <span class="fw-bold mb-0 pb-0" class:pulse={isDanger} class:text-danger={isDanger} class:text-success={inRange}>
+                    <span class="fw-bold mb-0 pb-0" class:pulse={isDanger} class:text-danger={isDanger} class:text-success={inRange && _gaugeTarget !== 0}>
                         {Math.round(value)}
                     </span>
                 </div>
 				<div class="gauge-target">
-					<span class="fs-1" class:d-none={type !== 'Primary'}>&gt;{primarySetPoint}&lt;</span>
+                    <span class="fs-1" 
+					class:text-success={inRange} 
+					class:text-danger={_gaugeTarget >= maxTemp} 
+					class:pulse={_gaugeTarget >= maxTemp} 
+					class:d-none={type !== 'Primary' || _gaugeTarget === 0}>
+					
+					&gt;{_gaugeTarget}&lt;
+				</span>
 				</div>
                 <div class="gauge-units">
                     <span>°{units}</span>
@@ -117,7 +119,7 @@
 	
 	.gauge-target {
         position: absolute;
-        bottom: 25%;
+        bottom: 20%;
         left: 50%;
 		transform: translateX(-50%);
         font-size: calc(var(--gauge-radius) / 3); /* Scale units with gauge */
