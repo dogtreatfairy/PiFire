@@ -18,6 +18,18 @@
 	let _setPoint = 0;
 	let error = ''; // Define the error variable
 
+	function _setPointInit () {
+		if (primarySetPoint > 0) {
+			_setPoint = primarySetPoint;
+		} else if (startToMode === 'Hold') {
+			_setPoint = primarySetPoint;
+		} else if (startupExitTemp > 0) {
+			_setPoint = startupExitTemp;
+		} else {
+			_setPoint = keepWarmTemp;
+		}
+	}
+
 	function _setTarget() {
 		const setPoint = parseInt(_setPoint); // Parse the set point value
 		const postdata = {
@@ -42,7 +54,7 @@
 	// Initial Input Value Logic
 	$: if ($modalHold && _initialLoad) {
         error = '';
-        _setPoint =  primarySetPoint || 0;
+		_setPointInit();
 		_initialLoad = false;
         setTimeout(() => {
             if (setPointInputRef) {
@@ -91,8 +103,7 @@
                     pattern="[0-9]*"
                     min="0"
                     max={maxTemp}
-                    class="form-control text-center fs-4"
-                    style="width: 80px;"
+                    class="form-control text-center fs-1"
                     bind:value={_setPoint}
                 />
             </div>

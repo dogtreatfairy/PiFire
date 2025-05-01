@@ -11,10 +11,12 @@ export const grillControlData = writable({}); // From 'grill_control_data' event
 
 // Data from get_app_data endpoint
 export const settingsData = writable({});
-export const pelletsData = writable({});   // New store for pellets_data
-export const eventsData = writable({});    // New store for events_data
-export const infoData = writable({});      // New store for info_data
-export const manualData = writable({});    // New store for manual_data
+export const pelletsData = writable({});
+export const eventsData = writable({});
+export const infoData = writable({});
+export const manualData = writable({});
+// *** NEW: Store for UI Settings ***
+export const uiSettings = writable(null); // Initialize as null (not loaded yet)
 
 // --- Internal Module State ---
 let socket = null; // Holds the current Socket.IO client instance
@@ -31,28 +33,40 @@ function _attachListeners(currentSocket) {
         console.log(`Socket connected to server at ${address}`);
         isConnected.set(true);
         socketStatus.set('Connected');
-        
-		// Request initial dashboard data upon successful connection
+
+        // Request initial data upon successful connection
         emitEvent('get_dash_data', { force: true });
         requestSettings();
         requestPelletsData();
+        requestUiSettings(); // *** NEW: Request UI settings on connect ***
     });
 
     currentSocket.on('disconnect', (reason) => {
         console.log(`Socket disconnected. Reason: ${reason}`);
         isConnected.set(false);
         socketStatus.set('Disconnected');
+        // Clear stores on disconnect? Optional, depends on desired behavior.
+        // settingsData.set({});
+        // uiSettings.set(null); // Reset to null on disconnect
     });
 
     currentSocket.on('connect_error', (error) => {
         console.error('Socket connection error:', error.message);
         isConnected.set(false);
         socketStatus.set('Error');
+        // uiSettings.set(null); // Reset to null on connection error
     });
 
     // Listener for continuous dashboard updates
     currentSocket.on('grill_control_data', (data) => {
         grillControlData.set(data);
+    });
+
+    // *** NEW: Listener for broadcasted UI settings updates (Optional) ***
+    // This handles updates pushed from the server after *another* client saved changes.
+    currentSocket.on('ui_settings_data', (settings) => {
+        console.log("Received broadcasted 'ui_settings_data':", settings);
+        uiSettings.set(settings || {}); // Update store with pushed data
     });
     // Add listeners for any other push events from the server if needed
 }
@@ -66,6 +80,7 @@ function _removeListeners(currentSocket) {
     currentSocket.off('disconnect');
     currentSocket.off('connect_error');
     currentSocket.off('grill_control_data');
+    currentSocket.off('ui_settings_data'); // *** NEW: Remove UI settings listener ***
     // Add .off() for other custom listeners
 }
 
@@ -87,6 +102,9 @@ function _connectInternal() {
     console.log(`Attempting to connect to socket server at ${address}...`);
     socketStatus.set('Connecting');
 
+    // Reset uiSettings to null when attempting new connection
+    uiSettings.set(null);
+
     socket = io(address, {
         reconnection: true,
     });
@@ -94,6 +112,9 @@ function _connectInternal() {
     _attachListeners(socket);
 }
 
+// --- Public API ---
+
+/** Initializes the socket connection based on saved or default address. */
 export function initializeSocket() {
     if (typeof window !== 'undefined') {
         const savedAddress = localStorage.getItem('serverAddress');
@@ -106,6 +127,7 @@ export function initializeSocket() {
     }
 }
 
+/** Disconnects the socket and cleans up listeners. */
 export function disconnectSocket() {
     if (socket) {
         console.log('Disconnecting socket...');
@@ -114,11 +136,12 @@ export function disconnectSocket() {
         socket = null;
         isConnected.set(false);
         socketStatus.set('Disconnected');
+        uiSettings.set(null); // Reset UI settings on manual disconnect
     }
 }
 
 /**
- * Switches the connection to a new server.
+ * Switches the connection to a new server, clears local stores, and reconnects.
  * @param {string} newAddress - Base address (e.g., 'http://192.168.1.100').
  * @param {string} [newPort] - Optional port.
  */
@@ -133,6 +156,7 @@ export function switchServer(newAddress, newPort) {
     eventsData.set({});
     infoData.set({});
     manualData.set({});
+    uiSettings.set(null); // *** NEW: Clear UI settings store ***
     console.log('Cleared local data stores for server switch.');
 
     serverAddress.set(newAddress);
@@ -146,7 +170,7 @@ export function switchServer(newAddress, newPort) {
 }
 
 /**
- * Generic function to emit an event to the server.
+ * Generic function to emit an event to the server without waiting for ACK.
  * @param {string} eventName - Event name.
  * @param {object} [data={}] - Payload.
  */
@@ -188,13 +212,13 @@ function _emitWithAck(eventName, data, timeoutMs = 5000) {
             if (response && typeof response === 'object' && response.response?.result === 'error') {
                  console.error(`Server returned error for ${eventName}:`, response.response.message);
                  reject(new Error(response.response.message || `Server error for ${eventName}`));
-            } else if (response) {
-                // console.log(`Received ack for ${eventName}:`, response); // Optional log
-                resolve(response);
+            } else if (response !== undefined && response !== null) { // Allow empty objects/arrays as valid responses
+                 // console.log(`Received ack for ${eventName}:`, response); // Optional log
+                 resolve(response);
             } else {
-                // Server acknowledged, but sent no data or an unexpected format
-                console.error(`Failed to retrieve data for ${eventName} (server responded empty/unexpected).`);
-                reject(new Error(`Server responded unsuccessfully for ${eventName}`));
+                 // Server acknowledged, but sent no data or an unexpected format
+                 console.error(`Failed to retrieve data for ${eventName} (server responded empty/unexpected). Response:`, response);
+                 reject(new Error(`Server responded unsuccessfully or with unexpected format for ${eventName}`));
             }
         });
     });
@@ -207,13 +231,12 @@ function _emitWithAck(eventName, data, timeoutMs = 5000) {
 export async function requestSettings() {
     try {
         const response = await _emitWithAck('get_app_data', { action: 'settings_data' });
-        settingsData.set(response);
-        return response; // Return data for potential chaining/direct use
+        settingsData.set(response || {}); // Ensure store gets an object
+        return response;
     } catch (error) {
         console.error("Failed to request settings data:", error);
-        // Optionally set store to an error state or empty object
-        // settingsData.set({ error: error.message });
-        throw error; // Re-throw error for calling code to handle
+        settingsData.set({}); // Set to empty on error
+        throw error;
     }
 }
 
@@ -221,11 +244,11 @@ export async function requestSettings() {
 export async function requestPelletsData() {
     try {
         const response = await _emitWithAck('get_app_data', { action: 'pellets_data' });
-        pelletsData.set(response);
+        pelletsData.set(response || {});
         return response;
     } catch (error) {
         console.error("Failed to request pellets data:", error);
-        // pelletsData.set({ error: error.message });
+        pelletsData.set({});
         throw error;
     }
 }
@@ -234,11 +257,11 @@ export async function requestPelletsData() {
 export async function requestEventsData() {
     try {
         const response = await _emitWithAck('get_app_data', { action: 'events_data' });
-        eventsData.set(response);
+        eventsData.set(response || {});
         return response;
     } catch (error) {
         console.error("Failed to request events data:", error);
-        // eventsData.set({ error: error.message });
+        eventsData.set({});
         throw error;
     }
 }
@@ -247,11 +270,11 @@ export async function requestEventsData() {
 export async function requestInfoData() {
     try {
         const response = await _emitWithAck('get_app_data', { action: 'info_data' });
-        infoData.set(response);
+        infoData.set(response || {});
         return response;
     } catch (error) {
         console.error("Failed to request info data:", error);
-        // infoData.set({ error: error.message });
+        infoData.set({});
         throw error;
     }
 }
@@ -260,27 +283,47 @@ export async function requestInfoData() {
 export async function requestManualData() {
     try {
         const response = await _emitWithAck('get_app_data', { action: 'manual_data' });
-        manualData.set(response);
+        manualData.set(response || {});
         return response;
     } catch (error) {
         console.error("Failed to request manual data:", error);
-        // manualData.set({ error: error.message });
+        manualData.set({});
         throw error;
     }
 }
 
-/** Requests timer_data and updates the grillControlData store. */
+/** Requests grill_control_data and updates the grillControlData store. */
 export async function requestGrillControlData() {
     try {
         const response = await _emitWithAck('get_app_data', { action: 'grill_control_data' });
-        grillControlData.set(response);
+        grillControlData.set(response || {});
         return response;
     } catch (error) {
-        console.error("Failed to request manual data:", error);
-        // manualData.set({ error: error.message });
+        console.error("Failed to request grill control data:", error);
+        grillControlData.set({});
         throw error;
     }
 }
+
+// *** NEW: Function to request UI settings ***
+/** Requests ui_settings and updates the uiSettings store. */
+export async function requestUiSettings() {
+    console.log("Requesting UI Settings...");
+    try {
+        // Assuming backend 'get_app_data' handles { action: 'ui_settings' }
+        const response = await _emitWithAck('get_app_data', { action: 'ui_settings' });
+        console.log("Received UI Settings:", response);
+        // Set store to received object or empty object if null/undefined
+        uiSettings.set(response || {});
+        return response;
+    } catch (error) {
+        console.error("Failed to request UI settings:", error);
+        // Set store to empty object on error to prevent hanging on null
+        uiSettings.set({});
+        throw error;
+    }
+}
+
 
 // --- Function to Post Data (using post_app_data) ---
 
@@ -293,59 +336,51 @@ export async function requestGrillControlData() {
  * @param {number} [timeoutMs=5000] - Timeout duration in milliseconds.
  * @returns {Promise<object>} A promise resolving with the server's acknowledgement response.
  */
-export async function postAppData(action, type, payload = {}, timeoutMs = 5000) { // Added timeoutMs
-	if (!action || !type) {
-		console.error("postAppData requires 'action' and 'type' arguments.");
-		return Promise.reject(new Error("postAppData requires 'action' and 'type' arguments."));
-	}
+export async function postAppData(action, type, payload = {}, timeoutMs = 5000) {
+    if (!action || !type) {
+        console.error("postAppData requires 'action' and 'type' arguments.");
+        return Promise.reject(new Error("postAppData requires 'action' and 'type' arguments."));
+    }
 
-	// Stringify the payload as expected by the backend's json_data parameter
-	const jsonPayloadString = JSON.stringify(payload);
+    const jsonPayloadString = JSON.stringify(payload);
+    console.log(`Posting App Data - Action: ${action}, Type: ${type}, Payload Object:`, payload);
 
-	console.log(`Posting App Data - Action: ${action}, Type: ${type}, Payload Object:`, payload);
+    return new Promise((resolve, reject) => {
+        if (!socket || !socket.connected) {
+            console.error(`Cannot postAppData ${action}/${type}: Socket is not connected.`);
+            return reject(new Error('Socket is not connected'));
+        }
 
-	// *** MODIFICATION START ***
-	// Bypass _emitWithAck and call socket.emit directly with the 3 arguments format
-	// Use a Promise to handle the acknowledgement callback like _emitWithAck does.
-	return new Promise((resolve, reject) => {
-		if (!socket || !socket.connected) {
-			console.error(`Cannot postAppData ${action}/${type}: Socket is not connected.`);
-			return reject(new Error('Socket is not connected'));
-		}
+        let timedOut = false;
+        const timer = setTimeout(() => {
+            timedOut = true;
+            console.error(`Timeout waiting for acknowledgement for post_app_data ${action}/${type}.`);
+            reject(new Error(`Timeout waiting for post_app_data ${action}/${type} response`));
+        }, timeoutMs);
 
-		let timedOut = false;
-		const timer = setTimeout(() => {
-			timedOut = true;
-			console.error(`Timeout waiting for acknowledgement for post_app_data ${action}/${type}.`);
-			reject(new Error(`Timeout waiting for post_app_data ${action}/${type} response`));
-		}, timeoutMs);
+        // Emit with the correct 3 arguments + ack callback
+        socket.emit('post_app_data', action, type, jsonPayloadString, (response) => {
+            clearTimeout(timer);
+            if (timedOut) return;
 
-		// Emit with the correct 3 arguments + ack callback
-		socket.emit('post_app_data', action, type, jsonPayloadString, (response) => {
-			clearTimeout(timer); // Clear the timeout timer
-			if (timedOut) return; // Ignore if already timed out
+            console.log(`postAppData raw response for ${action}/${type}:`, response);
 
-            console.log(`postAppData raw response for ${action}/${type}:`, response); // Log the raw response
-
-			// Check the structure of the server's acknowledgement response
-			if (response && typeof response === 'object' && response.response?.result === 'error') {
-				console.error(`Server returned error for post_app_data ${action}/${type}:`, response.response.message);
-				reject(new Error(response.response.message || `Server error for post_app_data ${action}/${type}`));
-			} else if (response && response.response?.result === 'success') {
-                // Successfully received ack with expected structure
-				console.log(`postAppData successful ack for ${action}/${type}:`, response);
-				resolve(response); // Resolve with the full success response object
-			} else {
-				// Server acknowledged, but sent no data or an unexpected format
-				console.error(`postAppData ${action}/${type} received unexpected acknowledgement format:`, response);
-				reject(new Error(`Server responded unsuccessfully or with unexpected format for post_app_data ${action}/${type}`));
-			}
-		});
-	});
+            if (response && typeof response === 'object' && response.response?.result === 'error') {
+                console.error(`Server returned error for post_app_data ${action}/${type}:`, response.response.message);
+                reject(new Error(response.response.message || `Server error for post_app_data ${action}/${type}`));
+            } else if (response && response.response?.result === 'success') {
+                console.log(`postAppData successful ack for ${action}/${type}:`, response);
+                resolve(response);
+            } else {
+                console.error(`postAppData ${action}/${type} received unexpected acknowledgement format:`, response);
+                reject(new Error(`Server responded unsuccessfully or with unexpected format for post_app_data ${action}/${type}`));
+            }
+        });
+    });
 }
 
 
-// --- Application Specific Actions (Example using postAppData) ---
+// --- Application Specific Actions ---
 
 /**
  * Example: Set the mode using WebSocket by emitting 'post_app_data'
@@ -355,25 +390,65 @@ export async function postAppData(action, type, payload = {}, timeoutMs = 5000) 
  */
 export function setMode(mode, primeAmount = null, nextMode = null) {
     const payload = {
-        updated: true, // Assuming server needs this flag
+        updated: true,
         mode: mode,
     };
-
-    // Conditionally add properties for 'Prime' mode
     if (mode === 'Prime' && primeAmount !== null && nextMode) {
         payload.prime_amount = primeAmount;
         payload.next_mode = nextMode;
     }
-
-    // Use the generic postAppData function
     postAppData('update_action', 'control', payload)
         .then(response => {
             console.log(`Set mode to ${mode} successful:`, response);
-            // Maybe trigger dashboard data refresh or rely on push updates
-            // emitEvent('get_dash_data', { force: true });
         })
         .catch(error => {
             console.error(`Failed to set mode to ${mode}:`, error);
-            // Handle error in UI if needed
         });
+}
+
+// *** NEW: Function to save UI settings (including card positions) ***
+/**
+ * Saves the entire UI settings object to the backend.
+ * It's expected that the object passed contains the merged cardPositions.
+ * @param {object} settingsToSave - The complete UI settings object to save.
+ */
+export async function saveUiSettings(settingsToSave) {
+    console.log("Saving UI Settings:", settingsToSave);
+    if (typeof settingsToSave !== 'object' || settingsToSave === null) {
+        console.error("Invalid data provided to saveUiSettings. Expected an object.");
+        return Promise.reject(new Error("Invalid data for saveUiSettings"));
+    }
+    try {
+        // Use postAppData assuming backend handles { action: 'update_action', type: 'ui_settings' }
+        const response = await postAppData('update_action', 'ui_settings', settingsToSave);
+        console.log("Save UI Settings successful:", response);
+        // Optimistic update: Update local store immediately after sending
+        // Note: If save fails, store might be out of sync until next fetch or refresh
+        uiSettings.set(settingsToSave);
+        return response;
+    } catch (error) {
+        console.error("Failed to save UI settings:", error);
+        // Handle error in UI if needed
+        throw error; // Re-throw for calling code
+    }
+}
+
+/**
+ * Saves just the card positions by merging them into the current UI settings.
+ * @param {Object.<string, number>} newPositions - Object mapping card IDs to their 1-based positions.
+ */
+export async function saveCardPositions(newPositions) {
+    console.log("Attempting to save new card positions:", newPositions);
+
+    // Get the current full settings state to merge with
+    const currentSettings = get(uiSettings) || {}; // Use current value or empty object
+
+    // Prepare the updated settings object
+    const updatedSettings = {
+        ...currentSettings,         // Keep existing settings
+        cardPositions: newPositions // Update/add the card positions map
+    };
+
+    // Call the function to save the entire updated object
+    return saveUiSettings(updatedSettings);
 }

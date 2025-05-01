@@ -3614,539 +3614,639 @@ def _get_system_command_output(requested='supported_commands', timeout=1):
  SocketIO Section
 ==============================================================================
 '''
-background_task_lock = threading.Lock() # Lock remains useful
-thread = None # Initialize thread to None - our primary state indicator
+# --- Global Variables (as provided by user) ---
+background_task_lock = threading.Lock()
+thread = None
 clients = 0
-force_refresh = False # Keep the user's force_refresh logic
+force_refresh = False
+
+settings_file_path = 'settings.json' # Path to your main settings file
+
+# --- Helper Functions for UI Settings File ---
+def read_ui_settings():
+    """Reads UI settings from the JSON file."""
+    try:
+        # Use 'a+' to create the file if it doesn't exist, then reset pointer
+        with open(settings_file_path, 'a+', encoding='utf-8') as f:
+            f.seek(0) # Go to the beginning to read
+            content = f.read()
+            if not content: # File was empty or just created
+                print(f"UI settings file ({settings_file_path}) was empty or newly created.")
+                return {} # Return empty dict
+            return json.loads(content)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"Error reading UI settings file ({settings_file_path}), returning empty settings: {e}")
+        return {} # Return empty dict on error
+    except Exception as e:
+        print(f"Unexpected error reading UI settings file: {e}")
+        return {}
+
+def write_ui_settings(settings_data):
+    """Writes UI settings to the JSON file."""
+    try:
+        with open(settings_file_path, 'w', encoding='utf-8') as f:
+            json.dump(settings_data, f, indent=4) # Use indent for readability
+        print(f"UI settings successfully written to {settings_file_path}")
+        return True
+    except Exception as e:
+        print(f"Error writing UI settings file ({settings_file_path}): {e}")
+        return False
+
+# --- SocketIO Event Handlers ---
 
 @socketio.on("connect")
 def connect():
-	global clients
-	global thread # Need access to potentially start task
-	global background_task_lock
+    global clients
+    global thread
+    global background_task_lock
 
-	sid = request.sid
-	print(f"Client connected: {sid}")
-	clients += 1
-	print(f"Total clients: {clients}")
+    sid = request.sid
+    print(f"Client connected: {sid}")
+    clients += 1
+    print(f"Total clients: {clients}")
 
-	# --- Start task on connect if needed (using the new check) ---
-	with background_task_lock:
-		if thread is None:
-			print(f"Background task is None. Starting new task (triggered by connect from {sid}).")
-			thread = socketio.start_background_task(emit_dash_data)
-
+    with background_task_lock:
+        if thread is None:
+            print(f"Background task is None. Starting new task (triggered by connect from {sid}).")
+            thread = socketio.start_background_task(emit_dash_data)
 
 @socketio.on("disconnect")
 def disconnect():
-	global clients
-	sid = request.sid
-	if clients > 0:
-		clients -= 1
-	print(f"Client disconnected: {sid}")
-	print(f"Total clients: {clients}")
-
+    global clients
+    sid = request.sid
+    if clients > 0:
+        clients -= 1
+    print(f"Client disconnected: {sid}")
+    print(f"Total clients: {clients}")
 
 @socketio.on('get_dash_data')
-def get_dash_data(data={}): # Accept data as a dictionary
-	global thread
-	global force_refresh
-	global background_task_lock
+def get_dash_data(data={}):
+    global thread
+    global force_refresh
+    global background_task_lock
 
-	force = data.get('force', False)
-	sid = request.sid
-	print(f"Received 'get_dash_data' from {sid} with force={force}")
+    force = data.get('force', False)
+    sid = request.sid
+    print(f"Received 'get_dash_data' from {sid} with force={force}")
 
-	force_refresh = force # Set the global flag as per original logic
+    force_refresh = force
 
-	with background_task_lock:
-		# Check if task needs starting (thread is None means it stopped/never started)
-		if thread is None:
-			print(f"Background task is None. Starting new task (triggered by get_dash_data from {sid}).")
-			thread = socketio.start_background_task(emit_dash_data)
-
+    with background_task_lock:
+        if thread is None:
+            print(f"Background task is None. Starting new task (triggered by get_dash_data from {sid}).")
+            thread = socketio.start_background_task(emit_dash_data)
 
 def emit_dash_data():
-	global clients
-	global force_refresh
-	global thread # Need global to reset it to None in 'finally'
-	global background_task_lock # Need lock to safely reset global thread
+    global clients
+    global force_refresh
+    global thread
+    global background_task_lock
 
-	print("Background task 'emit_dash_data' started.")
-	previous_data = None
+    print("Background task 'emit_dash_data' started.")
+    previous_data = None
 
-	try: # Wrap the main loop work in try
-		while (clients > 0):
-			try: # Inner try/except for loop iteration robustness
-				control = read_control()
-				pelletdb = read_pellet_db()
-				probe_info = read_current()
+    try:
+        while (clients > 0):
+            try:
+                control = read_control()
+                pelletdb = read_pellet_db()
+                probe_info = read_current()
+                timer_notify_index = -1 # Default index if no timer found
 
-				for index, notify_obj in enumerate(control['notify_data']):
-					if notify_obj['type'] == 'timer':
-						break 
+                # Find the timer notification object safely
+                for index, notify_obj in enumerate(control.get('notify_data', [])):
+                    if isinstance(notify_obj, dict) and notify_obj.get('type') == 'timer':
+                        timer_notify_index = index
+                        break
 
-				if control['timer']['end'] - time.time() > 0 or bool(control['timer']['paused']):
-					timer_info = { 
-						'timer_paused': bool(control['timer']['paused']), 
-						'timer_start_time': math.trunc(control['timer']['start']), 
-						'timer_end_time': math.trunc(control['timer']['end']), 
-						'timer_paused_time': math.trunc(control['timer']['paused']), 
-						'timer_active': True,  
-						'timer_expired': bool(control['timer']['expired']),
-						'timer_shutdown': bool(control['notify_data'][index]['shutdown']),  # Added shutdown
-						'timer_keep_warm': bool(control['notify_data'][index]['keep_warm'])  # Added keep_warm
-					}
-				else:
-					timer_info = { 
-						'timer_paused': False, 
-						'timer_start_time': 0, 
-						'timer_end_time': 0, 
-						'timer_paused_time': 0, 
-						'timer_active': False,  
-						'timer_expired': bool(control['timer']['expired']),
-						'timer_shutdown': bool(control['notify_data'][index]['shutdown']),  # Added shutdown
-						'timer_keep_warm': bool(control['notify_data'][index]['keep_warm'])  # Added keep_warm
-					}
+                # Default timer info if index remains -1
+                default_timer_notify = {'shutdown': False, 'keep_warm': False}
+                timer_notify_data = control.get('notify_data', [])[timer_notify_index] if timer_notify_index != -1 else default_timer_notify
 
-				current_data = { 'probe_info': probe_info, 'notify_data': control['notify_data'], 'timer_info': timer_info, 'current_mode': control['mode'], 'smoke_plus': control['s_plus'], 'pwm_control': control['pwm_control'], 'hopper_level': pelletdb['current']['hopper_level'] }
+                timer_active_check = control.get('timer', {}).get('end', 0) - time.time() > 0
+                timer_paused_check = bool(control.get('timer', {}).get('paused', 0))
 
-				if force_refresh:
-					print("Force refresh requested, emitting data to all clients.")
-					socketio.emit('grill_control_data', current_data)
-					force_refresh = False
-					previous_data = current_data
-				elif previous_data != current_data:
-					print("Data changed, emitting data to all clients.")
-					socketio.emit('grill_control_data', current_data)
-					previous_data = current_data
+                if timer_active_check or timer_paused_check:
+                    timer_info = {
+                        'timer_paused': timer_paused_check,
+                        'timer_start_time': math.trunc(control.get('timer', {}).get('start', 0)),
+                        'timer_end_time': math.trunc(control.get('timer', {}).get('end', 0)),
+                        'timer_paused_time': math.trunc(control.get('timer', {}).get('paused', 0)),
+                        'timer_active': True,
+                        'timer_expired': bool(control.get('timer', {}).get('expired', False)),
+                        'timer_shutdown': bool(timer_notify_data.get('shutdown', False)),
+                        'timer_keep_warm': bool(timer_notify_data.get('keep_warm', False))
+                    }
+                else:
+                     timer_info = {
+                        'timer_paused': False,
+                        'timer_start_time': 0,
+                        'timer_end_time': 0,
+                        'timer_paused_time': 0,
+                        'timer_active': False,
+                        'timer_expired': bool(control.get('timer', {}).get('expired', False)),
+                        'timer_shutdown': bool(timer_notify_data.get('shutdown', False)),
+                        'timer_keep_warm': bool(timer_notify_data.get('keep_warm', False))
+                    }
 
-				socketio.sleep(2)
 
-			except Exception as e:
-				print(f"ERROR in emit_dash_data inner loop: {e}")
-				socketio.sleep(5) # Avoid busy-loop on error
+                current_data = {
+                    'probe_info': probe_info,
+                    'notify_data': control.get('notify_data', []),
+                    'timer_info': timer_info,
+                    'current_mode': control.get('mode', 'Stop'),
+                    'smoke_plus': control.get('s_plus', False),
+                    'pwm_control': control.get('pwm_control',{}),
+                    'hopper_level': pelletdb.get('current',{}).get('hopper_level', 0)
+                 }
 
-	finally: # Ensure global 'thread' is reset when task exits
-		print("Background task 'emit_dash_data' exiting loop.")
-		with background_task_lock:
-			print("Setting global thread variable back to None.")
-			thread = None # Signal that the task is no longer running
 
+                if force_refresh:
+                    print("Force refresh requested, emitting data to all clients.")
+                    socketio.emit('grill_control_data', current_data)
+                    force_refresh = False
+                    previous_data = current_data
+                elif previous_data != current_data:
+                    print("Data changed, emitting data to all clients.")
+                    socketio.emit('grill_control_data', current_data)
+                    previous_data = current_data
+
+                socketio.sleep(2)
+
+            except Exception as e:
+                print(f"ERROR in emit_dash_data inner loop: {e}")
+                import traceback
+                traceback.print_exc() # Print full traceback for debugging
+                socketio.sleep(5) # Avoid busy-loop on error
+
+    finally:
+        print("Background task 'emit_dash_data' exiting loop.")
+        with background_task_lock:
+            print("Setting global thread variable back to None.")
+            thread = None
 
 # ==================================================
-#  Handler for get_app_data (Corrected)
+#  Handler for get_app_data (Handles multiple actions)
 # ==================================================
 @socketio.on('get_app_data')
-# MODIFICATION: Accept a single 'data' dictionary argument
 def get_app_data(data):
-	# global settings # Uncomment if 'settings' is truly global
-	# settings = read_settings() # Example if needed in this scope
-	sid = request.sid
+    # It's generally safer to load settings within the handler if they can change,
+    # unless you have a robust mechanism ensuring the global 'settings' is always current.
+    # settings = read_settings() # Load fresh settings if needed
 
-	# MODIFICATION: Extract 'action' and 'type' from the received 'data' dictionary
-	action = data.get('action') # Use .get() for safety, defaults to None if key missing
-	type = data.get('type')     # Use .get() for safety
+    sid = request.sid
+    action = data.get('action')
+    type = data.get('type') # Keep type, though not used by all actions here
 
-	print(f"Client {sid} requested 'get_app_data' with data: {data}") # Log received dict
-	print(f"Extracted action={action}, type={type}") # Log extracted values
+    print(f"Client {sid} requested 'get_app_data' with data: {data}")
+    print(f"Extracted action={action}")
 
-	# --- Now the rest of the logic uses the extracted 'action' ---
-	if action == 'settings_data':
-		try:
-			# Make sure 'settings' variable is accessible
-			# If not global, load it: settings = read_settings()
-			return settings
-		except NameError:
-			print("ERROR: 'settings' variable not defined in get_app_data scope.")
-			return {'response': {'result':'error', 'message':'Error: Server configuration issue (settings)'}}
-		except Exception as e:
-			print(f"ERROR reading settings: {e}")
-			return {'response': {'result':'error', 'message':f'Error: Server error reading settings: {e}'}}
+    if action == 'settings_data':
+        try:
+            # Assuming 'settings' is loaded globally or read here
+            settings = read_settings() # Load fresh settings
+            return settings
+        except NameError: # If 'settings' isn't defined globally and not loaded
+             print("ERROR: 'settings' variable not defined in get_app_data scope.")
+             return {'response': {'result':'error', 'message':'Error: Server configuration issue (settings)'}}
+        except Exception as e:
+            print(f"ERROR reading settings: {e}")
+            return {'response': {'result':'error', 'message':f'Error: Server error reading settings: {e}'}}
 
-	elif action == 'pellets_data':
-		try:
-			return read_pellet_db()
-		except Exception as e:
-			print(f"ERROR reading pellet DB: {e}")
-			return {'response': {'result':'error', 'message':f'Error: Server error reading pellet DB: {e}'}}
-	
-	elif action == 'grill_control_data':
-		try:
-			control = read_control()
-			pelletdb = read_pellet_db()
-			probe_info = read_current()
+    # *** NEW: Handle UI Settings Request ***
+    elif action == 'ui_settings':
+        try:
+            return read_ui_settings() # Use the helper function
+        except Exception as e:
+            print(f"ERROR reading UI settings: {e}")
+            return {'response': {'result':'error', 'message':f'Error: Server error reading UI settings: {e}'}}
 
-			for index, notify_obj in enumerate(control['notify_data']):
-				if notify_obj['type'] == 'timer':
-					break 
+    elif action == 'pellets_data':
+        try:
+            return read_pellet_db()
+        except Exception as e:
+            print(f"ERROR reading pellet DB: {e}")
+            return {'response': {'result':'error', 'message':f'Error: Server error reading pellet DB: {e}'}}
 
-			if control['timer']['end'] - time.time() > 0 or bool(control['timer']['paused']):
-				timer_info = { 
-					'timer_paused': bool(control['timer']['paused']), 
-					'timer_start_time': math.trunc(control['timer']['start']), 
-					'timer_end_time': math.trunc(control['timer']['end']), 
-					'timer_paused_time': math.trunc(control['timer']['paused']), 
-					'timer_active': True,  
-					'timer_expired': bool(control['timer']['expired']),
-					'timer_shutdown': bool(control['notify_data'][index]['shutdown']),  # Added shutdown
-					'timer_keep_warm': bool(control['notify_data'][index]['keep_warm'])  # Added keep_warm
-				}
-			else:
-				timer_info = { 
-					'timer_paused': False, 
-					'timer_start_time': 0, 
-					'timer_end_time': 0, 
-					'timer_paused_time': 0, 
-					'timer_active': False,  
-					'timer_expired': bool(control['timer']['expired']),
-					'timer_shutdown': bool(control['notify_data'][index]['shutdown']),  # Added shutdown
-					'timer_keep_warm': bool(control['notify_data'][index]['keep_warm'])  # Added keep_warm
-				}
+    elif action == 'grill_control_data':
+        try:
+            # Reusing logic from emit_dash_data to construct the response
+            control = read_control()
+            pelletdb = read_pellet_db()
+            probe_info = read_current()
+            timer_notify_index = -1
+            for index, notify_obj in enumerate(control.get('notify_data', [])):
+                 if isinstance(notify_obj, dict) and notify_obj.get('type') == 'timer':
+                      timer_notify_index = index
+                      break
+            default_timer_notify = {'shutdown': False, 'keep_warm': False}
+            timer_notify_data = control.get('notify_data', [])[timer_notify_index] if timer_notify_index != -1 else default_timer_notify
+            timer_active_check = control.get('timer', {}).get('end', 0) - time.time() > 0
+            timer_paused_check = bool(control.get('timer', {}).get('paused', 0))
+            if timer_active_check or timer_paused_check:
+                 timer_info = {
+                      'timer_paused': timer_paused_check,
+                      'timer_start_time': math.trunc(control.get('timer', {}).get('start', 0)),
+                      'timer_end_time': math.trunc(control.get('timer', {}).get('end', 0)),
+                      'timer_paused_time': math.trunc(control.get('timer', {}).get('paused', 0)),
+                      'timer_active': True,
+                      'timer_expired': bool(control.get('timer', {}).get('expired', False)),
+                      'timer_shutdown': bool(timer_notify_data.get('shutdown', False)),
+                      'timer_keep_warm': bool(timer_notify_data.get('keep_warm', False))
+                 }
+            else:
+                 timer_info = {
+                      'timer_paused': False,
+                      'timer_start_time': 0,
+                      'timer_end_time': 0,
+                      'timer_paused_time': 0,
+                      'timer_active': False,
+                      'timer_expired': bool(control.get('timer', {}).get('expired', False)),
+                      'timer_shutdown': bool(timer_notify_data.get('shutdown', False)),
+                      'timer_keep_warm': bool(timer_notify_data.get('keep_warm', False))
+                 }
+            current_data = {
+                 'probe_info': probe_info,
+                 'notify_data': control.get('notify_data', []),
+                 'timer_info': timer_info,
+                 'current_mode': control.get('mode', 'Stop'),
+                 'smoke_plus': control.get('s_plus', False),
+                 'pwm_control': control.get('pwm_control',{}),
+                 'hopper_level': pelletdb.get('current',{}).get('hopper_level', 0)
+             }
+            return current_data
+        except Exception as e:
+            print(f"ERROR reading grill control data: {e}")
+            return {'response': {'result':'error', 'message':f'Error: Server error reading grill control data: {e}'}}
 
-			current_data = { 'probe_info': probe_info, 'notify_data': control['notify_data'], 'timer_info': timer_info, 'current_mode': control['mode'], 'smoke_plus': control['s_plus'], 'pwm_control': control['pwm_control'], 'hopper_level': pelletdb['current']['hopper_level'] }
-			return current_data
-		except Exception as e:
-			print(f"ERROR reading grill control data: {e}")
-			return {'response': {'result':'error', 'message':f'Error: Server error reading grill control data: {e}'}}
-		
-	elif action == 'events_data':
-		try:
-			event_list, num_events = read_events()
-			events_trim = []
-			for x in range(min(num_events, 60)):
-				events_trim.append(event_list[x])
-			return { 'events_list' : events_trim }
-		except Exception as e:
-			print(f"ERROR reading events: {e}")
-			return {'response': {'result':'error', 'message':f'Error: Server error reading events: {e}'}}
+    elif action == 'events_data':
+        try:
+            event_list, num_events = read_events()
+            events_trim = []
+            for x in range(min(num_events, 60)):
+                events_trim.append(event_list[x])
+            return { 'events_list' : events_trim }
+        except Exception as e:
+            print(f"ERROR reading events: {e}")
+            return {'response': {'result':'error', 'message':f'Error: Server error reading events: {e}'}}
 
-	elif action == 'info_data':
-		try:
-			# Make sure _check_cpu_temp() exists and settings is accessible
-			# settings = read_settings() # Load if needed
-			return {
-				'uptime' : os.popen('uptime').readline(),
-				'cpuinfo' : os.popen('cat /proc/cpuinfo').readlines(),
-				'ifconfig' : os.popen('ifconfig').readlines(),
-				'temp' : _check_cpu_temp(), # Ensure this function exists
-				'outpins' : settings['outpins'],
-				'inpins' : settings['inpins'],
-				'dev_pins' : settings['dev_pins'],
-				'server_version' : settings['versions']['server'],
-				'server_build' : settings['versions']['build'] }
-		except Exception as e:
-			print(f"ERROR gathering info_data: {e}")
-			return {'response': {'result':'error', 'message':f'Error: Server error gathering info data: {e}'}}
+    elif action == 'info_data':
+        try:
+            settings = read_settings() # Load fresh settings
+            return {
+                'uptime' : os.popen('uptime').readline(),
+                'cpuinfo' : os.popen('cat /proc/cpuinfo').readlines(),
+                'ifconfig' : os.popen('ifconfig').readlines(),
+                'temp' : _check_cpu_temp(), # Ensure this function exists
+                'outpins' : settings.get('outpins',{}),
+                'inpins' : settings.get('inpins',{}),
+                'dev_pins' : settings.get('dev_pins',{}),
+                'server_version' : settings.get('versions',{}).get('server','N/A'),
+                'server_build' : settings.get('versions',{}).get('build','N/A')
+            }
+        except Exception as e:
+            print(f"ERROR gathering info_data: {e}")
+            return {'response': {'result':'error', 'message':f'Error: Server error gathering info data: {e}'}}
 
+    elif action == 'manual_data':
+        try:
+            control = read_control()
+            return {
+                'manual' : control.get('manual', False),
+                'mode' : control.get('mode', 'Stop')
+            }
+        except Exception as e:
+            print(f"ERROR reading control for manual data: {e}")
+            return {'response': {'result':'error', 'message':f'Error: Server error reading control data: {e}'}}
 
-	elif action == 'manual_data':
-		try:
-			control = read_control()
-			return {
-				'manual' : control['manual'],
-				'mode' : control['mode'] }
-		except Exception as e:
-			print(f"ERROR reading control for manual data: {e}")
-			return {'response': {'result':'error', 'message':f'Error: Server error reading control data: {e}'}}
-	else:
-		# This error should now only be hit if 'action' is missing or invalid in the received 'data' dict
-		print(f"ERROR: Invalid or missing action '{action}' in get_app_data request from {sid}")
-		return {'response': {'result':'error', 'message':f"Error: Received request with invalid/missing action ('{action}')"}}
+    else:
+        print(f"ERROR: Invalid or missing action '{action}' in get_app_data request from {sid}")
+        return {'response': {'result':'error', 'message':f"Error: Received request with invalid/missing action ('{action}')"}}
 
 # ==================================================
-#  Handler for post_app_data (Keep as is from previous version)
+#  Handler for post_app_data (Handles multiple actions/types)
 # ==================================================
 @socketio.on('post_app_data')
 def post_app_data(action=None, type=None, json_data=None):
-	# global settings # Uncomment if 'settings' is truly global
-	# settings = read_settings() # Example if needed in this scope
-	sid = request.sid
-	print(f"Client {sid} requested 'post_app_data' action={action} type={type}")
+    # Load settings/control fresh within the handler if they might be modified elsewhere
+    # settings = read_settings()
+    # control = read_control()
+    sid = request.sid
+    print(f"Client {sid} requested 'post_app_data' action={action} type={type}")
 
-	request_data = {}
-	if json_data is not None:
-		try:
-			request_data = json.loads(json_data)
-		except json.JSONDecodeError as e:
-			print(f"ERROR: Invalid JSON received from {sid}: {e}")
-			return {'response': {'result':'error', 'message':f'Error: Invalid JSON format - {e}'}}
-	else:
-		print(f"Warning: post_app_data from {sid} received no json_data.")
+    request_data = {}
+    if json_data is not None:
+        try:
+            request_data = json.loads(json_data)
+        except json.JSONDecodeError as e:
+            print(f"ERROR: Invalid JSON received from {sid}: {e}")
+            return {'response': {'result':'error', 'message':f'Error: Invalid JSON format - {e}'}}
+    else:
+        print(f"Warning: post_app_data from {sid} received no json_data.")
 
-	# --- Logic for post_app_data remains the same as before ---
-	if action == 'update_action':
-		if type == 'settings':
-			try:
-				# settings = read_settings() # Load if needed
-				for key in request_data.keys():
-					if key in settings.keys():
-						settings = deep_update(settings, request_data)
-						write_settings(settings)
-						print(f"Settings updated by {sid}")
-						return {'response': {'result':'success'}}
-					else:
-						print(f"ERROR: Key '{key}' not found in settings (requested by {sid})")
-						return {'response': {'result':'error', 'message':f'Error: Key {key} not found in settings'}}
-				print(f"Warning: update_action 'settings' called with empty data? by {sid}")
-				return {'response': {'result':'success'}} # Or an error?
-			except Exception as e:
-				print(f"ERROR updating settings by {sid}: {e}")
-				return {'response': {'result':'error', 'message':f'Error updating settings: {e}'}}
+    # --- Action Handling ---
+    if action == 'update_action':
+        if type == 'settings':
+            try:
+                settings = read_settings() # Load fresh settings
+                # Use deep_update carefully, ensure it handles nested structures correctly
+                # Consider validating keys in request_data against settings structure if needed
+                settings = deep_update(settings, request_data)
+                write_settings(settings)
+                print(f"Main Settings updated by {sid}")
+                # Optionally broadcast updated main settings if needed
+                # emit('settings_data', settings, broadcast=True, include_self=False)
+                return {'response': {'result':'success'}}
+            except Exception as e:
+                print(f"ERROR updating main settings by {sid}: {e}")
+                return {'response': {'result':'error', 'message':f'Error updating main settings: {e}'}}
 
-		elif type == 'control':
-			try:
-				control = read_control()
-				valid_keys = False
-				for key in request_data.keys():
-					if key in control.keys():
-						valid_keys = True
-						break
-				if valid_keys:
-					write_control(request_data, origin='app-socketio')
-					print(f"Control updated by {sid}")
-					return {'response': {'result':'success'}}
-				else:
-					print(f"ERROR: No valid keys found in control update request by {sid}")
-					return {'response': {'result':'error', 'message':'Error: No valid keys found in control update data'}}
-			except Exception as e:
-				print(f"ERROR updating control by {sid}: {e}")
-				return {'response': {'result':'error', 'message':f'Error updating control: {e}'}}
-		else:
-			return {'response': {'result':'error', 'message':'Error: Received request without valid type for update_action'}}
+        # *** NEW: Handle UI Settings Update ***
+        elif type == 'ui_settings':
+            try:
+                if not isinstance(request_data, dict):
+                     print(f"ERROR: Invalid data type for ui_settings update from {sid}. Expected dict.")
+                     return {'response': {'result':'error', 'message':'Error: Invalid data format for UI settings'}}
 
-	elif action == 'admin_action':
-		print(f"Admin action '{type}' requested by {sid}")
-		if type == 'clear_history':
-			try:
-				write_log(f'Clearing History Log (requested by {sid}).')
-				read_history(0, flushhistory=True)
-				return {'response': {'result':'success'}}
-			except Exception as e:
-				print(f"ERROR clearing history: {e}")
-				return {'response': {'result':'error', 'message': f'Error clearing history: {e}'}}
-		elif type == 'clear_events':
-			try:
-				write_log(f'Clearing Events Log (requested by {sid}).')
-				os.system('rm /tmp/events.log')
-				return {'response': {'result':'success'}}
-			except Exception as e:
-				print(f"ERROR clearing events: {e}")
-				return {'response': {'result':'error', 'message': f'Error clearing events: {e}'}}
-		# ... (Keep other admin actions, wrap in try/except) ...
-		elif type == 'reboot':
-			try:
-				write_log(f"Admin: Reboot (requested by {sid})")
-				os.system("sleep 3 && sudo reboot &")
-				return {'response': {'result':'success'}}
-			except Exception as e:
-				print(f"ERROR executing reboot: {e}")
-				return {'response': {'result':'error', 'message':f'Error executing reboot: {e}'}}
-		elif type == 'shutdown':
-			try:
-				write_log(f"Admin: Shutdown (requested by {sid})")
-				os.system("sleep 3 && sudo shutdown -h now &")
-				return {'response': {'result':'success'}}
-			except Exception as e:
-				print(f"ERROR executing shutdown: {e}")
-				return {'response': {'result':'error', 'message':f'Error executing shutdown: {e}'}}
-		elif type == 'restart':
-			try:
-				write_log(f"Admin: Restart Server (requested by {sid})")
-				restart_scripts()
-				return {'response': {'result':'success'}}
-			except Exception as e:
-				print(f"ERROR executing restart: {e}")
-				return {'response': {'result':'error', 'message':f'Error executing restart: {e}'}}
-		else:
-			return {'response': {'result':'error', 'message':'Error: Received request without valid type for admin_action'}}
+                success = write_ui_settings(request_data) # Use the helper function
 
-	elif action == 'units_action':
-		print(f"Units action '{type}' requested by {sid}")
-		try:
-			# settings = read_settings() # Load if needed
-			if type == 'f_units' and settings['globals']['units'] == 'C':
-				settings = convert_settings_units('F', settings)
-				write_settings(settings)
-				control = read_control()
-				control['updated'] = True
-				control['units_change'] = True
-				write_control(control, origin='app-socketio')
-				write_log("Changed units to Fahrenheit")
-				return {'response': {'result':'success'}}
-			elif type == 'c_units' and settings['globals']['units'] == 'F':
-				settings = convert_settings_units('C', settings)
-				write_settings(settings)
-				control = read_control()
-				control['updated'] = True
-				control['units_change'] = True
-				write_control(control, origin='app-socketio')
-				write_log("Changed units to Celsius")
-				return {'response': {'result':'success'}}
-			else:
-				current_units = settings.get('globals', {}).get('units', 'N/A')
-				print(f"Units change requested ({type}) but current units are {current_units}. No change needed or invalid request.")
-				return {'response': {'result':'success', 'message':'Units already set or invalid request'}}
-		except Exception as e:
-			print(f"ERROR changing units: {e}")
-			return {'response': {'result':'error', 'message':f'Error changing units: {e}'}}
+                if success:
+                    print(f"UI Settings updated by {sid}")
+                    # Broadcast update to other clients
+                    updated_settings = read_ui_settings()
+                    emit('ui_settings_data', updated_settings, broadcast=True, include_self=False)
+                    return {'response': {'result':'success'}}
+                else:
+                    print(f"ERROR writing UI settings by {sid}")
+                    return {'response': {'result':'error', 'message':'Error: Failed to write UI settings on server'}}
+            except Exception as e:
+                print(f"ERROR updating ui_settings by {sid}: {e}")
+                return {'response': {'result':'error', 'message':f'Error updating UI settings: {e}'}}
 
-	elif action == 'remove_action':
-		print(f"Remove action '{type}' requested by {sid}")
-		try:
-			if type == 'onesignal_device':
-				device_id = request_data.get('onesignal_device', {}).get('onesignal_player_id')
-				if device_id:
-					# settings = read_settings() # Load if needed
-					if device_id in settings.get('onesignal', {}).get('devices', {}):
-						settings['onesignal']['devices'].pop(device_id)
-						write_settings(settings)
-						print(f"Removed onesignal device {device_id}")
-						return {'response': {'result':'success'}}
-					else:
-						return {'response': {'result':'error', 'message':'Error: Device not found in settings'}}
-				else:
-					return {'response': {'result':'error', 'message':'Error: Device not specified in request'}}
-			else:
-				return {'response': {'result':'error', 'message':'Error: Remove type not found'}}
-		except Exception as e:
-			print(f"ERROR removing item ({type}): {e}")
-			return {'response': {'result':'error', 'message':f'Error removing item: {e}'}}
+        elif type == 'control':
+            try:
+                # Only write keys that exist in the original control file? Or allow new keys?
+                # Current logic allows any key if at least one is valid.
+                control = read_control() # Load fresh control data
+                valid_keys = False
+                for key in request_data.keys():
+                    # Check if key exists in control or if adding new keys is allowed
+                    if key in control.keys(): # Stricter check
+                         valid_keys = True
+                         break
+                if valid_keys:
+                    write_control(request_data, origin='app-socketio') # write_control likely merges
+                    print(f"Control updated by {sid}")
+                    # Control changes are likely pushed via emit_dash_data, no need to broadcast here usually
+                    return {'response': {'result':'success'}}
+                else:
+                    print(f"ERROR: No valid/existing keys found in control update request by {sid}")
+                    return {'response': {'result':'error', 'message':'Error: No valid/existing keys found in control update data'}}
+            except Exception as e:
+                print(f"ERROR updating control by {sid}: {e}")
+                return {'response': {'result':'error', 'message':f'Error updating control: {e}'}}
+        else:
+            return {'response': {'result':'error', 'message':'Error: Received request without valid type for update_action'}}
 
-	elif action == 'pellets_action':
-		print(f"Pellets action '{type}' requested by {sid}")
-		try:
-			pelletdb = read_pellet_db()
-			if type == 'load_profile':
-				profile = request_data.get('pellets_action', {}).get('profile')
-				if profile:
-					pelletdb['current']['pelletid'] = profile
-					now_dt = datetime.datetime.now()
-					now = now_dt.strftime("%Y-%m-%d %H:%M:%S")
-					pelletdb['current']['date_loaded'] = now
-					pelletdb['current']['est_usage'] = 0
-					pelletdb.setdefault('log', {})[now] = profile
-					control = read_control()
-					control['hopper_check'] = True
-					write_control(control, origin='app-socketio')
-					write_pellet_db(pelletdb)
-					print(f"Loaded pellet profile {profile}")
-					return {'response': {'result':'success'}}
-				else:
-					return {'response': {'result':'error', 'message':'Error: Profile not included in request'}}
-			# ... (rest of pellet actions) ...
-			elif type == 'add_profile':
-				brand = request_data.get('pellets_action', {}).get('brand_name')
-				wood = request_data.get('pellets_action', {}).get('wood_type')
-				rating = request_data.get('pellets_action', {}).get('rating')
-				comments = request_data.get('pellets_action', {}).get('comments')
-				add_and_load = request_data.get('pellets_action', {}).get('add_and_load', False)
+    elif action == 'admin_action':
+        print(f"Admin action '{type}' requested by {sid}")
+        # ... (keep existing admin_action logic, ensure try/except blocks) ...
+        if type == 'clear_history':
+            try:
+                write_log(f'Clearing History Log (requested by {sid}).')
+                read_history(0, flushhistory=True)
+                return {'response': {'result':'success'}}
+            except Exception as e:
+                print(f"ERROR clearing history: {e}")
+                return {'response': {'result':'error', 'message': f'Error clearing history: {e}'}}
+        elif type == 'clear_events':
+            try:
+                write_log(f'Clearing Events Log (requested by {sid}).')
+                if os.path.exists('/tmp/events.log'): # Check if file exists before removing
+                     os.remove('/tmp/events.log')
+                else:
+                     print("Event log file /tmp/events.log not found, nothing to remove.")
+                return {'response': {'result':'success'}}
+            except Exception as e:
+                print(f"ERROR clearing events: {e}")
+                return {'response': {'result':'error', 'message': f'Error clearing events: {e}'}}
+        elif type == 'reboot':
+            try:
+                write_log(f"Admin: Reboot (requested by {sid})")
+                os.system("sleep 3 && sudo reboot &")
+                return {'response': {'result':'success'}}
+            except Exception as e:
+                print(f"ERROR executing reboot: {e}")
+                return {'response': {'result':'error', 'message':f'Error executing reboot: {e}'}}
+        elif type == 'shutdown':
+            try:
+                write_log(f"Admin: Shutdown (requested by {sid})")
+                os.system("sleep 3 && sudo shutdown -h now &")
+                return {'response': {'result':'success'}}
+            except Exception as e:
+                print(f"ERROR executing shutdown: {e}")
+                return {'response': {'result':'error', 'message':f'Error executing shutdown: {e}'}}
+        elif type == 'restart':
+            try:
+                write_log(f"Admin: Restart Server (requested by {sid})")
+                restart_scripts() # Ensure this function exists and works
+                return {'response': {'result':'success'}}
+            except Exception as e:
+                print(f"ERROR executing restart: {e}")
+                return {'response': {'result':'error', 'message':f'Error executing restart: {e}'}}
+        else:
+            return {'response': {'result':'error', 'message':'Error: Received request without valid type for admin_action'}}
 
-				if not all([brand, wood, rating is not None, comments is not None]):
-					return {'response': {'result':'error', 'message':'Error: Missing fields for add_profile'}}
 
-				profile_id = ''.join(filter(str.isalnum, str(datetime.datetime.now())))
-				pelletdb.setdefault('archive', {})[profile_id] = { 'id' : profile_id, 'brand' : brand, 'wood' : wood, 'rating' : rating, 'comments' : comments }
+    elif action == 'units_action':
+        print(f"Units action '{type}' requested by {sid}")
+        try:
+            settings = read_settings() # Load fresh settings
+            if type == 'f_units' and settings.get('globals', {}).get('units') == 'C':
+                settings = convert_settings_units('F', settings)
+                write_settings(settings)
+                control = read_control()
+                control['updated'] = True
+                control['units_change'] = True
+                write_control(control, origin='app-socketio')
+                write_log("Changed units to Fahrenheit")
+                return {'response': {'result':'success'}}
+            elif type == 'c_units' and settings.get('globals', {}).get('units') == 'F':
+                settings = convert_settings_units('C', settings)
+                write_settings(settings)
+                control = read_control()
+                control['updated'] = True
+                control['units_change'] = True
+                write_control(control, origin='app-socketio')
+                write_log("Changed units to Celsius")
+                return {'response': {'result':'success'}}
+            else:
+                current_units = settings.get('globals', {}).get('units', 'N/A')
+                print(f"Units change requested ({type}) but current units are {current_units}. No change needed or invalid request.")
+                return {'response': {'result':'success', 'message':'Units already set or invalid request'}}
+        except Exception as e:
+            print(f"ERROR changing units: {e}")
+            return {'response': {'result':'error', 'message':f'Error changing units: {e}'}}
 
-				if add_and_load:
-					pelletdb['current']['pelletid'] = profile_id
-					control = read_control()
-					control['hopper_check'] = True
-					write_control(control, origin='app-socketio')
-					now_dt = datetime.datetime.now()
-					now = now_dt.strftime("%Y-%m-%d %H:%M:%S")
-					pelletdb['current']['date_loaded'] = now
-					pelletdb['current']['est_usage'] = 0
-					pelletdb.setdefault('log', {})[now] = profile_id
-				write_pellet_db(pelletdb)
-				print(f"Added pellet profile {profile_id}. Loaded={add_and_load}")
-				return {'response': {'result':'success'}}
-			# ... (rest of pellet actions) ...
-			else:
-				return {'response': {'result':'error', 'message':'Error: Received request without valid type for pellets_action'}}
+    elif action == 'remove_action':
+        print(f"Remove action '{type}' requested by {sid}")
+        try:
+            if type == 'onesignal_device':
+                device_id = request_data.get('onesignal_device', {}).get('onesignal_player_id')
+                if device_id:
+                    settings = read_settings() # Load fresh settings
+                    if device_id in settings.get('onesignal', {}).get('devices', {}):
+                        settings['onesignal']['devices'].pop(device_id)
+                        write_settings(settings)
+                        print(f"Removed onesignal device {device_id}")
+                        return {'response': {'result':'success'}}
+                    else:
+                        return {'response': {'result':'error', 'message':'Error: Device not found in settings'}}
+                else:
+                    return {'response': {'result':'error', 'message':'Error: Device not specified in request'}}
+            else:
+                return {'response': {'result':'error', 'message':'Error: Remove type not found'}}
+        except Exception as e:
+            print(f"ERROR removing item ({type}): {e}")
+            return {'response': {'result':'error', 'message':f'Error removing item: {e}'}}
 
-		except Exception as e:
-			print(f"ERROR during pellets_action ({type}): {e}")
-			import traceback
-			traceback.print_exc()
-			return {'response': {'result':'error', 'message':f'Error during pellets action: {e}'}}
+    elif action == 'pellets_action':
+        print(f"Pellets action '{type}' requested by {sid}")
+        try:
+            pelletdb = read_pellet_db()
+            if type == 'load_profile':
+                profile = request_data.get('pellets_action', {}).get('profile')
+                if profile:
+                    pelletdb['current']['pelletid'] = profile
+                    now_dt = datetime.datetime.now()
+                    now = now_dt.strftime("%Y-%m-%d %H:%M:%S")
+                    pelletdb['current']['date_loaded'] = now
+                    pelletdb['current']['est_usage'] = 0 # Reset usage on load
+                    pelletdb.setdefault('log', {})[now] = profile
+                    control = read_control()
+                    control['hopper_check'] = True # Trigger check
+                    write_control(control, origin='app-socketio')
+                    write_pellet_db(pelletdb)
+                    print(f"Loaded pellet profile {profile}")
+                    return {'response': {'result':'success'}}
+                else:
+                    return {'response': {'result':'error', 'message':'Error: Profile not included in request'}}
 
-	elif action == 'timer_action':
-		print(f"Timer action '{type}' requested by {sid}")
-		try:
-			control = read_control()
-			timer_notify_index = -1
-			for index, notify_obj in enumerate(control.get('notify_data', [])):
-				if isinstance(notify_obj, dict) and notify_obj.get('type') == 'timer':
-					timer_notify_index = index
-					break
+            elif type == 'add_profile':
+                brand = request_data.get('pellets_action', {}).get('brand_name')
+                wood = request_data.get('pellets_action', {}).get('wood_type')
+                rating = request_data.get('pellets_action', {}).get('rating')
+                comments = request_data.get('pellets_action', {}).get('comments')
+                add_and_load = request_data.get('pellets_action', {}).get('add_and_load', False)
 
-			if timer_notify_index == -1:
-				return {'response': {'result':'error', 'message':'Error: Timer notification config not found'}}
+                if not all([brand, wood, rating is not None, comments is not None]):
+                    return {'response': {'result':'error', 'message':'Error: Missing fields for add_profile'}}
 
-			if type == 'start_timer':
-				control['notify_data'][timer_notify_index]['req'] = True
-				if control['timer']['paused'] == 0:
-					now = time.time()
-					control['timer']['start'] = now
-					hours = request_data.get('timer_action', {}).get('hours_range', 0)
-					minutes = request_data.get('timer_action', {}).get('minutes_range', 0)
-					timer_shutdown = request_data.get('timer_action', {}).get('timer_shutdown', False)
-					timer_keep_warm = request_data.get('timer_action', {}).get('timer_keep_warm', False)
+                profile_id = ''.join(filter(str.isalnum, str(datetime.datetime.now())))
+                pelletdb.setdefault('archive', {})[profile_id] = { 'id' : profile_id, 'brand' : brand, 'wood' : wood, 'rating' : rating, 'comments' : comments }
 
-					if hours is None or minutes is None:
-						return {'response': {'result':'error', 'message':'Error: Timer duration not specified'}}
+                if add_and_load:
+                    pelletdb['current']['pelletid'] = profile_id
+                    now_dt = datetime.datetime.now()
+                    now = now_dt.strftime("%Y-%m-%d %H:%M:%S")
+                    pelletdb['current']['date_loaded'] = now
+                    pelletdb['current']['est_usage'] = 0 # Reset usage
+                    pelletdb.setdefault('log', {})[now] = profile_id
+                    control = read_control()
+                    control['hopper_check'] = True # Trigger check
+                    write_control(control, origin='app-socketio')
 
-					seconds = int(hours) * 3600 + int(minutes) * 60
-					if seconds <= 0:
-						return {'response': {'result':'error', 'message':'Error: Invalid timer duration'}}
+                write_pellet_db(pelletdb)
+                print(f"Added pellet profile {profile_id}. Loaded={add_and_load}")
+                return {'response': {'result':'success'}}
+            # ... (Add other pellet types if needed) ...
+            else:
+                return {'response': {'result':'error', 'message':'Error: Received request without valid type for pellets_action'}}
 
-					control['timer']['end'] = now + seconds
-					control['notify_data'][timer_notify_index]['shutdown'] = timer_shutdown
-					control['notify_data'][timer_notify_index]['keep_warm'] = timer_keep_warm
-					end_time_str = datetime.datetime.fromtimestamp(control['timer']['end']).strftime('%Y-%m-%d %H:%M:%S')
-					write_log(f'Timer started. Ends at: {end_time_str}')
-					write_control(control, origin='app-socketio')
-					return {'response': {'result':'success'}}
+        except Exception as e:
+            print(f"ERROR during pellets_action ({type}): {e}")
+            import traceback
+            traceback.print_exc()
+            return {'response': {'result':'error', 'message':f'Error during pellets action: {e}'}}
 
-				else: # Resuming from pause
-					now = time.time()
-					time_left_when_paused = control['timer']['end'] - control['timer']['paused']
-					control['timer']['end'] = now + time_left_when_paused
-					control['timer']['paused'] = 0
-					end_time_str = datetime.datetime.fromtimestamp(control['timer']['end']).strftime('%Y-%m-%d %H:%M:%S')
-					write_log(f'Timer unpaused. Ends at: {end_time_str}')
-					write_control(control, origin='app-socketio')
-					return {'response': {'result':'success'}}
-			elif type == 'pause_timer':
-				if control['timer']['end'] > time.time() and control['timer']['paused'] == 0:
-					control['notify_data'][timer_notify_index]['req'] = False
-					now = time.time()
-					control['timer']['paused'] = now
-					write_log('Timer paused.')
-					write_control(control, origin='app-socketio')
-					return {'response': {'result':'success'}}
-				else:
-					return {'response': {'result':'error', 'message':'Error: Timer not active or already paused'}}
-			elif type == 'stop_timer':
-				control['notify_data'][timer_notify_index]['req'] = False
-				control['timer']['start'] = 0
-				control['timer']['end'] = 0
-				control['timer']['paused'] = 0
-				control['timer']['expired'] = False
-				control['notify_data'][timer_notify_index]['shutdown'] = False
-				control['notify_data'][timer_notify_index]['keep_warm'] = False
-				write_log('Timer stopped.')
-				write_control(control, origin='app-socketio')
-				return {'response': {'result':'success'}}
-			else:
-				return {'response': {'result':'error', 'message':'Error: Received request without valid type for timer_action'}}
-		except Exception as e:
-			print(f"ERROR during timer_action ({type}): {e}")
-			return {'response': {'result':'error', 'message':f'Error during timer action: {e}'}}
+    elif action == 'timer_action':
+        print(f"Timer action '{type}' requested by {sid}")
+        try:
+            control = read_control()
+            timer_notify_index = -1
+            for index, notify_obj in enumerate(control.get('notify_data', [])):
+                 if isinstance(notify_obj, dict) and notify_obj.get('type') == 'timer':
+                      timer_notify_index = index
+                      break
 
-	else:
-		return {'response': {'result':'error', 'message':'Error: Received request without valid action'}}
+            if timer_notify_index == -1:
+                return {'response': {'result':'error', 'message':'Error: Timer notification config not found'}}
+
+            if type == 'start_timer':
+                # Logic for starting/resuming timer
+                control['notify_data'][timer_notify_index]['req'] = True
+                if control.get('timer',{}).get('paused', 0) == 0: # Start new timer
+                    now = time.time()
+                    control.setdefault('timer', {})['start'] = now
+                    hours = request_data.get('timer_action', {}).get('hours_range', 0)
+                    minutes = request_data.get('timer_action', {}).get('minutes_range', 0)
+                    timer_shutdown = request_data.get('timer_action', {}).get('timer_shutdown', False)
+                    timer_keep_warm = request_data.get('timer_action', {}).get('timer_keep_warm', False)
+
+                    if hours is None or minutes is None:
+                         return {'response': {'result':'error', 'message':'Error: Timer duration not specified'}}
+
+                    seconds = int(hours) * 3600 + int(minutes) * 60
+                    if seconds <= 0:
+                         return {'response': {'result':'error', 'message':'Error: Invalid timer duration'}}
+
+                    control['timer']['end'] = now + seconds
+                    control['timer']['paused'] = 0 # Ensure not paused
+                    control['timer']['expired'] = False # Ensure not expired
+                    control['notify_data'][timer_notify_index]['shutdown'] = timer_shutdown
+                    control['notify_data'][timer_notify_index]['keep_warm'] = timer_keep_warm
+                    end_time_str = datetime.datetime.fromtimestamp(control['timer']['end']).strftime('%Y-%m-%d %H:%M:%S')
+                    write_log(f'Timer started. Ends at: {end_time_str}')
+                else: # Resuming from pause
+                     now = time.time()
+                     time_left_when_paused = control['timer']['end'] - control['timer']['paused']
+                     control['timer']['end'] = now + time_left_when_paused
+                     control['timer']['paused'] = 0 # Unpause
+                     end_time_str = datetime.datetime.fromtimestamp(control['timer']['end']).strftime('%Y-%m-%d %H:%M:%S')
+                     write_log(f'Timer unpaused. Ends at: {end_time_str}')
+
+                write_control(control, origin='app-socketio')
+                return {'response': {'result':'success'}}
+
+            elif type == 'pause_timer':
+                if control.get('timer',{}).get('end', 0) > time.time() and control.get('timer',{}).get('paused', 0) == 0:
+                    control['notify_data'][timer_notify_index]['req'] = False # Stop notifications while paused?
+                    now = time.time()
+                    control['timer']['paused'] = now
+                    write_log('Timer paused.')
+                    write_control(control, origin='app-socketio')
+                    return {'response': {'result':'success'}}
+                else:
+                    return {'response': {'result':'error', 'message':'Error: Timer not active or already paused'}}
+            elif type == 'stop_timer':
+                control['notify_data'][timer_notify_index]['req'] = False
+                control.setdefault('timer', {})['start'] = 0
+                control['timer']['end'] = 0
+                control['timer']['paused'] = 0
+                control['timer']['expired'] = False # Reset expired flag
+                control['notify_data'][timer_notify_index]['shutdown'] = False # Reset flags
+                control['notify_data'][timer_notify_index]['keep_warm'] = False
+                write_log('Timer stopped.')
+                write_control(control, origin='app-socketio')
+                return {'response': {'result':'success'}}
+            else:
+                return {'response': {'result':'error', 'message':'Error: Received request without valid type for timer_action'}}
+        except Exception as e:
+            print(f"ERROR during timer_action ({type}): {e}")
+            return {'response': {'result':'error', 'message':f'Error during timer action: {e}'}}
+
+    else:
+        return {'response': {'result':'error', 'message':'Error: Received request without valid action'}}
 
 
 '''

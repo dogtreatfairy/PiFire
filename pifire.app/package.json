@@ -32,8 +32,8 @@
 	},
 	"dependencies": {
 		"@sveltestrap/sveltestrap": "^7.1.0",
-		"@thisux/sveltednd": "^0.0.20",
 		"socket.io-client": "^4.8.1",
+		"svelte-dnd-action": "^0.9.61",
 		"svelte-gauge": "^2.0.1"
 	}
 }

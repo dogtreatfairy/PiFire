@@ -107,8 +107,7 @@
                     pattern="[0-9]*"
                     min="0"
                     max="99"
-                    class="form-control text-center fs-4"
-                    style="width: 80px;"
+                    class="form-control text-center fs-1"
                     bind:value={_hours}
                     on:focus={_handleHoursFocus}
                     on:input={() => {
@@ -121,7 +120,7 @@
                     tabindex="1"
                 />
             </div>
-            <span class="fs-4 mx-1">:</span>
+            <span class="fs-1 mx-1">:</span>
             <div class="ms-2">
                 <label for="minutesInput" class="form-label">Minutes</label>
                 <input
@@ -132,8 +131,7 @@
                     pattern="[0-9]*"
                     min="0"
                     max="59"
-                    class="form-control text-center fs-4"
-                    style="width: 80px;"
+                    class="form-control text-center fs-1"
                     bind:value={_minutes}
                     on:focus={_handleMinutesFocus}
                     on:input={() => {
