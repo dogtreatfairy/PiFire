@@ -27,8 +27,11 @@
 
 <Topnav />
 <Timer />
-<Controlbar />
+
+<div class="navbar-top-margin"></div> <!-- Ensure main content is below navbar. -->
 
 <main class="container-fluid d-flex flex-column flex-grow-1">
   <slot />
 </main>
+
+<Controlbar />

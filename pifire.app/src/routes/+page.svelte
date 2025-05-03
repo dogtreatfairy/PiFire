@@ -4,13 +4,12 @@
     import { flip } from 'svelte/animate';
     import { derived } from 'svelte/store';
     import { Spinner } from '@sveltestrap/sveltestrap';
-    // *** UPDATED: Import from the consolidated apiDataStore ***
+    // Import from the consolidated apiDataStore
     import {
         settingsData,
-        uiSettings, // Get the uiSettings store
-        saveCardPositions // Get the function to save positions
+        uiSettings, // Holds the webui.dash object from settings
+        saveCardPositions // Sends {'id': position} map to backend
     } from '$lib/stores/apiDataStore.js'; // Adjust path if needed
-    // Removed import from uiStore.js
     import ProbeCard from '$lib/components/ProbeCard.svelte';
     import InfoCard from '$lib/components/InfoCard.svelte';
 
@@ -21,10 +20,32 @@
     let isInitialized = false;
 
     // --- Derived Store for Card Positions ---
-    // Reads the 'cardPositions' property from the uiSettings store (now in apiDataStore)
-    const serverCardPositionsStore = derived(uiSettings, $settings => {
-        console.log("Derived store: uiSettings updated:", $settings);
-        return $settings?.cardPositions || null;
+    // Input: $uiSettings = { '1': 'probe-ADC0', '2': 'info-card', ... }
+    // Output: serverCardPositionsStore = { 'probe-ADC0': 1, 'info-card': 2 } or null
+    const serverCardPositionsStore = derived(uiSettings, ($dashSettings) => {
+        console.log("Derived store: uiSettings (dash part) updated:", $dashSettings);
+        if (!$dashSettings || typeof $dashSettings !== 'object') {
+            console.log("Derived store: No valid dash settings found, returning null.");
+            return null;
+        }
+
+        const idToPositionMap = {};
+        let foundPositions = false;
+        for (const key in $dashSettings) {
+            if (Object.hasOwnProperty.call($dashSettings, key) && /^[1-9]\d*$/.test(key)) {
+                const position = parseInt(key, 10);
+                const cardId = $dashSettings[key];
+                if (typeof cardId === 'string') {
+                     idToPositionMap[cardId] = position;
+                     foundPositions = true;
+                } else {
+                    console.warn(`Derived store: Invalid card ID found for position ${key}:`, cardId);
+                }
+            }
+        }
+
+        console.log("Derived store: Transformed ID-to-Position map:", idToPositionMap);
+        return foundPositions ? idToPositionMap : null;
     });
 
     // --- Build Raw Items when settingsData is available ---
@@ -58,28 +79,37 @@
         }
     }
 
-    // --- Check if UI Settings are loaded ---
+    // --- Check if UI Settings fetch attempt is complete ---
+    // $uiSettings is initialized to {} in the store, becomes populated after fetch
+    // We check if it's non-null (it should always be an object after init)
+    // and potentially if it has keys if needed, but non-null check is usually enough
+    // to know the fetch attempt (requestSettings) has finished.
+    $: uiSettingsFetchComplete = $uiSettings !== null; // Should transition from null -> {} -> { populated }
     $: uiSettingsValue = $uiSettings; // Keep for debugging
-    $: console.log("Reactive: $uiSettings changed, Value:", uiSettingsValue);
+    $: console.log("Reactive: $uiSettings changed, FetchComplete:", uiSettingsFetchComplete, "Value:", uiSettingsValue);
 
-    // --- Initialize Items when Probe Data is ready ---
-    // (No longer waits for uiSettings to be non-null)
+
+    // --- Initialize Items when Probe Data AND UI Settings fetch attempt are complete ---
+    // *** MODIFIED: Wait for both probeDataReady AND uiSettingsFetchComplete ***
     $: {
-        console.log(`Reactive Check: probeDataReady=${probeDataReady}, isInitialized=${isInitialized}`);
-        if (probeDataReady && !isInitialized) {
-            console.log(">>> Probe data ready! Calling initializeItems()...");
+        console.log(`Reactive Check: probeDataReady=${probeDataReady}, uiSettingsFetchComplete=${uiSettingsFetchComplete}, isInitialized=${isInitialized}`);
+        if (probeDataReady && uiSettingsFetchComplete && !isInitialized) {
+            // Now we are sure that $uiSettings has been set (even if empty)
+            // and the derived store $serverCardPositionsStore should have its correct value
+            console.log(">>> Probe data AND UI settings fetch complete! Calling initializeItems()...");
             initializeItems();
         } else if (!isInitialized) {
-             console.log(">>> Conditions NOT met for initialization (waiting for probe data).");
+             console.log(">>> Conditions NOT met for initialization (waiting for probe data and/or UI settings fetch).");
         }
     }
 
     // --- Initialize and Sort Items ---
     function initializeItems() {
         console.log("Function: initializeItems() called.");
-        // Get the latest positions map from the derived store
-        const currentPositions = $serverCardPositionsStore;
-        console.log("Function: initializeItems() - Current Positions from store:", currentPositions);
+        // Get the latest ID-to-Position map from the derived store
+        // By the time this runs, the derived store should have the correct value
+        const currentIdToPositionMap = $serverCardPositionsStore;
+        console.log("Function: initializeItems() - Current ID-to-Position Map from derived store:", currentIdToPositionMap);
         console.log("Function: initializeItems() - Current rawItems:", rawItems);
 
         if (!rawItems || rawItems.length === 0) {
@@ -88,11 +118,12 @@
         }
 
         let initialItems = [];
-        if (currentPositions && typeof currentPositions === 'object' && Object.keys(currentPositions).length > 0) {
+        // Use the derived map (which is null if no valid positions were found)
+        if (currentIdToPositionMap) {
             console.log("Function: initializeItems() - Sorting by SERVER positions map.");
             const sortableItems = rawItems.map(item => ({
                 ...item,
-                position: currentPositions[item.id] !== undefined ? currentPositions[item.id] : Infinity
+                position: currentIdToPositionMap[item.id] !== undefined ? currentIdToPositionMap[item.id] : Infinity
             }));
             sortableItems.sort((a, b) => a.position - b.position);
             initialItems = sortableItems.map(({ position, ...rest }) => rest);
@@ -122,24 +153,22 @@
     // --- Event Handlers for dndzone ---
 
     function handleDndConsider(e) {
-        // Update the local 'items' state for smooth animation during drag-over
         items = e.detail.items;
     }
 
     function handleDndFinalize(e) {
-        // Final arrangement of items from the event detail
         items = e.detail.items;
         console.log("DND Finalize - Final items order:", items.map(i => i.id));
 
-        // Create the position map { 'id': position }
-        const newPositions = {};
+        // Create the position map { 'id': position } - This format is still needed for saving
+        const newPositionsMapForSaving = {};
         items.forEach((item, index) => {
-            newPositions[item.id] = index + 1; // 1-based index
+            newPositionsMapForSaving[item.id] = index + 1; // 1-based index
         });
 
-        console.log("Saving new positions map via apiDataStore:", newPositions);
-        // *** UPDATED: Call the function from the consolidated store ***
-        saveCardPositions(newPositions)
+        console.log("Saving new ID-to-positions map via apiDataStore:", newPositionsMapForSaving);
+        // Call the function from the consolidated store - it expects the {'id': pos} map
+        saveCardPositions(newPositionsMapForSaving)
             .then(() => console.log("saveCardPositions call successful (acknowledged by store)."))
             .catch(error => console.error("saveCardPositions call failed:", error));
     }
@@ -165,7 +194,7 @@
                     >
                         <div class="h-full w-full cursor-move">
                             {#if item.type === 'probe'}
-                                <ProbeCard name={item.name} type={item.probeType} units="F" />
+                                <ProbeCard name={item.name} label= {item.label} type={item.probeType} />
                             {:else if item.type === 'info'}
                                 <InfoCard />
                             {/if}
@@ -182,8 +211,9 @@
         <div class="mt-4 text-sm text-gray-400">
              <p>Debug Status:</p>
              <p>Probe Data Ready: {probeDataReady}</p>
-             <p>UI Settings Value: {JSON.stringify(uiSettingsValue)}</p>
+             <p>UI Settings Fetch Complete: {uiSettingsFetchComplete}</p>
              <p>Is Initialized: {isInitialized}</p>
+             <p>Current Derived Positions Map: {JSON.stringify($serverCardPositionsStore)}</p>
         </div>
     </div>
 {/if}

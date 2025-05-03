@@ -1054,17 +1054,42 @@ def read_settings(filename='settings.json', init=False, retry_count=0):
 	return(settings)
 
 def write_settings(settings):
-	"""
-	Write all settings to JSON file
+    """
+    Write all settings to JSON file
 
-	:param settings: Settings
+    :param settings: Settings dictionary
+    :return: True on success, False on failure
+    """
+    try:
+        # Ensure 'lastupdated' dictionary exists before accessing 'time'
+        if 'lastupdated' not in settings or not isinstance(settings['lastupdated'], dict):
+            settings['lastupdated'] = {}
+        settings['lastupdated']['time'] = math.trunc(time.time())
 
-	"""
-	settings['lastupdated']['time'] = math.trunc(time.time())
+        # Use ensure_ascii=False if your settings might contain non-ASCII chars
+        json_data_string = json.dumps(settings, indent=2, sort_keys=True, ensure_ascii=False)
 
-	json_data_string = json.dumps(settings, indent=2, sort_keys=True)
-	with open("settings.json", 'w') as settings_file:
-		settings_file.write(json_data_string)
+        # Use the defined path and specify encoding
+        with open('settings.json', 'w', encoding='utf-8') as settings_file:
+            settings_file.write(json_data_string)
+
+        print(f"Successfully wrote settings to {'settings.json'}")
+        return True # Explicitly return True on success
+
+    except TypeError as e:
+        print(f"ERROR: Data type error writing settings: {e}")
+        print("Settings data that caused error:", settings) # Log the problematic data
+        return False # Return False on error
+    except IOError as e:
+        print(f"ERROR: File I/O error writing settings to {'settings.json'}: {e}")
+        return False # Return False on error
+    except Exception as e:
+        print(f"ERROR: Unexpected error writing settings: {e}")
+        import traceback
+        traceback.print_exc()
+        return False # Return False on error
+
+
 
 def backup_settings():
 	# Copy current settings file to a backup copy in /[BACKUP_PATH]/PiFire_[DATE]_[TIME].json 

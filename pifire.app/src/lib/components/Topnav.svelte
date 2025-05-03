@@ -41,7 +41,7 @@
 
 </script>
 
-<nav class="navbar navbar-expand-md py-0 border-bottom border-2 border-secondary { $colorMode === 'dark' ? 'bg-dark' : 'bg-light' }">
+<nav class="navbar navbar-expand-md py-0 border-bottom border-2 border-secondary fixed-top { $colorMode === 'dark' ? 'bg-dark' : 'bg-light' }">
 	<div class="container-fluid">
 		<div class="d-flex align-items-center order-md-first me-2">
 			<a

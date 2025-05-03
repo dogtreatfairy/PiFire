@@ -10,13 +10,13 @@ export const serverPort = writable('8000');
 export const grillControlData = writable({}); // From 'grill_control_data' event
 
 // Data from get_app_data endpoint
-export const settingsData = writable({});
+export const settingsData = writable({}); // Holds the *entire* settings object
 export const pelletsData = writable({});
 export const eventsData = writable({});
 export const infoData = writable({});
 export const manualData = writable({});
-// *** NEW: Store for UI Settings ***
-export const uiSettings = writable(null); // Initialize as null (not loaded yet)
+// *** MODIFIED: Store for JUST the webui.dash part of settings ***
+export const uiSettings = writable({}); // Initialize as {}, signifies structure exists
 
 // --- Internal Module State ---
 let socket = null; // Holds the current Socket.IO client instance
@@ -36,25 +36,25 @@ function _attachListeners(currentSocket) {
 
         // Request initial data upon successful connection
         emitEvent('get_dash_data', { force: true });
-        requestSettings();
+        requestSettings(); // This will now also populate uiSettings store
         requestPelletsData();
-        requestUiSettings(); // *** NEW: Request UI settings on connect ***
+        // REMOVED: requestUiSettings();
     });
 
     currentSocket.on('disconnect', (reason) => {
         console.log(`Socket disconnected. Reason: ${reason}`);
         isConnected.set(false);
         socketStatus.set('Disconnected');
-        // Clear stores on disconnect? Optional, depends on desired behavior.
+        // Clear stores on disconnect? Optional.
         // settingsData.set({});
-        // uiSettings.set(null); // Reset to null on disconnect
+        uiSettings.set({}); // Reset to empty on disconnect
     });
 
     currentSocket.on('connect_error', (error) => {
         console.error('Socket connection error:', error.message);
         isConnected.set(false);
         socketStatus.set('Error');
-        // uiSettings.set(null); // Reset to null on connection error
+        uiSettings.set({}); // Reset to empty on connection error
     });
 
     // Listener for continuous dashboard updates
@@ -62,13 +62,18 @@ function _attachListeners(currentSocket) {
         grillControlData.set(data);
     });
 
-    // *** NEW: Listener for broadcasted UI settings updates (Optional) ***
-    // This handles updates pushed from the server after *another* client saved changes.
-    currentSocket.on('ui_settings_data', (settings) => {
-        console.log("Received broadcasted 'ui_settings_data':", settings);
-        uiSettings.set(settings || {}); // Update store with pushed data
+    // *** MODIFIED: Listener for broadcasted *main* settings updates ***
+    // This handles updates pushed from the server after *any* client saved settings.
+    currentSocket.on('settings_data', (fullSettings) => {
+        console.log("Received broadcasted 'settings_data':", fullSettings);
+        // Update the main settings store
+        settingsData.set(fullSettings || {});
+        // Extract the relevant part for the uiSettings store
+        const dashSettings = fullSettings?.webui?.dash || {};
+        console.log("Updating uiSettings store from broadcast:", dashSettings);
+        uiSettings.set(dashSettings);
     });
-    // Add listeners for any other push events from the server if needed
+    // REMOVED: currentSocket.on('ui_settings_data', ...);
 }
 
 /**
@@ -80,8 +85,8 @@ function _removeListeners(currentSocket) {
     currentSocket.off('disconnect');
     currentSocket.off('connect_error');
     currentSocket.off('grill_control_data');
-    currentSocket.off('ui_settings_data'); // *** NEW: Remove UI settings listener ***
-    // Add .off() for other custom listeners
+    currentSocket.off('settings_data'); // *** MODIFIED: Listen for main settings ***
+    // REMOVED: currentSocket.off('ui_settings_data');
 }
 
 /**
@@ -102,8 +107,8 @@ function _connectInternal() {
     console.log(`Attempting to connect to socket server at ${address}...`);
     socketStatus.set('Connecting');
 
-    // Reset uiSettings to null when attempting new connection
-    uiSettings.set(null);
+    // Reset uiSettings to empty object when attempting new connection
+    uiSettings.set({});
 
     socket = io(address, {
         reconnection: true,
@@ -136,7 +141,7 @@ export function disconnectSocket() {
         socket = null;
         isConnected.set(false);
         socketStatus.set('Disconnected');
-        uiSettings.set(null); // Reset UI settings on manual disconnect
+        uiSettings.set({}); // Reset UI settings on manual disconnect
     }
 }
 
@@ -156,7 +161,7 @@ export function switchServer(newAddress, newPort) {
     eventsData.set({});
     infoData.set({});
     manualData.set({});
-    uiSettings.set(null); // *** NEW: Clear UI settings store ***
+    uiSettings.set({}); // *** MODIFIED: Clear UI settings store to empty object ***
     console.log('Cleared local data stores for server switch.');
 
     serverAddress.set(newAddress);
@@ -191,6 +196,7 @@ export function emitEvent(eventName, data = {}) {
  * @returns {Promise<object>} A promise that resolves with the response data or rejects on error/timeout.
  */
 function _emitWithAck(eventName, data, timeoutMs = 5000) {
+    // ... (_emitWithAck logic remains the same) ...
     return new Promise((resolve, reject) => {
         if (!socket || !socket.connected) {
             console.error(`Cannot emit ${eventName}: Socket is not connected.`);
@@ -227,16 +233,25 @@ function _emitWithAck(eventName, data, timeoutMs = 5000) {
 
 // --- Functions to Request Specific Data (using get_app_data) ---
 
-/** Requests settings_data and updates the settingsData store. */
+/** Requests settings_data and updates the settingsData and uiSettings stores. */
 export async function requestSettings() {
+    console.log("Requesting Settings Data (including UI)...");
     try {
         const response = await _emitWithAck('get_app_data', { action: 'settings_data' });
-        settingsData.set(response || {}); // Ensure store gets an object
-        return response;
+        console.log("Received Full Settings:", response);
+        const fullSettings = response || {};
+        // Update the main settings store
+        settingsData.set(fullSettings);
+        // Extract the relevant part for the uiSettings store
+        const dashSettings = fullSettings?.webui?.dash || {};
+        console.log("Updating uiSettings store from fetch:", dashSettings);
+        uiSettings.set(dashSettings);
+        return fullSettings; // Return full data for potential chaining/direct use
     } catch (error) {
         console.error("Failed to request settings data:", error);
         settingsData.set({}); // Set to empty on error
-        throw error;
+        uiSettings.set({});   // Set UI to empty on error
+        throw error; // Re-throw error for calling code to handle
     }
 }
 
@@ -305,24 +320,7 @@ export async function requestGrillControlData() {
     }
 }
 
-// *** NEW: Function to request UI settings ***
-/** Requests ui_settings and updates the uiSettings store. */
-export async function requestUiSettings() {
-    console.log("Requesting UI Settings...");
-    try {
-        // Assuming backend 'get_app_data' handles { action: 'ui_settings' }
-        const response = await _emitWithAck('get_app_data', { action: 'ui_settings' });
-        console.log("Received UI Settings:", response);
-        // Set store to received object or empty object if null/undefined
-        uiSettings.set(response || {});
-        return response;
-    } catch (error) {
-        console.error("Failed to request UI settings:", error);
-        // Set store to empty object on error to prevent hanging on null
-        uiSettings.set({});
-        throw error;
-    }
-}
+// REMOVED: requestUiSettings() function
 
 
 // --- Function to Post Data (using post_app_data) ---
@@ -337,6 +335,7 @@ export async function requestUiSettings() {
  * @returns {Promise<object>} A promise resolving with the server's acknowledgement response.
  */
 export async function postAppData(action, type, payload = {}, timeoutMs = 5000) {
+    // ... (postAppData logic remains the same) ...
     if (!action || !type) {
         console.error("postAppData requires 'action' and 'type' arguments.");
         return Promise.reject(new Error("postAppData requires 'action' and 'type' arguments."));
@@ -389,6 +388,7 @@ export async function postAppData(action, type, payload = {}, timeoutMs = 5000) 
  * @param {string|null} [nextMode=null] - Next mode after 'Prime'.
  */
 export function setMode(mode, primeAmount = null, nextMode = null) {
+    // ... (setMode logic remains the same) ...
     const payload = {
         updated: true,
         mode: mode,
@@ -406,49 +406,33 @@ export function setMode(mode, primeAmount = null, nextMode = null) {
         });
 }
 
-// *** NEW: Function to save UI settings (including card positions) ***
-/**
- * Saves the entire UI settings object to the backend.
- * It's expected that the object passed contains the merged cardPositions.
- * @param {object} settingsToSave - The complete UI settings object to save.
- */
-export async function saveUiSettings(settingsToSave) {
-    console.log("Saving UI Settings:", settingsToSave);
-    if (typeof settingsToSave !== 'object' || settingsToSave === null) {
-        console.error("Invalid data provided to saveUiSettings. Expected an object.");
-        return Promise.reject(new Error("Invalid data for saveUiSettings"));
-    }
-    try {
-        // Use postAppData assuming backend handles { action: 'update_action', type: 'ui_settings' }
-        const response = await postAppData('update_action', 'ui_settings', settingsToSave);
-        console.log("Save UI Settings successful:", response);
-        // Optimistic update: Update local store immediately after sending
-        // Note: If save fails, store might be out of sync until next fetch or refresh
-        uiSettings.set(settingsToSave);
-        return response;
-    } catch (error) {
-        console.error("Failed to save UI settings:", error);
-        // Handle error in UI if needed
-        throw error; // Re-throw for calling code
-    }
-}
+// REMOVED: saveUiSettings() function
 
 /**
- * Saves just the card positions by merging them into the current UI settings.
+ * Saves just the card positions by sending a structured update payload.
  * @param {Object.<string, number>} newPositions - Object mapping card IDs to their 1-based positions.
  */
 export async function saveCardPositions(newPositions) {
-    console.log("Attempting to save new card positions:", newPositions);
+    console.log("Formatting payload to save new card positions:", newPositions);
 
-    // Get the current full settings state to merge with
-    const currentSettings = get(uiSettings) || {}; // Use current value or empty object
-
-    // Prepare the updated settings object
-    const updatedSettings = {
-        ...currentSettings,         // Keep existing settings
-        cardPositions: newPositions // Update/add the card positions map
+    // Construct the specific payload structure the backend expects
+    const payload = {
+        webui: {
+            dash: {
+                cardPositions: newPositions // Send the {'id': position} map
+            }
+        }
     };
 
-    // Call the function to save the entire updated object
-    return saveUiSettings(updatedSettings);
+    try {
+        // Call postAppData to update the main settings file
+        const response = await postAppData('update_action', 'settings', payload);
+        console.log("Save Card Positions successful:", response);
+        // No optimistic update here - rely on backend broadcast via 'settings_data' event
+        return response;
+    } catch (error) {
+        console.error("Failed to save card positions:", error);
+        // Handle error in UI if needed
+        throw error; // Re-throw for calling code
+    }
 }

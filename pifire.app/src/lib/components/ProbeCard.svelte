@@ -3,14 +3,16 @@
     import Gauge from 'svelte-gauge';
     import { cubicOut } from "svelte/easing";
 
-    export let name; // The name of the probe passed from +page.svelte
+    export let name; // The label of the probe passed from +page.svelte
+	export let label;
     export let type; // The type of the probe (e.g., "Food", "Primary", "Auxiliary")
-    export let units; // The units of the probe (e.g., "F" or "C")
 
+
+	$: units = $settingsData?.globals?.units || 'F';
 	$: maxTemp = $settingsData.safety?.maxtemp;
 	$: convertedType = type === 'Primary' ? 'P' : type === 'Food' ? 'F' : 'Aux';
 	$: probeData = $grillControlData?.probe_info?.[convertedType] || {};
-    $: gaugeValue = probeData?.[name] || 0;
+    $: gaugeValue = probeData?.[label] || 0;
 
     let _gaugeLabels = 100;
     let _gaugeRedZone = 50;
@@ -40,7 +42,7 @@
 <div class="card rounded shadow h-100 w-100 d-flex flex-column">
     <div class="card-header d-flex justify-content-between align-items-center p-2 fw-semibold">
         <h4 class="ms-1 mb-0">
-            {name}
+            {label}
         </h4>
 		<div class="d-flex align-items-end">
 			<div class="btn btn-outline-secondary nav-btn-square me-1">

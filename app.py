@@ -3622,36 +3622,6 @@ force_refresh = False
 
 settings_file_path = 'settings.json' # Path to your main settings file
 
-# --- Helper Functions for UI Settings File ---
-def read_ui_settings():
-    """Reads UI settings from the JSON file."""
-    try:
-        # Use 'a+' to create the file if it doesn't exist, then reset pointer
-        with open(settings_file_path, 'a+', encoding='utf-8') as f:
-            f.seek(0) # Go to the beginning to read
-            content = f.read()
-            if not content: # File was empty or just created
-                print(f"UI settings file ({settings_file_path}) was empty or newly created.")
-                return {} # Return empty dict
-            return json.loads(content)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Error reading UI settings file ({settings_file_path}), returning empty settings: {e}")
-        return {} # Return empty dict on error
-    except Exception as e:
-        print(f"Unexpected error reading UI settings file: {e}")
-        return {}
-
-def write_ui_settings(settings_data):
-    """Writes UI settings to the JSON file."""
-    try:
-        with open(settings_file_path, 'w', encoding='utf-8') as f:
-            json.dump(settings_data, f, indent=4) # Use indent for readability
-        print(f"UI settings successfully written to {settings_file_path}")
-        return True
-    except Exception as e:
-        print(f"Error writing UI settings file ({settings_file_path}): {e}")
-        return False
-
 # --- SocketIO Event Handlers ---
 
 @socketio.on("connect")
@@ -3696,7 +3666,9 @@ def get_dash_data(data={}):
             print(f"Background task is None. Starting new task (triggered by get_dash_data from {sid}).")
             thread = socketio.start_background_task(emit_dash_data)
 
+
 def emit_dash_data():
+    # ... (emit_dash_data logic remains the same) ...
     global clients
     global force_refresh
     global thread
@@ -3785,41 +3757,26 @@ def emit_dash_data():
             print("Setting global thread variable back to None.")
             thread = None
 
+
 # ==================================================
 #  Handler for get_app_data (Handles multiple actions)
 # ==================================================
 @socketio.on('get_app_data')
 def get_app_data(data):
-    # It's generally safer to load settings within the handler if they can change,
-    # unless you have a robust mechanism ensuring the global 'settings' is always current.
-    # settings = read_settings() # Load fresh settings if needed
-
     sid = request.sid
     action = data.get('action')
-    type = data.get('type') # Keep type, though not used by all actions here
 
     print(f"Client {sid} requested 'get_app_data' with data: {data}")
     print(f"Extracted action={action}")
 
     if action == 'settings_data':
         try:
-            # Assuming 'settings' is loaded globally or read here
-            settings = read_settings() # Load fresh settings
-            return settings
-        except NameError: # If 'settings' isn't defined globally and not loaded
-             print("ERROR: 'settings' variable not defined in get_app_data scope.")
-             return {'response': {'result':'error', 'message':'Error: Server configuration issue (settings)'}}
+            # Read the *entire* settings file, which now includes UI settings under webui.dash
+            settings = read_settings()
+            return settings # Return the whole object
         except Exception as e:
             print(f"ERROR reading settings: {e}")
             return {'response': {'result':'error', 'message':f'Error: Server error reading settings: {e}'}}
-
-    # *** NEW: Handle UI Settings Request ***
-    elif action == 'ui_settings':
-        try:
-            return read_ui_settings() # Use the helper function
-        except Exception as e:
-            print(f"ERROR reading UI settings: {e}")
-            return {'response': {'result':'error', 'message':f'Error: Server error reading UI settings: {e}'}}
 
     elif action == 'pellets_data':
         try:
@@ -3828,6 +3785,7 @@ def get_app_data(data):
             print(f"ERROR reading pellet DB: {e}")
             return {'response': {'result':'error', 'message':f'Error: Server error reading pellet DB: {e}'}}
 
+    # ... (rest of get_app_data actions remain the same) ...
     elif action == 'grill_control_data':
         try:
             # Reusing logic from emit_dash_data to construct the response
@@ -3923,14 +3881,12 @@ def get_app_data(data):
         print(f"ERROR: Invalid or missing action '{action}' in get_app_data request from {sid}")
         return {'response': {'result':'error', 'message':f"Error: Received request with invalid/missing action ('{action}')"}}
 
+
 # ==================================================
 #  Handler for post_app_data (Handles multiple actions/types)
 # ==================================================
 @socketio.on('post_app_data')
 def post_app_data(action=None, type=None, json_data=None):
-    # Load settings/control fresh within the handler if they might be modified elsewhere
-    # settings = read_settings()
-    # control = read_control()
     sid = request.sid
     print(f"Client {sid} requested 'post_app_data' action={action} type={type}")
 
@@ -3948,56 +3904,96 @@ def post_app_data(action=None, type=None, json_data=None):
     if action == 'update_action':
         if type == 'settings':
             try:
-                settings = read_settings() # Load fresh settings
-                # Use deep_update carefully, ensure it handles nested structures correctly
-                # Consider validating keys in request_data against settings structure if needed
-                settings = deep_update(settings, request_data)
-                write_settings(settings)
-                print(f"Main Settings updated by {sid}")
-                # Optionally broadcast updated main settings if needed
-                # emit('settings_data', settings, broadcast=True, include_self=False)
-                return {'response': {'result':'success'}}
+                # Load the current full settings
+                current_settings = read_settings()
+                settings_changed = False # Flag to track if write is needed
+
+                # *** MODIFICATION START: Handle card positions specifically ***
+                # Check if the incoming data contains the expected UI structure for card positions
+                # Frontend sends {'webui': {'dash': {'cardPositions': {'id': position}}}}
+                card_positions_map = None
+                if isinstance(request_data.get('webui'), dict) and \
+                   isinstance(request_data['webui'].get('dash'), dict) and \
+                   isinstance(request_data['webui']['dash'].get('cardPositions'), dict):
+                    card_positions_map = request_data['webui']['dash']['cardPositions']
+
+                if card_positions_map is not None:
+                    # Invert the map to { position_str: 'id' }
+                    position_to_id_map = {str(pos): id_val for id_val, pos in card_positions_map.items()}
+                    print(f"Inverted card positions for saving: {position_to_id_map}")
+
+                    # Ensure the target structure exists in current_settings
+                    # Use .setdefault() which creates dicts if they don't exist
+                    webui_settings = current_settings.setdefault('webui', {})
+                    dash_settings = webui_settings.setdefault('dash', {})
+
+                    # Clear existing digit keys (old positions) from dash_settings
+                    keys_to_remove = [k for k in dash_settings if k.isdigit()]
+                    if keys_to_remove:
+                        print(f"Removing old position keys: {keys_to_remove}")
+                        for k in keys_to_remove:
+                            del dash_settings[k]
+
+                    # Add the new position-based card IDs
+                    dash_settings.update(position_to_id_map)
+                    settings_changed = True # Mark that settings need writing
+
+                    # Remove the temporary 'cardPositions' structure from request_data
+                    # This prevents attempting to merge it later if other settings were sent
+                    request_data.get('webui', {}).get('dash', {}).pop('cardPositions', None)
+                    # Clean up empty dicts if necessary (optional)
+                    if 'dash' in request_data.get('webui', {}) and not request_data['webui']['dash']:
+                        del request_data['webui']['dash']
+                    if 'webui' in request_data and not request_data['webui']:
+                        del request_data['webui']
+
+                # *** MODIFICATION END ***
+
+                # Now, merge any *other* settings updates that might have been sent
+                # This check avoids unnecessary operations if only card positions were sent
+                if request_data:
+                    print(f"Merging other settings updates (if any): {request_data}")
+                    # Directly update the dictionary. Assumes no complex nested merges needed for other settings.
+                    # If complex merges ARE needed elsewhere, you'll need a merge function back.
+                    for key, value in request_data.items():
+                        # Simple top-level merge. Be cautious if overwriting nested dicts is unintended.
+                        current_settings[key] = value
+                    settings_changed = True # Mark that settings need writing
+
+                # Write the settings file ONLY if changes were made
+                if settings_changed:
+                    success = write_settings(current_settings) # Write the potentially modified current_settings
+                    if success:
+                        print(f"Settings updated successfully by {sid}")
+                        # Broadcast the *entire* updated settings object
+                        emit('settings_data', current_settings, broadcast=True, include_self=False)
+                        return {'response': {'result':'success'}}
+                    else:
+                         print(f"ERROR writing updated settings by {sid}")
+                         return {'response': {'result':'error', 'message':'Error: Failed to write settings on server'}}
+                else:
+                    # No actual changes were processed (e.g., empty request_data after removing cardPositions)
+                    print(f"No settings changes detected for update by {sid}.")
+                    return {'response': {'result':'success', 'message': 'No changes applied'}}
+
             except Exception as e:
                 print(f"ERROR updating main settings by {sid}: {e}")
+                import traceback
+                traceback.print_exc()
                 return {'response': {'result':'error', 'message':f'Error updating main settings: {e}'}}
 
-        # *** NEW: Handle UI Settings Update ***
-        elif type == 'ui_settings':
-            try:
-                if not isinstance(request_data, dict):
-                     print(f"ERROR: Invalid data type for ui_settings update from {sid}. Expected dict.")
-                     return {'response': {'result':'error', 'message':'Error: Invalid data format for UI settings'}}
-
-                success = write_ui_settings(request_data) # Use the helper function
-
-                if success:
-                    print(f"UI Settings updated by {sid}")
-                    # Broadcast update to other clients
-                    updated_settings = read_ui_settings()
-                    emit('ui_settings_data', updated_settings, broadcast=True, include_self=False)
-                    return {'response': {'result':'success'}}
-                else:
-                    print(f"ERROR writing UI settings by {sid}")
-                    return {'response': {'result':'error', 'message':'Error: Failed to write UI settings on server'}}
-            except Exception as e:
-                print(f"ERROR updating ui_settings by {sid}: {e}")
-                return {'response': {'result':'error', 'message':f'Error updating UI settings: {e}'}}
-
         elif type == 'control':
+            # ... (control update logic remains the same) ...
             try:
-                # Only write keys that exist in the original control file? Or allow new keys?
-                # Current logic allows any key if at least one is valid.
-                control = read_control() # Load fresh control data
+                control = read_control()
                 valid_keys = False
                 for key in request_data.keys():
-                    # Check if key exists in control or if adding new keys is allowed
-                    if key in control.keys(): # Stricter check
+                    if key in control.keys():
                          valid_keys = True
                          break
                 if valid_keys:
-                    write_control(request_data, origin='app-socketio') # write_control likely merges
+                    write_control(request_data, origin='app-socketio')
                     print(f"Control updated by {sid}")
-                    # Control changes are likely pushed via emit_dash_data, no need to broadcast here usually
                     return {'response': {'result':'success'}}
                 else:
                     print(f"ERROR: No valid/existing keys found in control update request by {sid}")
@@ -4006,8 +4002,10 @@ def post_app_data(action=None, type=None, json_data=None):
                 print(f"ERROR updating control by {sid}: {e}")
                 return {'response': {'result':'error', 'message':f'Error updating control: {e}'}}
         else:
-            return {'response': {'result':'error', 'message':'Error: Received request without valid type for update_action'}}
+            # This now correctly handles the case where type is not 'settings' or 'control'
+            return {'response': {'result':'error', 'message':f'Error: Received request with invalid type "{type}" for update_action'}}
 
+    # ... (rest of post_app_data actions: admin_action, units_action, etc. remain the same) ...
     elif action == 'admin_action':
         print(f"Admin action '{type}' requested by {sid}")
         # ... (keep existing admin_action logic, ensure try/except blocks) ...
@@ -4245,8 +4243,10 @@ def post_app_data(action=None, type=None, json_data=None):
             print(f"ERROR during timer_action ({type}): {e}")
             return {'response': {'result':'error', 'message':f'Error during timer action: {e}'}}
 
+
     else:
         return {'response': {'result':'error', 'message':'Error: Received request without valid action'}}
+
 
 
 '''
