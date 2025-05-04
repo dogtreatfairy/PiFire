@@ -5,7 +5,11 @@
     let caution = 20;
     let danger = 10;
 
-    $: currentMode = $grillControlData?.current_mode || 'Unknown';
+	$: auger = $grillControlData?.status_data?.outpins?.auger || false;
+	$: igniter = $grillControlData?.status_data?.outpins?.igniter || false;
+	$: fan = $grillControlData?.status_data?.outpins?.fan || false;
+
+    $: currentMode = $grillControlData?.status_data?.mode || 'Unknown';
     $: hopperLevel = $grillControlData?.hopper_level || 100;
     $: connectionStatus = $socketStatus;
 
@@ -52,8 +56,10 @@
             />
         </div>
 		<div>
-			<span class="text-start fs-5 fw-semibold">
-				
+			<span 
+				class="fas fa-fire fa-xl mt-5"
+				class:text-warning={igniter}
+				class:pulse={igniter}>
 			</span>
 		</div>
     </div>

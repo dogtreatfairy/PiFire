@@ -1,8 +1,8 @@
 <script>
-	import { settingsData } from '$lib/stores/apiDataStore.js';
-	$: console.log('grillControlData:', $settingsData);
+	import { controlData } from '$lib/stores/apiDataStore.js';
+	$: console.log('controlData:', $controlData);
   </script>
   
   <div>
-	<pre>{JSON.stringify($settingsData, null, 2)}</pre>
+	<pre>{JSON.stringify($controlData, null, 2)}</pre>
   </div>

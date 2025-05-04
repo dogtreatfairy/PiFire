@@ -2103,7 +2103,8 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 	data['data'] = {}
 
 	control = read_control()
-	settings = read_settings() 
+	settings = read_settings()
+	status = read_status()
 	
 	''' Populate any empty args with None just in case '''
 	num_args = len(arglist)

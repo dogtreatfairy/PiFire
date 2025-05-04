@@ -1,25 +1,20 @@
 import { writable, get } from 'svelte/store';
-import { io } from 'socket.io-client'; // Client library
+import { io } from 'socket.io-client';
 
-// --- Svelte Stores for Reactive State ---
-// Connection & Core Data
 export const isConnected = writable(false);
 export const socketStatus = writable('Disconnected');
 export const serverAddress = writable('http://localhost');
 export const serverPort = writable('8000');
-export const grillControlData = writable({}); // From 'grill_control_data' event
+export const grillControlData = writable({});
 
-// Data from get_app_data endpoint
-export const settingsData = writable({}); // Holds the *entire* settings object
+export const settingsData = writable({});
 export const pelletsData = writable({});
 export const eventsData = writable({});
 export const infoData = writable({});
 export const manualData = writable({});
-// *** MODIFIED: Store for JUST the webui.dash part of settings ***
-export const uiSettings = writable({}); // Initialize as {}, signifies structure exists
+export const uiSettings = writable({}); 
 
-// --- Internal Module State ---
-let socket = null; // Holds the current Socket.IO client instance
+let socket = null;
 
 // --- Private Helper Functions ---
 
@@ -38,7 +33,6 @@ function _attachListeners(currentSocket) {
         emitEvent('get_dash_data', { force: true });
         requestSettings(); // This will now also populate uiSettings store
         requestPelletsData();
-        // REMOVED: requestUiSettings();
     });
 
     currentSocket.on('disconnect', (reason) => {
@@ -73,7 +67,6 @@ function _attachListeners(currentSocket) {
         console.log("Updating uiSettings store from broadcast:", dashSettings);
         uiSettings.set(dashSettings);
     });
-    // REMOVED: currentSocket.on('ui_settings_data', ...);
 }
 
 /**
@@ -86,6 +79,7 @@ function _removeListeners(currentSocket) {
     currentSocket.off('connect_error');
     currentSocket.off('grill_control_data');
     currentSocket.off('settings_data'); // *** MODIFIED: Listen for main settings ***
+    currentSocket.off('control_data');
     // REMOVED: currentSocket.off('ui_settings_data');
 }
 
@@ -161,7 +155,7 @@ export function switchServer(newAddress, newPort) {
     eventsData.set({});
     infoData.set({});
     manualData.set({});
-    uiSettings.set({}); // *** MODIFIED: Clear UI settings store to empty object ***
+    uiSettings.set({});
     console.log('Cleared local data stores for server switch.');
 
     serverAddress.set(newAddress);
@@ -319,11 +313,6 @@ export async function requestGrillControlData() {
         throw error;
     }
 }
-
-// REMOVED: requestUiSettings() function
-
-
-// --- Function to Post Data (using post_app_data) ---
 
 /**
  * Sends data to the server's 'post_app_data' handler.

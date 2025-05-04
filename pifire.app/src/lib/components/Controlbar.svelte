@@ -12,7 +12,7 @@
 	import ButtonManual from '$lib/components/ButtonManual.svelte';
 
     // Reactive statement to get the current mode from the grillControlData
-	$: currentMode = $grillControlData?.current_mode || 'Unknown'; // Use grillControlData for current mode
+	$: currentMode = $grillControlData?.status_data?.mode || 'Unknown'; // Use grillControlData for current mode
 
 	onMount(() => {
 		const interval = setInterval(() => {
