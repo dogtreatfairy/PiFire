@@ -237,13 +237,12 @@
     cursor: grabbing !important;
 }
 
-:global(.svelte-dnd-action-dragged-element-placeholder) {
-    /* opacity: 0.5; */
-    /* border: 2px dashed #ccc; */
-}
-
 @media (max-width: 576px) { .grid { grid-template-columns: 1fr; } }
-@media (min-width: 577px) and (max-width: 992px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 577px) and (max-width: 992px) {
+    .grid {
+        grid-template-columns: repeat(2, minmax(200px, 1fr)); /* Ensure a minimum width for columns */
+    }
+}
 @media (min-width: 993px) and (max-width: 1199px) { .grid { grid-template-columns: repeat(3, 1fr); max-width: 95vw; } }
 @media (min-width: 1200px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 95vw; } }
 </style>

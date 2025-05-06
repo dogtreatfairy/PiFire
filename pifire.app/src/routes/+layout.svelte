@@ -34,4 +34,5 @@
   <slot />
 </main>
 
+<div class="navbar-bottom-margin">	</div>
 <Controlbar />

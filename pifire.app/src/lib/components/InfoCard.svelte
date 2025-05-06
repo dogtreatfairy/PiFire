@@ -28,44 +28,52 @@
 </script>
 
 <div class="card rounded shadow h-100 w-100 d-flex flex-column align-items-start">
-    <div class="card-header d-flex justify-content-between align-items-center p-2 fw-semibold w-100">
-        <h4 class="ms-1 mb-0">
-            Mode: <span class=" fw-bold { $colorMode === 'dark' ? 'text-warning' : 'text-primary' }">{currentMode}</span>
-        </h4>
-        <span class="badge bg-{connectionBadgeColor}">{connectionStatus}</span>
+    <div class="card-header d-flex flex-column align-items-start p-2 fw-semibold w-100">
+        <div class="d-flex justify-content-between align-items-center w-100">
+            <h4 class="ms-1 mb-0">
+                Mode: <span class="fw-bold { $colorMode === 'dark' ? 'text-warning' : 'text-primary' }">{currentMode}</span>
+            </h4>
+            <span class="badge bg-{connectionBadgeColor}">{connectionStatus}</span>
+        </div>
+        <div class="outpins w-100 d-flex justify-content-around align-items-center mt-4 pt-2 fs-5 fw-semibold">
+            <div class="outpin-item d-flex flex-column align-items-center { fan ? ($colorMode === 'dark' ? 'text-info' : 'text-primary') : 'text-secondary' }">
+                <span 
+                    class="fas fa-fan fa-xl"
+                    class:spin={fan}>
+                </span>
+                <span class="mt-4">Fan</span>
+            </div>
+            <div class="outpin-item d-flex flex-column align-items-center { auger ? 'text-success' : 'text-secondary' }">
+                <span 
+                    class="fas fa-angle-double-right fa-xl"
+                    class:pulse={auger}>
+                </span>
+                <span class="mt-4">Auger</span>
+            </div>
+            <div class="outpin-item d-flex flex-column align-items-center { igniter ? 'text-warning' : 'text-secondary' }">
+                <span 
+                    class="fas fa-fire fa-xl"
+                    class:pulse={igniter}>
+                </span>
+                <span class="mt-4">Ignition</span>
+            </div>
+        </div>
     </div>
     <div class="card-body d-flex flex-column justify-content-start align-items-start p-2 w-100">
-        <div class="outpins w-100 d-flex justify-content-around align-items-center my-5">
-			<div class="outpin-item d-flex flex-column align-items-center">
-				<span 
-					class="fas fa-fan fa-2xl"
-					class:text-primary={fan}
-					class:spin={fan}>
-				</span>
-				<span class="badge mt-4 fs-6 { $colorMode === 'dark' ? 'text-white' : 'text-dark' }">Fan</span>
+
+	</div>
+	<div class="card-footer d-flex flex-column justify-content-start align-items-start p-2 w-100">
+		<div class="d-flex justify-content-between align-items-center w-100 mb-2">
+			<span class="text-start fs-4 fw-semibold border border-secondary rounded px-2 py-1 nav-btn-height text-truncate flex-grow-1 me-2 d-flex align-items-center">
+				<span class="me-2">Pellets:</span><span>{currentPelletBrand} {currentPelletWood}</span>
+			</span>
+			<div class="btn nav-btn-square border rounded ms-2">
+				<span class="fas fa-arrow-left fa-xl"></span>
 			</div>
-			<div class="outpin-item d-flex flex-column align-items-center">
-				<span 
-					class="fas fa-angle-double-right fa-2xl"
-					class:text-success={auger}
-					class:pulse={auger}>
-				</span>
-				<span class="badge mt-4 fs-6 { $colorMode === 'dark' ? 'text-white' : 'text-dark' }">Auger</span>
-			</div>
-			<div class="outpin-item d-flex flex-column align-items-center">
-				<span 
-					class="fas fa-fire fa-2xl"
-					class:text-warning={igniter}
-					class:pulse={igniter}>
-				</span>
-				<span class="badge mt-4 fs-6 { $colorMode === 'dark' ? 'text-white' : 'text-dark' }">Ignition</span>
+			<div class="btn nav-btn-square border rounded ms-2">
+				<span class="fas fa-arrow-right fa-xl"></span>
 			</div>
 		</div>
-		<div class="justify-content-start align-items-center d-flex flex-column mb-2 align-self-start">
-            <span class="text-start fs-5 fw-semibold">
-                Pellets: <span class="">{currentPelletBrand} - {currentPelletWood}</span>
-            </span>
-        </div>
         <div class="w-100 rounded nav-btn-height position-relative">
             <!-- Hopper Level Label -->
             <span
@@ -81,7 +89,6 @@
                 color={progressColor}
             />
         </div>
-		
     </div>
 </div>
 
@@ -92,7 +99,7 @@
         aspect-ratio: 1/1; /* Enforce 1:1 square ratio */
     }
     .spin {
-        animation: spin 1s linear infinite;
+        animation: spin 3s linear infinite;
     }
 
     @keyframes spin {

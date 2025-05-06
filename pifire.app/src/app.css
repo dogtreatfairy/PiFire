@@ -12,14 +12,14 @@
 
 .nav-btn-height {
   height: 37px;
-  display: flex; /* Enable Flexbox */
-  align-items: center; /* Center content vertically */
-  justify-content: center; /* Center content horizontally */
 }
 
 .navbar-top-margin {
   margin-top: 50px; /* Adjust this value based on your navbar height */
 }
+.navbar-bottom-margin {
+	margin-top: 100px; /* Adjust this value based on your navbar height */
+  }
 
 .pulse {
 	animation: pulse 1s infinite;

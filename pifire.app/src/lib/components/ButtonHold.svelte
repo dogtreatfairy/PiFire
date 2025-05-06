@@ -3,7 +3,7 @@
 	import { Modal } from '@sveltestrap/sveltestrap';
 	import { modalHold, focusSelect, enterSubmit } from '$lib/stores/modalStore.js';
 
-	$: currentMode = $grillControlData?.current_mode || 'Unknown';
+	$: currentMode = $grillControlData?.status_data?.mode  || 'Unknown';
 	$: primarySetPoint = $grillControlData?.probe_info?.PSP || 0;
 	$: units = $settingsData?.globals?.units || 'F';
 	$: maxTemp = $settingsData?.globals?.max_temp || 500;
