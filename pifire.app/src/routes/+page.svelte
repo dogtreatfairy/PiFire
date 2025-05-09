@@ -219,14 +219,30 @@
 {/if}
 
 <style>
-/* Styles remain unchanged */
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1.5rem;
     width: 100%;
     margin: 0 auto;
     justify-content: center;
+}
+
+.grid > * {
+    min-width: 0; /* Ensures grid items adapt to column width */
+}
+
+@media (max-width: 576px) {
+    .grid { grid-template-columns: 1fr; }
+}
+@media (min-width: 577px) and (max-width: 992px) {
+    .grid { grid-template-columns: repeat(2, minmax(275, 1fr)); }
+}
+@media (min-width: 993px) and (max-width: 1199px) {
+    .grid { grid-template-columns: repeat(3, 1fr); max-width: 95vw; }
+}
+@media (min-width: 1200px) {
+    .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 95vw; }
 }
 
 :global(.svelte-dnd-action-dragged-element) {
@@ -236,13 +252,4 @@
     z-index: 1000;
     cursor: grabbing !important;
 }
-
-@media (max-width: 576px) { .grid { grid-template-columns: 1fr; } }
-@media (min-width: 577px) and (max-width: 992px) {
-    .grid {
-        grid-template-columns: repeat(2, minmax(200px, 1fr)); /* Ensure a minimum width for columns */
-    }
-}
-@media (min-width: 993px) and (max-width: 1199px) { .grid { grid-template-columns: repeat(3, 1fr); max-width: 95vw; } }
-@media (min-width: 1200px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 95vw; } }
 </style>

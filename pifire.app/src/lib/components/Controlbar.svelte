@@ -26,47 +26,67 @@
 <footer class="navbar fixed-bottom border-top text-center border-2 border-secondary { $colorMode === 'dark' ? 'bg-dark' : 'bg-light' }">
     <div class="container d-flex justify-content-center">
 
+		<!-- Stop -->
 		<div class="btn-toolbar justify-content-center" role="toolbar" id="stopped_group" class:d-none={currentMode !=='Stop' && currentMode !=='Error'}>
 			<div class="btn-group me-2 shadow" role="group">
-			  <ButtonPrime />
-			  <ButtonStart />
+				<ButtonPrime />
+				<ButtonStart />
 			</div>
 			<ButtonManual />
 			<div class="btn-group shadow" role="group" id="error_group" style={{ display: 'none' }}>
 			</div>
 		</div>
 
-		<div class="btn-toolbar justify-content-center" role="toolbar" id="startup_group" class:d-none={currentMode !=='Startup' && currentMode !=='Prime' && currentMode !=='Reignite'}>
+		<!-- Startup / Reignite -->
+		<div class="btn-toolbar justify-content-center" role="toolbar" id="startup_group" class:d-none={currentMode !=='Startup' && currentMode !=='Reignite'}>
 			<div class="btn-group me-2 shadow" role="group">
-			  <ButtonSmoke />
-			  <ButtonHold />
+				<ButtonSmoke />
+				<ButtonHold />
 			</div>
 			<ButtonStop />
 			<span class="me-2"></span>
 			<ButtonManual />
 		</div>
+
+		<!-- Prime -->
+		<div class="btn-toolbar justify-content-center" role="toolbar" id="startup_group" class:d-none={currentMode !=='Prime'}>
+			<div class="btn-group me-2 shadow" role="group">
+				<ButtonPrime />
+				<ButtonSmoke />
+				<ButtonHold />
+			</div>
+			<ButtonStop />
+			<span class="me-2"></span>
+			<ButtonManual />
+		</div>
+
+		<!-- Hold / Smoke -->
 		<div class="btn-toolbar justify-content-center" role="toolbar" id="active_group" class:d-none={currentMode !=='Hold' && currentMode !=='Smoke'}>
 			<div class="btn-group me-2 shadow" role="group">
-			  <ButtonSmoke /> 
-			  <ButtonHold /> 
+				<ButtonSmoke /> 
+				<ButtonHold /> 
 			</div>
 			<ButtonFinish />
 			<span class="me-2"></span> 
 			<ButtonManual />
 		</div>
+
+		<!-- Finish -->
 		<div class="btn-toolbar justify-content-center" role="toolbar" id="shutdown_group" class:d-none={currentMode !=='Finish'}>
 			<div class="btn-group me-2 shadow" role="group">
-			  <ButtonSmoke /> 
-			  <ButtonHold /> 
+				<ButtonSmoke /> 
+				<ButtonHold /> 
 			</div>
 			<ButtonStop />
 			<span class="me-2"></span>
 			<ButtonManual /> 
 		</div>
+
+		<!-- Manual / Monitor -->
 		<div class="btn-toolbar justify-content-center" role="toolbar" id="shutdown_group" class:d-none={currentMode !=='Manual' && currentMode !=='Monitor'}>
 			<div class="btn-group me-2 shadow" role="group">
-			  <ButtonSmoke /> 
-			  <ButtonHold /> 
+				<ButtonSmoke /> 
+				<ButtonHold /> 
 			</div>
 			<ButtonStop />
 			<span class="me-2"></span>

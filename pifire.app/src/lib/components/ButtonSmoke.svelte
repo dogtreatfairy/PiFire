@@ -1,6 +1,6 @@
 <script>
 	import { grillControlData, setMode } from '$lib/stores/apiDataStore.js';
-	$: currentMode = $grillControlData?.current_mode || 'Unknown';
+	$: currentMode = $grillControlData?.status_data?.mode  || 'Unknown';
 </script>
 
 <!-- Smoke Button -->
