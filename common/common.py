@@ -91,57 +91,66 @@ def default_settings():
 	settings['globals'] = {
 		'grill_name' : '',
 		'debug_mode' : False,
-		'page_theme' : 'dark',
-		'triggerlevel' : 'HIGH',
-		'buttonslevel' : 'HIGH',
-		'disp_rotation' : 180,
-		'shutdown_timer' : 180,
-		'startup_timer' : 240,
-		'startup_exit_temp' : 0,  # Exit startup at this temperature threshold. [0 = disabled]
-		'auto_power_off' : False,
-		'dc_fan': True,
-		'standalone': True,
+		'page_theme' : 'light',
+		'disp_rotation' : 0,
 		'units' : 'F',
 		'augerrate' : 0.3,  		# (grams per second) default auger load rate is 10 grams / 30 seconds
 		'first_time_setup' : True,  # Set to True on first setup, to run wizard on load 
 		'ext_data' : False,  # Set to True to allow tracking of extended data.  More data will be stored in the history database and can be reviewed in the CSV.
-		'global_control_panel' : True,  # Set to True to display control panel on most pages (except Updater, Wizard, Cookfile and some other pages)
+		'global_control_panel' : False,  # Set to True to display control panel on most pages (except Updater, Wizard, Cookfile and some other pages)
 		'boot_to_monitor' : False,  # Set to True to boot directly into monitor mode
 		'prime_ignition' : False,  # Set to True to enable the igniter in prime & startup mode
 		'updated_message' : False,   # Set to True to display a pop-up message after the system has been updated 
 		'venv' : False,  # Set to True if running in virtual environment (needed for Raspberry Pi OS Bookworm)
-		'real_hw' : True  # Set to True if running on real hardware (i.e. Raspberry Pi), False if running in a test environment 
 	}
 
 	if os.path.exists('bin'):
 		settings['globals']['venv'] = True 
 
-	settings['outpins'] = {
-		'power' : 4,
-		'auger' : 14,
-		'fan' : 15,
-		'igniter' : 18,
-		'dc_fan' : 26,
-		'pwm' : 13
-	}
-
-	settings['inpins'] = { 'selector' : 17 }
-
-	settings['dev_pins'] = {	# Device Pin Assignment
-		'input': {
-			'up_clk': 16,		# Up Button or CLK for encoder
-			'enter_sw' : 21,	# Enter Button or SW for encoder
-			'down_dt' : 20		# Down Button or DT for encoder
+	""" The following are platform related settings, such as pin assignments, etc. """
+	settings['platform'] = {
+		"devices": {
+			"display": {
+				"dc": 24,  # SPI Display (ex. ILI9341) 
+				"led": 5,  # SPI Display (ex. ILI9341) 
+				"rst": 25  # SPI Display (ex. ILI9341) 
+			},
+			"distance": {
+				"echo": 27,  # HCSR04 Distance Sensor 
+				"trig": 23	 # HCSR04 Distance Sensor 
+			},
+			"input": {
+				"down_dt": 20,  # Button (DOWN) or Encoder (DT)
+				"enter_sw": 21, # Button (ENTER) or Encoder (SW)
+				"up_clk": 16    # Button (UP) or Encoder (CLK)
+			}
 		},
-		'display': {
-			'led' : 5,			# ILI9341: LED	- ST7789: BL
-			'dc' : 24,			# ILI9341: DC	- ST7789: DC
-			'rst' : 25			# ILI9341: RST	- ST7789: RST
+		"inputs": {
+			"selector": 17,  # Selector input to select between the OEM Controller or PiFire Controller
+			"shutdown" : 17  # Shutdown GPIO Pin if implemented 
 		},
-		'distance': {
-			'trig': 23,			# For hcsr04
-			'echo' : 27			# For hcsr04
+		"outputs": { 
+			"auger": 14,
+			"dc_fan": 26,
+			"fan": 15,
+			"igniter": 18,
+			"power": 4,
+			"pwm": 13
 		},
+		"system" : {
+			"SPI0" : {
+				"CE0" : 8,  # In case a non-standard CE/CS is utilized
+				"CE1" : 7,  # In case a non-standard CE/CS is utilized
+			},
+			"1WIRE" : None  # 1WIRE is used for probe devices specifically the DS18B20 
+		},
+		"current" : "custom",
+		"dc_fan": False,  # True if system has a DC Fan (Does not indicate PWM)
+		"triggerlevel": "LOW",  # Active LOW / Active HIGH for the Relay Outputs 
+		"buttonslevel": "HIGH",  # Active LOW / Active HIGH for the button inputs 
+		"standalone": True,  # Standalone (without OEM controller present)
+		"real_hw" : True,  # Set to True if running on real hardware (i.e. Raspberry Pi), False if running in a test environment 
+		"system_type" : "prototype",  # System type / core  (i.e. Raspberry Pi Zero W, Zero 2W, 3A, 3B, 3B+, 4, 5) 
 	}
 
 	settings['cycle_data'] = {
@@ -151,9 +160,9 @@ def default_settings():
 		'PMode' : 2,  			# http://tipsforbbq.com/Definition/Traeger-P-Setting
 		'u_min' : 0.1,
 		'u_max' : 0.9,
-		'LidOpenDetectEnabled' : True,  #  Enable Lid Open Detection
+		'LidOpenDetectEnabled' : False,  #  Enable Lid Open Detection
 		'LidOpenThreshold' : 15,	 #  Percentage drop in temperature from the hold temp, to trigger lid open event
-		'LidOpenPauseTime' : 120  #  Number of seconds to pause when a lid open event is detected 
+		'LidOpenPauseTime' : 60  #  Number of seconds to pause when a lid open event is detected 
 	}
 
 	settings['controller'] = {
@@ -175,7 +184,7 @@ def default_settings():
 	settings['smoke_plus'] = {
 		'enabled' : False, 		# Sets default Enable/Disable (True = Enabled, False = Disabled)
 		'min_temp' : 160, 		# Minimum temperature to cycle fan on/off
-		'max_temp' : 230, 		# Maximum temperature to cycle fan on/off
+		'max_temp' : 220, 		# Maximum temperature to cycle fan on/off
 		'on_time' : 5, 			# Number of seconds the fan will remain ON
 		'off_time' : 5, 		# Number of seconds the fan will remain OFF
 		'duty_cycle' : 75, 		# Duty cycle that will be used during fan ramping. 20-100%
@@ -276,29 +285,7 @@ def default_settings():
 		'auto_power_off' : False  # Power off the system after shutdown (False = disabled)
 	}
 
-	settings['dashboard'] = {
-		'current' : 'Default', 
-		'dashboards' : {
-			'Default' : {	
-				'name' : 'Default',
-				'friendly_name' : 'Default Dashboard', 
-				'html_name' : 'dash_default.html',
-				'custom' : {
-					'hidden_cards' : []
-				},
-				'config' : {}
-			},
-			'Basic' : {	
-				'name' : 'Basic',
-				'friendly_name' : 'Basic Dashboard', 
-				'html_name' : 'dash_basic.html',
-				'custom' : {
-					'hidden_cards' : []
-				},
-				'config' : {}
-			}
-		}
-	}
+	settings['dashboard'] = _default_dashboard()
 
 	settings['notify_services'] = default_notify_services()
 
@@ -315,6 +302,36 @@ def default_settings():
 	settings['recipe']['probe_map'] = _default_recipe_probe_map(settings)
 
 	return settings
+
+def _default_dashboard():
+	''' 
+	Generate default dashboard settings by getting metadata from each json file in the /dashboard folder
+	'''
+	dash_data = {
+		'current' : 'Default', 
+		'dashboards' : {}
+	}
+	# Define the folder path
+	folder_path = './dashboard'
+
+	# Loop through files in the folder
+	for filename in os.listdir(folder_path):
+		# Check if the file is a JSON file
+		if filename.endswith('.json'):
+			dash_metadata = read_generic_json(os.path.join(folder_path, filename))
+			dash_data['dashboards'][dash_metadata['name']] = {
+				'name' : dash_metadata['name'],
+				'friendly_name' : dash_metadata['friendly_name'],
+				'html_name' : dash_metadata['html_name'],
+				'metadata' : filename,
+				'custom' : dash_metadata['custom'],
+				'config' : {}
+			}
+			for item in dash_metadata['config']:
+				dash_data['dashboards'][dash_metadata['name']]['config'][item['name']] = item['default']
+
+	return dash_data
+
 
 def _default_controller_config():
 	controller_metadata = read_generic_json('./controller/controllers.json')
@@ -489,6 +506,7 @@ def default_control():
 		'start' : 0,
 		'paused' : 0,
 		'end' : 0,
+		'expired' : False,
 		'shutdown' : False 
 	}
 
@@ -501,8 +519,6 @@ def default_control():
 		'pwm' : 100
 	}
 
-	control['errors'] = []
-
 	control['smartstart'] = {
 		'startuptemp' : 0,
 		'profile_selected' : 0
@@ -513,6 +529,8 @@ def default_control():
 	control['startup_timestamp'] = 0  # Timestamp of startup, used for cook time
 
 	control['system'] = {}
+
+	control['critical_error'] = False
 
 	return(control)
 
@@ -661,17 +679,17 @@ def default_pellets():
 		'Walnut'
 	]
 
-	pelletdb['brands'] = ['Generic', 'Custom', 'Traeger', 'Pitboss']
+	pelletdb['brands'] = ['Generic', 'Custom']
 
 	pelletdb['archive'] = {
 		ID : {
 			'id' : ID,
-			'brand' : 'Traeger', 
-			'wood' : 'Competition', 
+			'brand' : 'Generic', 
+			'wood' : 'Alder', 
 			'rating' : 4, 
-			'comments' : 'This is the default profile.  Competition Blend is one of the most common, '
-						'pellet blends people buy. It burns consistently and produces a moderate '
-						'smoke flavor.',
+			'comments' : 'This is a placeholder profile.  Alder is generic and used in almost all pellets, '
+						'regardless of the wood type indicated on the packaging.  It tends to burn '
+						'consistently and produces a mild smoke.',
 		}
 	}
 
@@ -701,7 +719,7 @@ def default_probe_map(probe_profiles):
 			'module' : 'prototype',  # Module to support the hardware device
 			'ports' : ['ADC0', 'ADC1', 'ADC2', 'ADC3'],    # Optionally define ports, otherwise, leave this up to the module to define
 			'config' : {
-				'ADC0_rd': '1000',
+				'ADC0_rd': '10000',
             	'ADC1_rd': '10000',
             	'ADC2_rd': '10000',
             	'ADC3_rd': '10000',
@@ -718,7 +736,7 @@ def default_probe_map(probe_profiles):
 			'type' : 'Primary',
 			'label' : 'Grill',
 			'name' : 'Grill',
-			'profile' : probe_profiles['04204563-2335-11ee-9a44-e5396c02c605'], #PT-1000-OEM-2023
+			'profile' : probe_profiles['99b8f02d-233d-11ee-a7a2-e5396c02c5fd'],
 			'device' : 'proto_adc',
 			'port' : 'ADC0',
 			'enabled' : True
@@ -762,49 +780,99 @@ def generate_uuid():
 
 def read_control(flush=False):
 	"""
-	Read Control from Redis DB
+	Read Control from Redis DB. Falls back to default_control() on errors.
 
-	:param flush: True to clean control. False otherwise
-	:return: control
+	:param flush: True to delete and re-initialize control data in Redis. False otherwise.
+	:return: control dictionary.
 	"""
 	global cmdsts
+	# Assumes default_control() is a function defined elsewhere that returns a valid default control dict.
 
 	try:
 		if flush:
+			print("INFO: Flushing control data in Redis.")
 			# Remove all control structures in Redis DB (not history or current)
 			cmdsts.delete('control:general')
 			cmdsts.delete('control:command')
 			cmdsts.delete('control:write')
 			cmdsts.delete('control:systemq')
 			cmdsts.delete('control:systemo')
-			# The following set's no persistence so that we don't get writes to the disk / SDCard 
-			cmdsts.config_set('appendonly', 'no')
-			cmdsts.config_set('save', '')
+			# The following set's no persistence so that we don't get writes to the disk / SDCard
+			# These operations might require specific Redis permissions.
+			try:
+				cmdsts.config_set('appendonly', 'no')
+				cmdsts.config_set('save', '')
+			except Exception as e_config:
+				print(f"WARN: Could not set Redis config during flush: {e_config}")
 
 			control = default_control()
-			write_control(control, direct_write=True, origin='common')
-		else: 
-			control = json.loads(cmdsts.get('control:general'))
-	except:
+			# write_control now returns True/False.
+			# If this internal write on flush fails, it will be logged by write_control.
+			if not write_control(control, direct_write=True, origin='read_control_flush'):
+				print("ERROR: Failed to write default_control during flush operation in read_control.")
+				# Depending on requirements, you might want to raise an error here or ensure 'control' is still valid.
+		else:
+			control_json = cmdsts.get('control:general')
+			if control_json is None:
+				print("WARN: 'control:general' not found in Redis. Falling back to default_control.")
+				control = default_control()
+			else:
+				try:
+					control = json.loads(control_json)
+				except json.JSONDecodeError as e_json:
+					print(f"ERROR: Failed to decode JSON from 'control:general': {e_json}. Falling back to default_control.")
+					control = default_control()
+	except Exception as e: # Catch other potential errors (e.g., Redis connection issues)
+		print(f"ERROR: Exception in read_control: {e}. Falling back to default_control.")
+		# import traceback # Uncomment if you want to print the full traceback here too
+		# traceback.print_exc()
 		control = default_control()
 
-	return(control)
+	return control
 
 def write_control(control, direct_write=False, origin='unknown'):
 	"""
-	Read Control from Redis DB
+	Write Control data. If direct_write is False, it pushes to a Redis queue.
+	Otherwise, it writes directly to 'control:general' in Redis.
 
-	:param control: Control Dictionary
-	:param direct_write:  If set to true, write directly to the control data.  Else, write the control data to a command queue.  Defaults to false.  
+	:param control: Control Dictionary to write.
+	:param direct_write: Boolean. If True, writes directly to 'control:general'.
+						 If False, pushes to 'control:write' queue.
+	:param origin: String. Identifier for the source of the control change.
+	:return: True if successful, False otherwise.
 	"""
 	global cmdsts
 
-	if direct_write: 
-		cmdsts.set('control:general', json.dumps(control))
-	else: 
-		# Add changes to control write queue 
-		control['origin'] = origin 
-		cmdsts.rpush('control:write', json.dumps(control))
+	try:
+		if not isinstance(control, dict):
+			print(f"ERROR: write_control received non-dictionary data for control: {type(control)}")
+			return False
+
+		if direct_write:
+			print(f"DEBUG: write_control (direct_write=True, origin='{origin}') writing to 'control:general'")
+			cmdsts.set('control:general', json.dumps(control))
+			# Most redis clients (like redis-py) will raise an exception on critical failure for .set().
+			# If it could return a falsy value on failure without an exception, you'd check the result.
+		else:
+			# To avoid modifying the original dictionary that might be used by the caller (post_app_data)
+			# after this function returns (e.g., for broadcasting), we make a copy.
+			control_to_queue = control.copy()
+			control_to_queue['origin'] = origin # Add origin to the data being queued
+			print(f"DEBUG: write_control (direct_write=False, origin='{origin}') pushing to 'control:write' queue")
+			cmdsts.rpush('control:write', json.dumps(control_to_queue))
+			# Similar to .set(), .rpush in redis-py usually returns the new length of the list
+			# or raises an exception on failure.
+		return True # Explicitly return True on perceived success
+	except json.JSONEncodeError as e_json_enc:
+		print(f"ERROR: JSON encoding failed in write_control (origin='{origin}', direct_write={direct_write}): {e_json_enc}")
+		import traceback
+		traceback.print_exc()
+		return False
+	except Exception as e: # Catch Redis errors or other unexpected issues
+		print(f"ERROR: Exception in write_control (origin='{origin}', direct_write={direct_write}): {e}")
+		import traceback
+		traceback.print_exc()
+		return False
 
 def execute_control_writes():
 	"""
@@ -1036,17 +1104,42 @@ def read_settings(filename='settings.json', init=False, retry_count=0):
 	return(settings)
 
 def write_settings(settings):
-	"""
-	Write all settings to JSON file
+    """
+    Write all settings to JSON file
 
-	:param settings: Settings
+    :param settings: Settings dictionary
+    :return: True on success, False on failure
+    """
+    try:
+        # Ensure 'lastupdated' dictionary exists before accessing 'time'
+        if 'lastupdated' not in settings or not isinstance(settings['lastupdated'], dict):
+            settings['lastupdated'] = {}
+        settings['lastupdated']['time'] = math.trunc(time.time())
 
-	"""
-	settings['lastupdated']['time'] = math.trunc(time.time())
+        # Use ensure_ascii=False if your settings might contain non-ASCII chars
+        json_data_string = json.dumps(settings, indent=2, sort_keys=True, ensure_ascii=False)
 
-	json_data_string = json.dumps(settings, indent=2, sort_keys=True)
-	with open("settings.json", 'w') as settings_file:
-		settings_file.write(json_data_string)
+        # Use the defined path and specify encoding
+        with open('settings.json', 'w', encoding='utf-8') as settings_file:
+            settings_file.write(json_data_string)
+
+        print(f"Successfully wrote settings to {'settings.json'}")
+        return True # Explicitly return True on success
+
+    except TypeError as e:
+        print(f"ERROR: Data type error writing settings: {e}")
+        print("Settings data that caused error:", settings) # Log the problematic data
+        return False # Return False on error
+    except IOError as e:
+        print(f"ERROR: File I/O error writing settings to {'settings.json'}: {e}")
+        return False # Return False on error
+    except Exception as e:
+        print(f"ERROR: Unexpected error writing settings: {e}")
+        import traceback
+        traceback.print_exc()
+        return False # Return False on error
+
+
 
 def backup_settings():
 	# Copy current settings file to a backup copy in /[BACKUP_PATH]/PiFire_[DATE]_[TIME].json 
@@ -1140,6 +1233,48 @@ def upgrade_settings(prev_ver, settings, settings_default):
 		settings['globals'].pop('shutdown_timer', None)
 		settings['shutdown']['auto_power_off'] = settings['globals'].get('auto_power_off', settings_default['shutdown']['auto_power_off'])
 		settings['globals'].pop('auto_power_off', None)
+	''' Check if upgrading from v1.7.x '''
+	if (prev_ver[0] <=1 and prev_ver[1] <= 7):
+		''' Force running the configuration wizard again '''
+		settings['globals']['first_time_setup'] = True
+		''' Create platform section in settings with defaults '''
+		settings['platform'] = settings_default['platform']
+		''' Move platform global variables to platform section '''
+		if settings['globals'].get('buttonslevel', None) is not None:
+			settings['platform']['buttonslevel'] = settings['globals'].get('buttonslevel', 'HIGH')
+			settings['globals'].pop('buttonslevel')
+		if settings['globals'].get('dc_fan', None) is not None:
+			settings['platform']['dc_fan'] = settings['globals'].get('dc_fan', False)
+			settings['globals'].pop('dc_fan')
+		if settings['globals'].get('real_hw', None) is not None:
+			settings['platform']['real_hw'] = settings['globals'].get('real_hw', True)
+			settings['globals'].pop('real_hw')
+		if settings['globals'].get('standalone', None) is not None:
+			settings['platform']['standalone'] = settings['globals'].get('standalone', True)
+			settings['globals'].pop('standalone')
+		if settings['globals'].get('triggerlevel', None) is not None:
+			settings['platform']['triggerlevel'] = settings['globals'].get('triggerlevel', 'LOW')
+			settings['globals'].pop('triggerlevel')
+		''' Move pin definitions to platform section'''
+		if settings.get('dev_pins', None) is not None:
+			updated_dict = deep_update(settings['platform']['devices'], settings['dev_pins'])
+			settings['platform']['devices'] = updated_dict
+			settings.pop('dev_pins')
+		if settings.get('inpins', None) is not None:
+			updated_dict = deep_update(settings['platform']['inputs'], settings['inpins'])
+			settings['platform']['inputs'] = updated_dict
+			settings.pop('inpins')
+		if settings.get('outpins', None) is not None:
+			updated_dict = deep_update(settings['platform']['outputs'], settings['outpins'])
+			settings['platform']['outputs'] = updated_dict
+			settings.pop('outpins')
+		''' Migrate module settings for the appropriate module support '''
+		settings['platform']['current'] = 'custom'  # Since we do not know what PCB / System is installed on upgrade, set to custom 
+		if settings['modules']['grillplat'] == 'prototype':
+			settings['platform']['system_type'] = 'prototype'
+		else: 
+			settings['platform']['system_type'] = 'raspberry_pi_all'
+			settings['modules']['grillplat'] == 'raspberry_pi_all'
 
 	''' Import any new probe profiles '''
 	for profile in list(settings_default['probe_settings']['probe_profiles'].keys()):
@@ -1650,7 +1785,7 @@ def is_real_hardware(settings=None):
 	if settings == None:
 		settings = read_settings()
 
-	return True if settings['globals']['real_hw'] else False 
+	return True if settings['platform']['real_hw'] else False 
 
 def restart_scripts():
 	"""
@@ -1926,10 +2061,12 @@ def read_status(init=False):
 	global cmdsts
 
 	if init:
+		settings = read_settings()
+		pellet_db = read_pellet_db()
 		status = {
 		  	"s_plus": False,
-  			"hopper_level": 100,
-			"units": "F",
+  			"hopper_level": pellet_db['current']['hopper_level'],
+			"units": settings['globals']['units'],
 			"mode": "Stop",
 			"recipe": False,
 			"startup_timestamp" : 0,
@@ -2016,7 +2153,8 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 	data['data'] = {}
 
 	control = read_control()
-	settings = read_settings() 
+	settings = read_settings()
+	status = read_status()
 	
 	''' Populate any empty args with None just in case '''
 	num_args = len(arglist)
@@ -2118,6 +2256,7 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 				'start' : control['timer']['start'], 
 				'paused' : control['timer']['paused'],
 				'end' : control['timer']['end'], 
+				'expired' : control['timer']['expired'],
 				'shutdown' : control['notify_data'][]['shutdown'],
 				'keep_warm' : control['notify_data'][]['keep_warm'],
 			}
@@ -2125,6 +2264,7 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 			data['data']['start'] = control['timer']['start']
 			data['data']['paused'] = control['timer']['paused']
 			data['data']['end'] = control['timer']['end']
+			data['data']['expired'] = control['timer']['expired']
 			''' Get index of timer object '''
 			for index, notify_obj in enumerate(control['notify_data']):
 				if notify_obj['type'] == 'timer':
@@ -2431,6 +2571,7 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 				# If starting new timer
 				if control['timer']['paused'] == 0:
 					control['timer']['start'] = now
+					control['timer']['expired'] = False # Reset expired flag if new timer is started
 					if is_float(arglist[2]):
 						seconds = int(float(arglist[2]))
 						control['timer']['end'] = now + seconds
@@ -2454,6 +2595,7 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 					control['timer']['start'] = 0
 					control['timer']['end'] = 0
 					control['timer']['paused'] = 0
+					control['timer']['expired'] = False
 					control['notify_data'][index]['shutdown'] = False
 					control['notify_data'][index]['keep_warm'] = False
 					write_log('Timer cleared.')
@@ -2463,6 +2605,7 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 				control['timer']['start'] = 0
 				control['timer']['end'] = 0
 				control['timer']['paused'] = 0
+				control['timer']['expired'] = False
 				control['notify_data'][index]['shutdown'] = False
 				control['notify_data'][index]['keep_warm'] = False
 				write_log('Timer stopped.')
@@ -2576,3 +2719,56 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 		data['message'] = f'Action [{action}] not valid/recognized.'
 
 	return data
+
+def set_nested_key_value(data, key_list, value):
+	"""
+	Sets the value of a key in a nested dictionary and returns the modified dictionary.
+
+	Args:
+		data: The dictionary to modify.
+		key_list: A list of keys representing the path to the nested key.
+		value: The value to assign to the nested key.
+
+	Returns:
+		The modified dictionary.
+
+	Raises:
+		KeyError: If any key in the path is not found in the dictionary.
+	"""
+	if not key_list:
+		return data  # Reached the end of the key list, return the data
+
+	current_key = key_list[0]
+	# Check if the key exists and is a dictionary (except for the last key)
+	if current_key not in data or (len(key_list) > 1 and not isinstance(data[current_key], dict)):
+		raise KeyError(f"Key '{current_key}' not found or not a dictionary")
+
+	# Check if we reached the bottom level (last key in the list)
+	if len(key_list) == 1:
+		data[current_key] = value
+	else:
+		# Recursive call for nested dictionaries
+		data[current_key] = set_nested_key_value(data[current_key], key_list[1:], value)
+
+	return data
+
+def read_generic_key(key):
+	"""
+	Read generic data from Redis DB
+	:param key: key name
+	"""
+	global cmdsts
+
+	value = json.loads(cmdsts.get(key))
+
+	return value
+
+def write_generic_key(key, value):
+	"""
+	Write generic data to Redis DB
+	:param key: key name
+	:parma value: value to write
+	"""
+	global cmdsts
+
+	cmdsts.set(key, json.dumps(value))
