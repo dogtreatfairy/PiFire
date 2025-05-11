@@ -101,7 +101,9 @@ def default_settings():
 		'boot_to_monitor' : False,  # Set to True to boot directly into monitor mode
 		'prime_ignition' : False,  # Set to True to enable the igniter in prime & startup mode
 		'updated_message' : False,   # Set to True to display a pop-up message after the system has been updated 
-		'venv' : False,  # Set to True if running in virtual environment (needed for Raspberry Pi OS Bookworm)
+		'venv' : True,  # Set to True if running in virtual environment (needed for Raspberry Pi OS Bookworm)
+		'python_exec' : '.venv/bin/python',  # Path to the python executable
+		'uv' : True,  # Set to True to enable UV for pip install
 	}
 
 	if os.path.exists('bin'):
@@ -222,7 +224,9 @@ def default_settings():
 		'maxstartuptemp' : 100, # User Defined. Take this value if the startup temp is higher than maxstartuptemp
 		'maxtemp' : 550, 		# User Defined. If temp exceeds value in any mode, shut off. (including monitor mode)
 		'reigniteretries' : 1, 	# Number of tries to reignite grill if it has gone below the safe temp (0 to disable)
-		'startup_check' : True	# True = Enabled
+		'startup_check' : True,	# True = Enabled
+		'allow_manual_changes' : False,  # Allow the user to change outputs manually while grill is running
+		'manual_override_time' : 30  # Number of seconds to override the controller with manual changes
 	}
 
 	settings['pelletlevel'] = {
@@ -479,6 +483,8 @@ def default_control():
 		'step_data' : {}
 	}
 
+	control['lid_open_toggle'] = False  # Request to set lid_open so that the controller will pause 
+
 	control['status'] = ''
 
 	control['probe_profile_update'] = False
@@ -486,6 +492,8 @@ def default_control():
 	control['settings_update'] = False
 
 	control['distance_update'] = False
+
+	control['controller_update'] = False  # Used to indicate that the controller config/cycle data has been updated
 
 	control['units_change'] = False  	# Used to indicate that a units change has been requested
 
@@ -506,7 +514,6 @@ def default_control():
 		'start' : 0,
 		'paused' : 0,
 		'end' : 0,
-		'expired' : False,
 		'shutdown' : False 
 	}
 
@@ -542,18 +549,33 @@ def default_notify(settings):
 
 	''' Build list of probe notification data '''
 
-	for probe in probe_list:
-		notify_info = {
-			'label' : probe[0],
-			'name' : probe[1], 
-			'type' : 'probe', 
-			'req' : False, 
-			'target' : 0,
-			'eta' : None,
-			'shutdown' : False,
-			'keep_warm' : False, 
-		}
-		notify_data.append(notify_info)
+	for probe in settings['probe_settings']['probe_map']['probe_info']:
+		if probe['type'] != 'Aux':
+			notify_info = {
+				'label' : probe['label'],
+				'name' : probe['name'], 
+				'type' : 'probe', 
+				'req' : False, 
+				'target' : 0,
+				'eta' : None,
+				'shutdown' : False,
+				'keep_warm' : False,
+				'reignite' : False,
+				'condition' : 'equal_above'
+			}
+			notify_data.append(notify_info)
+
+			limit_high = notify_info.copy()  # Copy notify_info object into a new object
+			limit_high['type'] = 'probe_limit_high'
+			limit_high['condition'] = 'equal_above'
+			limit_high['triggered'] = False
+			notify_data.append(limit_high)
+
+			limit_low = notify_info.copy()
+			limit_low['type'] = 'probe_limit_low'
+			limit_low['condition'] = 'equal_below'
+			limit_low['triggered'] = False
+			notify_data.append(limit_low)
 
 	''' Add Timer notification data to list '''
 	notify_info = {
@@ -780,99 +802,49 @@ def generate_uuid():
 
 def read_control(flush=False):
 	"""
-	Read Control from Redis DB. Falls back to default_control() on errors.
+	Read Control from Redis DB
 
-	:param flush: True to delete and re-initialize control data in Redis. False otherwise.
-	:return: control dictionary.
+	:param flush: True to clean control. False otherwise
+	:return: control
 	"""
 	global cmdsts
-	# Assumes default_control() is a function defined elsewhere that returns a valid default control dict.
 
 	try:
 		if flush:
-			print("INFO: Flushing control data in Redis.")
 			# Remove all control structures in Redis DB (not history or current)
 			cmdsts.delete('control:general')
 			cmdsts.delete('control:command')
 			cmdsts.delete('control:write')
 			cmdsts.delete('control:systemq')
 			cmdsts.delete('control:systemo')
-			# The following set's no persistence so that we don't get writes to the disk / SDCard
-			# These operations might require specific Redis permissions.
-			try:
-				cmdsts.config_set('appendonly', 'no')
-				cmdsts.config_set('save', '')
-			except Exception as e_config:
-				print(f"WARN: Could not set Redis config during flush: {e_config}")
+			# The following set's no persistence so that we don't get writes to the disk / SDCard 
+			cmdsts.config_set('appendonly', 'no')
+			cmdsts.config_set('save', '')
 
 			control = default_control()
-			# write_control now returns True/False.
-			# If this internal write on flush fails, it will be logged by write_control.
-			if not write_control(control, direct_write=True, origin='read_control_flush'):
-				print("ERROR: Failed to write default_control during flush operation in read_control.")
-				# Depending on requirements, you might want to raise an error here or ensure 'control' is still valid.
-		else:
-			control_json = cmdsts.get('control:general')
-			if control_json is None:
-				print("WARN: 'control:general' not found in Redis. Falling back to default_control.")
-				control = default_control()
-			else:
-				try:
-					control = json.loads(control_json)
-				except json.JSONDecodeError as e_json:
-					print(f"ERROR: Failed to decode JSON from 'control:general': {e_json}. Falling back to default_control.")
-					control = default_control()
-	except Exception as e: # Catch other potential errors (e.g., Redis connection issues)
-		print(f"ERROR: Exception in read_control: {e}. Falling back to default_control.")
-		# import traceback # Uncomment if you want to print the full traceback here too
-		# traceback.print_exc()
+			write_control(control, direct_write=True, origin='common')
+		else: 
+			control = json.loads(cmdsts.get('control:general'))
+	except:
 		control = default_control()
 
-	return control
+	return(control)
 
 def write_control(control, direct_write=False, origin='unknown'):
 	"""
-	Write Control data. If direct_write is False, it pushes to a Redis queue.
-	Otherwise, it writes directly to 'control:general' in Redis.
+	Read Control from Redis DB
 
-	:param control: Control Dictionary to write.
-	:param direct_write: Boolean. If True, writes directly to 'control:general'.
-						 If False, pushes to 'control:write' queue.
-	:param origin: String. Identifier for the source of the control change.
-	:return: True if successful, False otherwise.
+	:param control: Control Dictionary
+	:param direct_write:  If set to true, write directly to the control data.  Else, write the control data to a command queue.  Defaults to false.  
 	"""
 	global cmdsts
 
-	try:
-		if not isinstance(control, dict):
-			print(f"ERROR: write_control received non-dictionary data for control: {type(control)}")
-			return False
-
-		if direct_write:
-			print(f"DEBUG: write_control (direct_write=True, origin='{origin}') writing to 'control:general'")
-			cmdsts.set('control:general', json.dumps(control))
-			# Most redis clients (like redis-py) will raise an exception on critical failure for .set().
-			# If it could return a falsy value on failure without an exception, you'd check the result.
-		else:
-			# To avoid modifying the original dictionary that might be used by the caller (post_app_data)
-			# after this function returns (e.g., for broadcasting), we make a copy.
-			control_to_queue = control.copy()
-			control_to_queue['origin'] = origin # Add origin to the data being queued
-			print(f"DEBUG: write_control (direct_write=False, origin='{origin}') pushing to 'control:write' queue")
-			cmdsts.rpush('control:write', json.dumps(control_to_queue))
-			# Similar to .set(), .rpush in redis-py usually returns the new length of the list
-			# or raises an exception on failure.
-		return True # Explicitly return True on perceived success
-	except json.JSONEncodeError as e_json_enc:
-		print(f"ERROR: JSON encoding failed in write_control (origin='{origin}', direct_write={direct_write}): {e_json_enc}")
-		import traceback
-		traceback.print_exc()
-		return False
-	except Exception as e: # Catch Redis errors or other unexpected issues
-		print(f"ERROR: Exception in write_control (origin='{origin}', direct_write={direct_write}): {e}")
-		import traceback
-		traceback.print_exc()
-		return False
+	if direct_write: 
+		cmdsts.set('control:general', json.dumps(control))
+	else: 
+		# Add changes to control write queue 
+		control['origin'] = origin 
+		cmdsts.rpush('control:write', json.dumps(control))
 
 def execute_control_writes():
 	"""
@@ -1104,42 +1076,17 @@ def read_settings(filename='settings.json', init=False, retry_count=0):
 	return(settings)
 
 def write_settings(settings):
-    """
-    Write all settings to JSON file
+	"""
+	Write all settings to JSON file
 
-    :param settings: Settings dictionary
-    :return: True on success, False on failure
-    """
-    try:
-        # Ensure 'lastupdated' dictionary exists before accessing 'time'
-        if 'lastupdated' not in settings or not isinstance(settings['lastupdated'], dict):
-            settings['lastupdated'] = {}
-        settings['lastupdated']['time'] = math.trunc(time.time())
+	:param settings: Settings
 
-        # Use ensure_ascii=False if your settings might contain non-ASCII chars
-        json_data_string = json.dumps(settings, indent=2, sort_keys=True, ensure_ascii=False)
+	"""
+	settings['lastupdated']['time'] = math.trunc(time.time())
 
-        # Use the defined path and specify encoding
-        with open('settings.json', 'w', encoding='utf-8') as settings_file:
-            settings_file.write(json_data_string)
-
-        print(f"Successfully wrote settings to {'settings.json'}")
-        return True # Explicitly return True on success
-
-    except TypeError as e:
-        print(f"ERROR: Data type error writing settings: {e}")
-        print("Settings data that caused error:", settings) # Log the problematic data
-        return False # Return False on error
-    except IOError as e:
-        print(f"ERROR: File I/O error writing settings to {'settings.json'}: {e}")
-        return False # Return False on error
-    except Exception as e:
-        print(f"ERROR: Unexpected error writing settings: {e}")
-        import traceback
-        traceback.print_exc()
-        return False # Return False on error
-
-
+	json_data_string = json.dumps(settings, indent=2, sort_keys=True)
+	with open("settings.json", 'w') as settings_file:
+		settings_file.write(json_data_string)
 
 def backup_settings():
 	# Copy current settings file to a backup copy in /[BACKUP_PATH]/PiFire_[DATE]_[TIME].json 
@@ -1275,6 +1222,27 @@ def upgrade_settings(prev_ver, settings, settings_default):
 		else: 
 			settings['platform']['system_type'] = 'raspberry_pi_all'
 			settings['modules']['grillplat'] == 'raspberry_pi_all'
+
+	''' Check if upgrading from v1.9.0 build 32 '''
+	if (prev_ver[0] ==1 and prev_ver[1] == 9 and settings['versions'].get('build', 0) <= 32):
+		for index, device in enumerate(settings['probe_settings']['probe_map']['probe_devices']):
+			if device['module'] == 'bt_meater_alt':
+				settings['probe_settings']['probe_map']['probe_devices'][index]['module'] = 'bt_meater'
+			elif device['module'] == 'bt_meater':
+				settings['probe_settings']['probe_map']['probe_devices'][index]['module'] = 'bt_meater_exp'
+
+	''' Check if upgrading from previous to v1.10 or from v1.10.0 build 0 '''
+	if (prev_ver[0] == 1 and prev_ver[1] == 10 and settings['versions'].get('build', 0) == 0) or \
+		(prev_ver[0] == 1 and prev_ver[1] < 10):
+		''' Setup new Python Exec and UV settings '''
+		if settings['globals'].get('venv', False):
+			''' If using VENV, set the python_exec to the bin/python '''
+			settings['globals']['python_exec'] = 'bin/python'
+			settings['globals']['uv'] = False
+		else:
+			settings['globals']['python_exec'] = 'python'
+			settings['globals']['uv'] = False
+			# TODO: Upgrade to VENV for older configs? 
 
 	''' Import any new probe profiles '''
 	for profile in list(settings_default['probe_settings']['probe_profiles'].keys()):
@@ -2063,8 +2031,10 @@ def read_status(init=False):
 	if init:
 		settings = read_settings()
 		pellet_db = read_pellet_db()
+		hopper_level_enabled = False if settings['modules']['dist'] == 'none' else True
 		status = {
 		  	"s_plus": False,
+			"hopper_level_enabled": hopper_level_enabled,
   			"hopper_level": pellet_db['current']['hopper_level'],
 			"units": settings['globals']['units'],
 			"mode": "Stop",
@@ -2111,6 +2081,86 @@ def get_probe_info(probe_info):
 
 	return probe_structure 
 
+def read_probe_status(probe_info):
+	"""
+	Creates a structured status report for all probes in the system by combining probe configuration
+	information with current device status information.
+
+	Args:
+		probe_info (list): List of probe configuration dictionaries containing information about each
+			probe such as type, label, device, etc.
+
+	Returns:
+		dict: A nested dictionary containing probe status information organized by probe type:
+			{
+				'P': {    # Primary probes
+					'<probe_label>': {
+						'status': {},
+						'config': {},
+						'enabled': bool,
+						'profile': str or None,
+						'port': str or None,
+						'type': str or None,
+						'device': str or None,
+						'label': str or None,
+						'name': str or None
+					}
+				},
+				'F': {},  # Food probes (same structure as P)
+				'AUX': {} # Auxiliary probes (same structure as P)
+			}
+
+	Example:
+		probe_info = [
+			{
+				'type': 'Primary',
+				'label': 'Grill',
+				'device': 'device1',
+				...
+			},
+			...
+		]
+		status = read_probe_status(probe_info)
+		# Returns structured status information for all probes
+	"""
+	# Get current device status information from Redis
+	probe_device_info = read_generic_key('probe_device_info')
+	#print(f'Probe Device Info: {probe_device_info}')
+
+	# Initialize the status structure
+	probe_status = {
+		'P': {},    # Primary probes
+		'F': {},    # Food probes
+		'AUX': {}   # Auxiliary probes
+	}
+
+	# Process each probe in the configuration
+	for probe in probe_info:
+		# Determine section based on probe type
+		if probe['type'] == 'Primary':
+			section = 'P'
+		elif probe['type'] == 'Food':
+			section = 'F'
+		elif probe['type'] == 'Aux':
+			section = 'AUX'
+		probe_device = probe['device']
+
+		# Find matching device status and combine with probe configuration
+		for device in probe_device_info:
+			if device['device'] == probe_device:
+				probe_status[section][probe['label']] = {}  # Initialize dict for this probe
+				probe_status[section][probe['label']]['status'] = device.get('status', {})
+				probe_status[section][probe['label']]['config'] = device.get('config', {})
+				probe_status[section][probe['label']]['enabled'] = probe.get('enabled', True)
+				probe_status[section][probe['label']]['profile'] = probe.get('profile', None)
+				probe_status[section][probe['label']]['port'] = probe.get('port', None)
+				probe_status[section][probe['label']]['type'] = probe.get('type', None)
+				probe_status[section][probe['label']]['device'] = probe.get('device', None)
+				probe_status[section][probe['label']]['label'] = probe.get('label', None)
+				probe_status[section][probe['label']]['name'] = probe.get('name', None)
+
+	return probe_status
+
 # Borrowed from: https://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
 # Attributed to Alex Martelli and Alex Telon 
 def deep_update(dictionary, updates):
@@ -2153,8 +2203,7 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 	data['data'] = {}
 
 	control = read_control()
-	settings = read_settings()
-	status = read_status()
+	settings = read_settings() 
 	
 	''' Populate any empty args with None just in case '''
 	num_args = len(arglist)
@@ -2256,7 +2305,6 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 				'start' : control['timer']['start'], 
 				'paused' : control['timer']['paused'],
 				'end' : control['timer']['end'], 
-				'expired' : control['timer']['expired'],
 				'shutdown' : control['notify_data'][]['shutdown'],
 				'keep_warm' : control['notify_data'][]['keep_warm'],
 			}
@@ -2264,7 +2312,6 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 			data['data']['start'] = control['timer']['start']
 			data['data']['paused'] = control['timer']['paused']
 			data['data']['end'] = control['timer']['end']
-			data['data']['expired'] = control['timer']['expired']
 			''' Get index of timer object '''
 			for index, notify_obj in enumerate(control['notify_data']):
 				if notify_obj['type'] == 'timer':
@@ -2462,10 +2509,22 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 				control['s_plus'] = False 
 			write_control(control, direct_write=direct_write, origin=origin)
 		
-		elif arglist[0] == 'notify':
+		elif arglist[0] == 'lid_open':
+			'''
+			Lid Open Toggle
+			/api/set/lid_open/toggle
+			'''
+			if arglist[1] == 'toggle':
+				control['lid_open_toggle'] = True
+			else:
+				control['lid_open_toggle'] = True 
+
+			write_control(control, direct_write=direct_write, origin=origin)
+
+		elif arglist[0] in ['notify', 'limit_high', 'limit_low']:
 			'''
 			Notify Settings
-			/api/set/notify/{object}/ where object = probe label, 'Timer', 'Hopper' 
+			/api/set/[notify:limit_high:limit_low]/{object}/ where object = probe label, 'Timer', 'Hopper' 
 
 			/api/set/notify/{object}/req/{true/false} 
 			/api/set/notify/{object}/target/{value}  (not valid for Timer or Hopper)
@@ -2474,33 +2533,45 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 			'''
 
 			if arglist[1] is not None:
+				if arglist[0] == 'limit_high':
+					limit = 'probe_limit_high'
+				elif arglist[0] == 'limit_low':
+					limit = 'probe_limit_low'
+				else:
+					limit = None
 				found = False
 				for index, object in enumerate(control['notify_data']):
 					if object['label'] == arglist[1]:
-						print('FOUND')
-						found = True
-						if arglist[2] in ['req', 'shutdown', 'keep_warm']:
-							if arglist[3] == 'true':
-								control['notify_data'][index][arglist[2]] = True
-							else: 
-								control['notify_data'][index][arglist[2]] = False
-						elif arglist[2] == 'target' and arglist[1] not in ['Timer', 'Hopper']:
-							if is_float(arglist[3]):
-								if settings['globals']['units'] == 'F':
-									control['notify_data'][index]['target'] = int(float(arglist[3]))
-								else:
-									control['primary_setpoint'] = float(arglist[3])
-							else:
-								data['result'] = 'ERROR'
-								data['message'] = f'Notify object target value invalid or missing.'
+						if limit is not None:
+							if object['type'] == limit:
+								found = True
+								break
 						else:
-							data['result'] = 'ERROR'
-							data['message'] = f'Notify object update failed.'
-						break
+							found = True
+							break
+			
 				if not found:
 					data['result'] = 'ERROR'
 					data['message'] = f'Notify object label {arglist[1]} was not found.'
 				else:
+					print(f'{object["label"]} FOUND')
+					if arglist[2] in ['req', 'shutdown', 'keep_warm', 'reignite']:
+						if arglist[3] == 'true':
+							control['notify_data'][index][arglist[2]] = True
+						else: 
+							control['notify_data'][index][arglist[2]] = False
+					elif arglist[2] == 'target' and arglist[1] not in ['Timer', 'Hopper']:
+						if is_float(arglist[3]):
+							if settings['globals']['units'] == 'F':
+								control['notify_data'][index]['target'] = int(float(arglist[3]))
+							else:
+								control['primary_setpoint'] = float(arglist[3])
+						else:
+							data['result'] = 'ERROR'
+							data['message'] = f'Notify object target value invalid or missing.'
+					else:
+						data['result'] = 'ERROR'
+						data['message'] = f'Notify object update failed.'
 					write_control(control, direct_write=False, origin=origin)
 			else:
 				data['result'] = 'ERROR'
@@ -2571,7 +2642,6 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 				# If starting new timer
 				if control['timer']['paused'] == 0:
 					control['timer']['start'] = now
-					control['timer']['expired'] = False # Reset expired flag if new timer is started
 					if is_float(arglist[2]):
 						seconds = int(float(arglist[2]))
 						control['timer']['end'] = now + seconds
@@ -2595,7 +2665,6 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 					control['timer']['start'] = 0
 					control['timer']['end'] = 0
 					control['timer']['paused'] = 0
-					control['timer']['expired'] = False
 					control['notify_data'][index]['shutdown'] = False
 					control['notify_data'][index]['keep_warm'] = False
 					write_log('Timer cleared.')
@@ -2605,7 +2674,6 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 				control['timer']['start'] = 0
 				control['timer']['end'] = 0
 				control['timer']['paused'] = 0
-				control['timer']['expired'] = False
 				control['notify_data'][index]['shutdown'] = False
 				control['notify_data'][index]['keep_warm'] = False
 				write_log('Timer stopped.')
@@ -2630,46 +2698,71 @@ def process_command(action=None, arglist=[], origin='unknown', direct_write=Fals
 			'''
 			Manual Control
 			Note: Must already be in Manual mode (see set/mode command)
-			/api/set/manual/power/{true/false}
-			/api/set/manual/igniter/{true/false}
-			/api/set/manual/fan/{true/false}
-			/api/set/manual/auger/{true/false}
+			/api/set/manual/power/{true/false/toggle}
+			/api/set/manual/igniter/{true/false/toggle}
+			/api/set/manual/fan/{true/false/toggle}
+			/api/set/manual/auger/{true/false/toggle}
 			/api/set/manual/pwm/{speed}
 			'''
 
-			if control['mode'] == 'Manual':
+			if control['mode'] == 'Manual' or settings['safety']['allow_manual_changes']:
 				if arglist[1] == 'power':
-					control['manual']['change'] = True
+					control['manual']['change'] = 'power'
+					if arglist[2] == 'toggle':
+						status = read_status()
+						if status['outpins']['power']:
+							arglist[2] = 'false'
+						else:
+							arglist[2] = 'true'
 					if arglist[2] == 'true':
-						control['manual']['power'] = True
+						control['manual']['output'] = True
 					else:
-						control['manual']['power'] = False 
+						control['manual']['output'] = False 
 				elif arglist[1] == 'igniter':
-					control['manual']['change'] = True
+					control['manual']['change'] = 'igniter'
+					if arglist[2] == 'toggle':
+						status = read_status()
+						if status['outpins']['igniter']:
+							arglist[2] = 'false'
+						else:
+							arglist[2] = 'true'
 					if arglist[2] == 'true':
-						control['manual']['igniter'] = True
+						control['manual']['output'] = True
 					else:
-						control['manual']['igniter'] = False 
+						control['manual']['output'] = False 
 				elif arglist[1] == 'fan':
-					control['manual']['change'] = True
+					control['manual']['change'] = 'fan'
+					if arglist[2] == 'toggle':
+						status = read_status()
+						if status['outpins']['fan']:
+							arglist[2] = 'false'
+						else:
+							arglist[2] = 'true'
 					if arglist[2] == 'true':
-						control['manual']['fan'] = True
+						control['manual']['output'] = True
 					else:
-						control['manual']['fan'] = False 
+						control['manual']['output'] = False
 						control['manual']['pwm'] = 100
 				elif arglist[1] == 'auger':
-					control['manual']['change'] = True
+					control['manual']['change'] = 'auger'
+					if arglist[2] == 'toggle':
+						status = read_status()
+						if status['outpins']['auger']:
+							arglist[2] = 'false'
+						else:
+							arglist[2] = 'true'
 					if arglist[2] == 'true':
-						control['manual']['auger'] = True
+						control['manual']['output'] = True
 					else:
-						control['manual']['auger'] = False
+						control['manual']['output'] = False
 				elif arglist[1] == 'pwm' and is_float(arglist[2]):
-					control['manual']['change'] = True
+					control['manual']['change'] = 'pwm'
+					control['manual']['output'] = True
 					control['manual']['pwm'] = int(float(arglist[2]))
 				else:
 					data['result'] = 'ERROR'
 					data['message'] = f'Manual command not recognized or contained an error.'
-				if control['manual']['change']:
+				if control['manual']['change'] in ['power', 'igniter', 'fan', 'auger', 'pwm']:
 					write_control(control, direct_write=direct_write, origin=origin)
 
 			else:
