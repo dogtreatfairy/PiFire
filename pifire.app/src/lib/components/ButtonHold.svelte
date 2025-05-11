@@ -3,7 +3,7 @@
 	import { Modal } from '@sveltestrap/sveltestrap';
 	import { modalHold, focusSelect, enterSubmit } from '$lib/stores/modalStore.js';
 
-	$: currentMode = $grillControlData?.status_data?.mode  || 'Unknown';
+	$: currentMode = $grillControlData?.status_data?.mode || 'Unknown';
 	$: primarySetPoint = $grillControlData?.probe_info?.PSP || 0;
 	$: units = $settingsData?.globals?.units || 'F';
 	$: maxTemp = $settingsData?.globals?.max_temp || 500;
@@ -16,22 +16,29 @@
 	let setPointInputRef;
 	let _initialLoad = true;
 	let _setPoint = 0;
-	let error = ''; // Define the error variable
+	let error = '';
 
-	function _setPointInit () {
+	function _setPointInit() {
 		if (primarySetPoint > 0) {
 			_setPoint = primarySetPoint;
-		} else if (startToMode === 'Hold') {
-			_setPoint = primarySetPoint;
+		} else if (startToMode === 'Hold' && startToModeTemp > 0) {
+			_setPoint = startToModeTemp;
 		} else if (startupExitTemp > 0) {
 			_setPoint = startupExitTemp;
-		} else {
+		} else if (keepWarmTemp > 0) {
 			_setPoint = keepWarmTemp;
+		} else {
+			_setPoint = 200; // Default fallback
 		}
 	}
 
 	function _setTarget() {
-		const setPoint = parseInt(_setPoint); // Parse the set point value
+		const setPoint = parseInt(_setPoint);
+		if (isNaN(setPoint) || setPoint < 0 || setPoint > maxTemp) {
+			error = `Please enter a valid temperature between 0 and ${maxTemp} °${units}.`;
+			return;
+		}
+
 		const postdata = {
 			updated: true,
 			mode: 'Hold',
@@ -43,81 +50,92 @@
 		postAppData('update_action', 'control', postdata)
 			.then(response => {
 				console.log('Hold mode set successfully:', response);
-				modalHold.set(false); // Close the modal after success
+				modalHold.set(false);
+				error = '';
 			})
-			.catch(error => {
-				console.error('Failed to set Hold mode:', error);
-				error = 'Failed to set Hold mode. Please try again.'; // Update error message
+			.catch(err => {
+				console.error('Failed to set Hold mode:', err);
+				error = err.message || 'Failed to set Hold mode. Please try again.';
 			});
 	}
 
-	// Initial Input Value Logic
+	// Initialize input when modal opens
 	$: if ($modalHold && _initialLoad) {
-        error = '';
+		error = '';
 		_setPointInit();
 		_initialLoad = false;
-        setTimeout(() => {
-            if (setPointInputRef) {
-                setPointInputRef.focus();
-                setPointInputRef.select();
-            }
-        }, 100);
-    }
+		setTimeout(() => {
+			if (setPointInputRef && !document.activeElement) {
+				setPointInputRef.focus();
+				setPointInputRef.select();
+			}
+		}, 100);
+	}
 
 	$: if (!$modalHold) {
 		_initialLoad = true;
+		error = '';
 	}
 </script>
 
 <!-- Hold Button -->
-<button 
-	type="button" 
+<button
+	type="button"
 	class="btn border border-secondary nav-btn-height {currentMode === 'Hold' ? 'btn-success' : 'btn-outline-secondary'}"
-	id="hold_btn" 
+	id="hold_btn"
 	on:click={() => modalHold.set(true)}
 	aria-label="Hold Mode Modal"
 >
 	<i class="fas fa-crosshairs"></i>
-	<span class="ms-2 fw-semibold p-1" style="margin-bottom: 2px;" class:d-none={currentMode !== 'Hold'}>{primarySetPoint} &deg{units}</span>
+	<span class="ms-2 fw-semibold p-1" style="margin-bottom: 2px;" class:d-none={currentMode !== 'Hold'}>{primarySetPoint} °{units}</span>
 </button>
 
-<Modal 
+<Modal
 	body
 	keyboard
 	centered
 	header="Set Hold Temperature"
 	isOpen={$modalHold}
-	toggle={() => modalHold.set(false)}
-	autofocus={true}
+	toggle={() => {
+		modalHold.set(false);
+		_initialLoad = true;
+		error = '';
+	}}
 >
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="modal-body text-center" on:keypress={enterSubmit(_setTarget)}>
-        <div class="d-flex justify-content-center align-items-center mb-3">
-            <div class="me-2">
-                <label for="hoursInput" class="form-label">Hours</label>
-                <input
-                    id="_setPoint"
-                    bind:this={setPointInputRef}
-                    type="number"
-                    inputmode="numeric"
-                    pattern="[0-9]*"
-                    min="0"
-                    max={maxTemp}
-                    class="form-control text-center fs-1"
-                    bind:value={_setPoint}
-                />
-            </div>
-            <span class="fs-4 mx-1"> &deg{units}</span>
-        </div>
+	<div class="modal-body text-center">
+		{#if error}
+			<div class="alert alert-danger" role="alert">
+				{error}
+			</div>
+		{/if}
+		<div class="d-flex justify-content-center align-items-center mb-3">
+			<div class="me-2">
+				<label for="_setPoint" class="form-label">Temperature</label>
+				<input
+					id="_setPoint"
+					bind:this={setPointInputRef}
+					type="number"
+					inputmode="numeric"
+					pattern="[0-9]*"
+					min="0"
+					max={maxTemp}
+					class="form-control text-center fs-1"
+					bind:value={_setPoint}
+					on:keypress={enterSubmit(_setTarget)}
+				/>
+			</div>
+			<span class="fs-4 mx-1"> °{units}</span>
+		</div>
 	</div>
 	<div class="modal-footer">
 		<button
 			type="button"
 			class="btn btn-outline-secondary"
 			on:click={() => {
-							modalHold.set(false);
-							_initialLoad = true;
-						}}
+				modalHold.set(false);
+				_initialLoad = true;
+				error = '';
+			}}
 		>
 			Cancel
 		</button>

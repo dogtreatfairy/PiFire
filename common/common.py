@@ -780,49 +780,99 @@ def generate_uuid():
 
 def read_control(flush=False):
 	"""
-	Read Control from Redis DB
+	Read Control from Redis DB. Falls back to default_control() on errors.
 
-	:param flush: True to clean control. False otherwise
-	:return: control
+	:param flush: True to delete and re-initialize control data in Redis. False otherwise.
+	:return: control dictionary.
 	"""
 	global cmdsts
+	# Assumes default_control() is a function defined elsewhere that returns a valid default control dict.
 
 	try:
 		if flush:
+			print("INFO: Flushing control data in Redis.")
 			# Remove all control structures in Redis DB (not history or current)
 			cmdsts.delete('control:general')
 			cmdsts.delete('control:command')
 			cmdsts.delete('control:write')
 			cmdsts.delete('control:systemq')
 			cmdsts.delete('control:systemo')
-			# The following set's no persistence so that we don't get writes to the disk / SDCard 
-			cmdsts.config_set('appendonly', 'no')
-			cmdsts.config_set('save', '')
+			# The following set's no persistence so that we don't get writes to the disk / SDCard
+			# These operations might require specific Redis permissions.
+			try:
+				cmdsts.config_set('appendonly', 'no')
+				cmdsts.config_set('save', '')
+			except Exception as e_config:
+				print(f"WARN: Could not set Redis config during flush: {e_config}")
 
 			control = default_control()
-			write_control(control, direct_write=True, origin='common')
-		else: 
-			control = json.loads(cmdsts.get('control:general'))
-	except:
+			# write_control now returns True/False.
+			# If this internal write on flush fails, it will be logged by write_control.
+			if not write_control(control, direct_write=True, origin='read_control_flush'):
+				print("ERROR: Failed to write default_control during flush operation in read_control.")
+				# Depending on requirements, you might want to raise an error here or ensure 'control' is still valid.
+		else:
+			control_json = cmdsts.get('control:general')
+			if control_json is None:
+				print("WARN: 'control:general' not found in Redis. Falling back to default_control.")
+				control = default_control()
+			else:
+				try:
+					control = json.loads(control_json)
+				except json.JSONDecodeError as e_json:
+					print(f"ERROR: Failed to decode JSON from 'control:general': {e_json}. Falling back to default_control.")
+					control = default_control()
+	except Exception as e: # Catch other potential errors (e.g., Redis connection issues)
+		print(f"ERROR: Exception in read_control: {e}. Falling back to default_control.")
+		# import traceback # Uncomment if you want to print the full traceback here too
+		# traceback.print_exc()
 		control = default_control()
 
-	return(control)
+	return control
 
 def write_control(control, direct_write=False, origin='unknown'):
 	"""
-	Read Control from Redis DB
+	Write Control data. If direct_write is False, it pushes to a Redis queue.
+	Otherwise, it writes directly to 'control:general' in Redis.
 
-	:param control: Control Dictionary
-	:param direct_write:  If set to true, write directly to the control data.  Else, write the control data to a command queue.  Defaults to false.  
+	:param control: Control Dictionary to write.
+	:param direct_write: Boolean. If True, writes directly to 'control:general'.
+						 If False, pushes to 'control:write' queue.
+	:param origin: String. Identifier for the source of the control change.
+	:return: True if successful, False otherwise.
 	"""
 	global cmdsts
 
-	if direct_write: 
-		cmdsts.set('control:general', json.dumps(control))
-	else: 
-		# Add changes to control write queue 
-		control['origin'] = origin 
-		cmdsts.rpush('control:write', json.dumps(control))
+	try:
+		if not isinstance(control, dict):
+			print(f"ERROR: write_control received non-dictionary data for control: {type(control)}")
+			return False
+
+		if direct_write:
+			print(f"DEBUG: write_control (direct_write=True, origin='{origin}') writing to 'control:general'")
+			cmdsts.set('control:general', json.dumps(control))
+			# Most redis clients (like redis-py) will raise an exception on critical failure for .set().
+			# If it could return a falsy value on failure without an exception, you'd check the result.
+		else:
+			# To avoid modifying the original dictionary that might be used by the caller (post_app_data)
+			# after this function returns (e.g., for broadcasting), we make a copy.
+			control_to_queue = control.copy()
+			control_to_queue['origin'] = origin # Add origin to the data being queued
+			print(f"DEBUG: write_control (direct_write=False, origin='{origin}') pushing to 'control:write' queue")
+			cmdsts.rpush('control:write', json.dumps(control_to_queue))
+			# Similar to .set(), .rpush in redis-py usually returns the new length of the list
+			# or raises an exception on failure.
+		return True # Explicitly return True on perceived success
+	except json.JSONEncodeError as e_json_enc:
+		print(f"ERROR: JSON encoding failed in write_control (origin='{origin}', direct_write={direct_write}): {e_json_enc}")
+		import traceback
+		traceback.print_exc()
+		return False
+	except Exception as e: # Catch Redis errors or other unexpected issues
+		print(f"ERROR: Exception in write_control (origin='{origin}', direct_write={direct_write}): {e}")
+		import traceback
+		traceback.print_exc()
+		return False
 
 def execute_control_writes():
 	"""

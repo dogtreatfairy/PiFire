@@ -21,10 +21,11 @@
 
     onMount(() => {
         const updateClock = () => {
+            clearInterval(timerInterval); // Ensure any existing interval is cleared
+
             const mode = $grillControlData?.status_data?.mode || 'Unknown';
 
             if (['Stop', 'Manual', 'Monitor'].includes(mode)) {
-                clearInterval(timerInterval);
                 startupClock = '--:--:--';
                 return;
             }
@@ -118,9 +119,9 @@
                 {/if}
             </div>
             <div class="text-center outpin-item">
-                <span class="fa-stack" style="color: {currentMode === 'Smoke' ? 'rgb(175, 0, 175)' : 'var(--bs-secondary)'};">
+                <span class="fa-stack" style="color: {(currentMode === 'Smoke' || currentMode === 'Startup') ? 'rgb(175, 0, 175)' : 'var(--bs-secondary)'};">
                     <i class="far fa-square fa-stack-2x"></i>
-                    {#if pmode > 0 && currentMode === 'Smoke'}
+                    {#if currentMode === 'Smoke' || currentMode === 'Startup'}
                         <span class="fa-stack-1x fw-bold">{pmode}</span>
                     {:else}
                         <i class="fas fa-minus fa-stack-1x"></i>

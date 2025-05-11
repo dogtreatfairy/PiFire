@@ -1,9 +1,0 @@
-{
-    "cardPositions": {
-        "probe-ADC1": 1,
-        "probe-ADC0": 2,
-        "info-card": 3,
-        "probe-ADC2": 4,
-        "probe-ADC3": 5
-    }
-}
