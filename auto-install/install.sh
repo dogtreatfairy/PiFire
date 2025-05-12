@@ -2,11 +2,11 @@
 
 # Automatic Installation Script
 # Many thanks to the PiVPN project (pivpn.io) for much of the inspiration for this script
-# Run from https://raw.githubusercontent.com/nebhead/pifire/master/auto-install/install.sh
+# Run from https://raw.githubusercontent.com/dogtreatfairy/pifire/pifire-app/auto-install/install.sh
 #
 # Install with this command (from your Pi):
 #
-# curl https://raw.githubusercontent.com/nebhead/pifire/main/auto-install/install.sh | bash
+# curl https://raw.githubusercontent.com/dogtreatfairy/pifire/pifire-app/auto-install/install.sh | bash
 #
 # NOTE: Pre-Requisites to run Raspi-Config first.  See README.md.
 
@@ -71,7 +71,13 @@ echo "**                                                                     **"
 echo "**      Installing Dependencies... (This could take several minutes)   **"
 echo "**                                                                     **"
 echo "*************************************************************************"
-$SUDO apt install python3-dev python3-pip python3-venv python3-rpi.gpio python3-scipy nginx git supervisor ttf-mscorefonts-installer redis-server gfortran libatlas-base-dev libopenblas-dev liblapack-dev libopenjp2-7 libglib2.0-dev -y
+# Read apt packages from package.json and install them
+APT_PACKAGES=$(jq -r '.apt[]' /usr/local/bin/pifire/auto-install/package.json)
+$SUDO apt install -y $APT_PACKAGES
+
+# Read pip packages from package.json and install them
+PIP_PACKAGES=$(jq -r '.pip[]' /usr/local/bin/pifire/auto-install/package.json)
+uv pip install $PIP_PACKAGES
 
 # Grab project files
 clear
@@ -82,16 +88,45 @@ echo "**                                                                     **"
 echo "*************************************************************************"
 cd /usr/local/bin
 
-# Check if -dev option is used
-if [ "$1" = "-dev" ]; then
-    echo "Cloning development branch..."
-    # Replace the below command to fetch development branch
-    $SUDO git clone --depth 1 --branch development https://github.com/nebhead/pifire
+# Ask the user to select a GitHub user
+USER_LIST="1. nebhead\n2. dogtreatfairy\n3. other"
+USER_CHOICE=$(echo -e "$USER_LIST" | whiptail --title "Choose a GitHub User" --menu "Select the GitHub user to clone from:" 20 78 10 --notags 3>&1 1>&2 2>&3)
+
+# Determine the GitHub user
+if [ "$USER_CHOICE" = "1" ]; then
+    GITHUB_USER="nebhead"
+elif [ "$USER_CHOICE" = "2" ]; then
+    GITHUB_USER="dogtreatfairy"
 else
-    echo "Cloning main branch..."
-    # Use a shallow clone to reduce download size
-    $SUDO git clone --depth 1 https://github.com/nebhead/pifire
+    GITHUB_USER=$(whiptail --inputbox "Enter the GitHub username to clone from:" 8 78 --title "Custom GitHub User" 3>&1 1>&2 2>&3)
 fi
+
+# List all branches on the server
+BRANCHES=$(git ls-remote --heads https://github.com/$GITHUB_USER/pifire.git | awk -F'/' '{print $NF}' | sort)
+
+# Prepare the list with numbering
+BRANCH_LIST="1. main (nh-dev-id)\n"
+COUNT=2
+for BRANCH in $BRANCHES; do
+    if [ "$BRANCH" != "main" ]; then
+        BRANCH_LIST+="$COUNT. $BRANCH\n"
+        COUNT=$((COUNT + 1))
+    fi
+done
+
+# Display the list and ask the user to choose
+CHOICE=$(echo -e "$BRANCH_LIST" | whiptail --title "Choose a Branch" --menu "Select the branch to install:" 20 78 10 --notags 3>&1 1>&2 2>&3)
+
+# Determine the branch to clone
+if [ "$CHOICE" = "1" ]; then
+    SELECTED_BRANCH="main"
+else
+    SELECTED_BRANCH=$(echo -e "$BRANCH_LIST" | awk -v choice="$CHOICE" 'NR==choice {print $2}')
+fi
+
+# Clone the selected branch
+echo "Cloning branch: $SELECTED_BRANCH from user: $GITHUB_USER"
+$SUDO git clone --depth 1 --branch "$SELECTED_BRANCH" https://github.com/$GITHUB_USER/pifire.git
 
 # Setup Python VENV & Install Python dependencies
 clear
@@ -120,16 +155,29 @@ echo " - Setting up VENV"
 cd /usr/local/bin/pifire
 uv venv --system-site-packages
 
+# Determine the appropriate Python command based on the OS
+if [[ $(uname -a) == *"raspberrypi"* ]]; then
+    PYTHON_CMD="python"
+else
+    PYTHON_CMD="python3"
+fi
+
 echo " - Installing module dependencies... "
 # Install module dependencies 
-if ! python -c "import sys; assert sys.version_info[:2] >= (3,11)" > /dev/null; then
+if ! $PYTHON_CMD -c "import sys; assert sys.version_info[:2] >= (3,11)" > /dev/null; then
     echo "System is running a python version lower than 3.11, installing eventlet==0.30.2";
-    uv pip install "eventlet==0.30.2"
+    uv $PYTHON_CMD -m pip install "eventlet==0.30.2"
 else
     echo "System is running a python version 3.11 or greater, installing latest eventlet"
-    uv pip install eventlet
-fi      
-uv pip install -r /usr/local/bin/pifire/auto-install/requirements.txt
+    uv $PYTHON_CMD -m pip install eventlet
+fi
+
+# Install pip packages from package.json
+PIP_PACKAGES=$(jq -r '.pip[]' /usr/local/bin/pifire/auto-install/package.json)
+uv $PYTHON_CMD -m pip install $PIP_PACKAGES
+
+# Install pip packages from requirements.txt
+uv $PYTHON_CMD -m pip install -r /usr/local/bin/pifire/auto-install/requirements.txt
 
 # Find all bluepy-helper executables in various possible locations
 BLUEPY_HELPERS=$(find /usr/local/bin/pifire/.venv/lib/ -path "*/bluepy/bluepy-helper" 2>/dev/null)
