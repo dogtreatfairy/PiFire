@@ -15,7 +15,7 @@
 '''
 
 from common import *
-import pkg_resources
+from importlib.metadata import version, PackageNotFoundError
 import subprocess
 import argparse
 
@@ -313,10 +313,10 @@ def install_dependencies(current_version_string='0.0.0', current_build=None):
 			for section in version_info['dependencies']:
 				for module in version_info['dependencies'][section]['py_dependencies']:
 					try:
-						dist = pkg_resources.get_distribution(module)
-						print('{} ({}) is installed'.format(dist.key, dist.version))
-					except pkg_resources.DistributionNotFound:
-						print('{} is NOT installed'.format(module))
+						dist_version = version(module)
+						print(f'{module} ({dist_version}) is installed')
+					except PackageNotFoundError:
+						print(f'{module} is NOT installed')
 						py_dependencies.append(module)
 
 				for package in version_info['dependencies'][section]['apt_dependencies']:
@@ -524,4 +524,3 @@ if __name__ == "__main__":
 
 	else:
 		print('No Arguments Found. Use --help to see available arguments')
-

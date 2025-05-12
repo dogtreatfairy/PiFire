@@ -5,7 +5,7 @@ import copy
 from flask import request
 from flask_socketio import SocketIO
 from threading import Lock
-from common import *
+from common.common import *
 
 socketio = SocketIO()
 background_task_lock = Lock()
@@ -18,8 +18,6 @@ force_refresh = False
 SocketIO Section
 ==============================================================================
 '''
-# --- Global Variables (as provided by user) ---
-settings_file_path = 'settings.json' # Path to your main settings file
 
 @socketio.on("connect")
 def connect():
@@ -691,7 +689,7 @@ def post_app_data(action=None, type=None, json_data=None):
 				control.setdefault('timer', {})['start'] = 0
 				control['timer']['end'] = 0
 				control['timer']['paused'] = 0
-				control['timer']['expired'] = False  # Reset expired flag
+				control['timer']['expired'] = False
 				write_log(f'Timer stopped by {sid}.')
 				write_control(control, origin='app-socketio')
 				return {'response': {'result':'success'}}
@@ -704,16 +702,3 @@ def post_app_data(action=None, type=None, json_data=None):
 	else:
 		print(f"Error: Received request from {sid} without valid action. Action: '{action}', Type: '{type}'")
 		return {'response': {'result':'error', 'message':'Error: Received request without valid action'}}
-
-'''
-==============================================================================
-Main Program Start
-==============================================================================
-'''
-settings = read_settings(init=True)
-
-if __name__ == '__main__':
-	if is_real_hardware():
-		socketio.run(app, host='0.0.0.0')
-	else:
-		socketio.run(app, host='0.0.0.0', debug=True)

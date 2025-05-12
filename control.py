@@ -1272,18 +1272,7 @@ while True:
 	# Check if there are any notifications pending
 	check_notify(settings, control, pelletdb=pelletdb, grill_platform=grill_platform)
 
-	# Check if there is a timer running, see if it has expired, send notification and reset
-	for index, item in enumerate(control['notify_data']):
-		if item['type'] == 'timer' and item['req']:
-			if time.time() >= control['timer']['end']:
-				send_notifications("Timer_Expired", control, settings, pelletdb)
-				control['notify_data'][index]['req'] = False
-				control['timer']['start'] = 0
-				control['timer']['paused'] = 0
-				control['timer']['end'] = 0
-				control['notify_data'][index]['shutdown'] = False
-				control['notify_data'][index]['keep_warm'] = False
-				write_control(control, direct_write=True, origin='control')
+	# Removed timer check as it is now handled in the check_notify function
 
 	# Check if user changed hopper levels and update if required
 	if control['distance_update']:
