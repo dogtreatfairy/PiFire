@@ -1,0 +1,72 @@
+/* Ensure the grid background is transparent */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+    margin: 0 auto; /* Center the grid */
+    justify-content: center;
+}
+
+/* Ensure droppable areas have no background color */
+.dnd-droppable {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+/* Ensure draggable items have no background color */
+.dnd-draggable {
+    width: 100%;
+    cursor: move;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+	
+}
+
+/* Height variations */
+.item-height-1-3 {
+    height: 34%;
+}
+
+.item-height-2-3 {
+    height: 64%;
+}
+
+.item-height-3-3 {
+    height: 100%;
+}
+
+/* Small screens (sm) - 1 column */
+@media (max-width: 576px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Medium screens (md) - 2 columns */
+@media (min-width: 577px) and (max-width: 992px) {
+    .grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Large screens (lg) - 3 columns */
+@media (min-width: 993px) and (max-width: 1199px) {
+    .grid {
+        grid-template-columns: repeat(3, 1fr);
+        max-width: 95vw; /* Ensure the grid fits within the viewport */
+    }
+}
+
+/* Extra-large screens (xl) - 4 columns */
+@media (min-width: 1200px) {
+    .grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr)); /* Ensure 4 flexible columns */
+        max-width: 95vw; /* Ensure the grid fits within the viewport */
+    }
+}

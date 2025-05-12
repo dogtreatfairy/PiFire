@@ -54,6 +54,8 @@ include/
 
 lib/
 
+!pifire.app/src/lib/
+
 share/
 
 lib64
@@ -65,9 +67,3 @@ root-control.sh
 venv-desktop.sh
 
 venv-laptop.sh
-
-dt.sh
-
-lt.sh
-
-pip_list.json
