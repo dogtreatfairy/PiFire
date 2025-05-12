@@ -41,6 +41,54 @@ c=$(( c < 70 ? 70 : c ))
 # Display the welcome dialog
 whiptail --msgbox --backtitle "Welcome" --title "PiFire Automated Installer" "This installer will transform your Single Board Computer into a connected Smoker Controller.  NOTE: This installer is intended to be run on a fresh install of Raspberry Pi OS Lite 32-Bit Bullseye or later." ${r} ${c}
 
+# Ask the user to select a GitHub user
+USER_LIST="1. nebhead\n2. dogtreatfairy\n3. other"
+USER_CHOICE=$(echo -e "$USER_LIST" | whiptail --title "Choose a GitHub User" --menu "Select the GitHub user to clone from:" 20 78 10 --notags 3>&1 1>&2 2>&3)
+
+# Determine the GitHub user
+if [ "$USER_CHOICE" = "1" ]; then
+    GITHUB_USER="nebhead"
+elif [ "$USER_CHOICE" = "2" ]; then
+    GITHUB_USER="dogtreatfairy"
+else
+    GITHUB_USER=$(whiptail --inputbox "Enter the GitHub username to clone from:" 8 78 --title "Custom GitHub User" 3>&1 1>&2 2>&3)
+fi
+
+# List all branches on the server
+BRANCHES=$(git ls-remote --heads https://github.com/$GITHUB_USER/pifire.git | awk -F'/' '{print $NF}' | sort)
+
+# Prepare the list with numbering
+BRANCH_LIST="1. main (nh-dev-id)\n"
+COUNT=2
+for BRANCH in $BRANCHES; do
+    if [ "$BRANCH" != "main" ]; then
+        BRANCH_LIST+="$COUNT. $BRANCH\n"
+        COUNT=$((COUNT + 1))
+    fi
+done
+
+# Display the list and ask the user to choose
+CHOICE=$(echo -e "$BRANCH_LIST" | whiptail --title "Choose a Branch" --menu "Select the branch to install:" 20 78 10 --notags 3>&1 1>&2 2>&3)
+
+# Determine the branch to clone
+if [ "$CHOICE" = "1" ]; then
+    SELECTED_BRANCH="main"
+else
+    SELECTED_BRANCH=$(echo -e "$BRANCH_LIST" | awk -v choice="$CHOICE" 'NR==choice {print $2}')
+fi
+
+clear
+echo "*************************************************************************"
+echo "**                                                                     **"
+echo "**      Cloning PiFire from GitHub...                                  **"
+echo "**                                                                     **"
+echo "*************************************************************************"
+cd /usr/local/bin
+
+# Clone the selected branch
+echo "Cloning branch: $SELECTED_BRANCH from user: $GITHUB_USER"
+$SUDO git clone --depth 1 --branch "$SELECTED_BRANCH" https://github.com/$GITHUB_USER/pifire.git
+
 # Starting actual steps for installation
 clear
 echo "*************************************************************************"
@@ -78,55 +126,6 @@ $SUDO apt install -y $APT_PACKAGES
 # Read pip packages from package.json and install them
 PIP_PACKAGES=$(jq -r '.pip[]' /usr/local/bin/pifire/auto-install/package.json)
 uv pip install $PIP_PACKAGES
-
-# Grab project files
-clear
-echo "*************************************************************************"
-echo "**                                                                     **"
-echo "**      Cloning PiFire from GitHub...                                  **"
-echo "**                                                                     **"
-echo "*************************************************************************"
-cd /usr/local/bin
-
-# Ask the user to select a GitHub user
-USER_LIST="1. nebhead\n2. dogtreatfairy\n3. other"
-USER_CHOICE=$(echo -e "$USER_LIST" | whiptail --title "Choose a GitHub User" --menu "Select the GitHub user to clone from:" 20 78 10 --notags 3>&1 1>&2 2>&3)
-
-# Determine the GitHub user
-if [ "$USER_CHOICE" = "1" ]; then
-    GITHUB_USER="nebhead"
-elif [ "$USER_CHOICE" = "2" ]; then
-    GITHUB_USER="dogtreatfairy"
-else
-    GITHUB_USER=$(whiptail --inputbox "Enter the GitHub username to clone from:" 8 78 --title "Custom GitHub User" 3>&1 1>&2 2>&3)
-fi
-
-# List all branches on the server
-BRANCHES=$(git ls-remote --heads https://github.com/$GITHUB_USER/pifire.git | awk -F'/' '{print $NF}' | sort)
-
-# Prepare the list with numbering
-BRANCH_LIST="1. main (nh-dev-id)\n"
-COUNT=2
-for BRANCH in $BRANCHES; do
-    if [ "$BRANCH" != "main" ]; then
-        BRANCH_LIST+="$COUNT. $BRANCH\n"
-        COUNT=$((COUNT + 1))
-    fi
-done
-
-# Display the list and ask the user to choose
-CHOICE=$(echo -e "$BRANCH_LIST" | whiptail --title "Choose a Branch" --menu "Select the branch to install:" 20 78 10 --notags 3>&1 1>&2 2>&3)
-
-# Determine the branch to clone
-if [ "$CHOICE" = "1" ]; then
-    SELECTED_BRANCH="main"
-else
-    SELECTED_BRANCH=$(echo -e "$BRANCH_LIST" | awk -v choice="$CHOICE" 'NR==choice {print $2}')
-fi
-
-# Clone the selected branch
-echo "Cloning branch: $SELECTED_BRANCH from user: $GITHUB_USER"
-$SUDO git clone --depth 1 --branch "$SELECTED_BRANCH" https://github.com/$GITHUB_USER/pifire.git
 
 # Setup Python VENV & Install Python dependencies
 clear
