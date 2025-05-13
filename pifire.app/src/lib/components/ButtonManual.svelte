@@ -1,5 +1,5 @@
 <script>
-	import { grillControlData, setMode } from '$lib/stores/apiDataStore.js';
+	import { controlData, setMode } from '$lib/stores/socketioStore';
 </script>
 
 <!-- Manual Button -->
@@ -10,5 +10,5 @@
 	on:click={() => setMode('Manual')}
 	aria-label="Manual Mode"
 >
-	<i class="fas fa-tools"></i>
+	<i class="fas fa-glasses"></i>
 </button>

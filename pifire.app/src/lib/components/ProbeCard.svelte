@@ -1,5 +1,5 @@
 <script>
-    import { grillControlData, settingsData } from '$lib/stores/apiDataStore.js';
+    import { controlData, settingsData } from '$lib/stores/socketioStore';
     import Gauge from 'svelte-gauge';
     import { cubicOut } from "svelte/easing";
 
@@ -11,7 +11,7 @@
 	$: units = $settingsData?.globals?.units || 'F';
 	$: maxTemp = $settingsData.safety?.maxtemp;
 	$: convertedType = type === 'Primary' ? 'P' : type === 'Food' ? 'F' : 'Aux';
-	$: probeData = $grillControlData?.probe_info?.[convertedType] || {};
+	$: probeData = $controlData?.probe_info?.[convertedType] || {};
     $: gaugeValue = probeData?.[label] || 0;
 
     let _gaugeLabels = 100;
@@ -27,7 +27,7 @@
 		}
 
 		else if (type === 'Primary') {
-			_gaugeTarget = $grillControlData?.probe_info?.PSP || 0;
+			_gaugeTarget = $controlData?.probe_info?.PSP || 0;
 		}
 	}
 

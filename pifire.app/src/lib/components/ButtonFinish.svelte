@@ -1,5 +1,5 @@
 <script>
-	import { grillControlData, setMode } from '$lib/stores/apiDataStore.js';
+	import { controlData, setMode } from '$lib/stores/socketioStore';
 	import { colorMode } from '@sveltestrap/sveltestrap';
 	let hovered = false;
 </script>
@@ -8,7 +8,7 @@
 <!-- svelte-ignore a11y_mouse_events_have_key_events -->
 <button 
 	type="button" 
-	class="btn nav-btn-height { $colorMode === 'dark' ? 'btn-outline-danger' : 'btn-danger' }"
+	class="btn nav-btn-height { $colorMode === 'dark' ? 'btn-outline-danger border-secondary' : 'btn-danger' }"
 	id="finish_btn" 
 	on:click={() => setMode('Finish')}
 	on:mouseover={() => hovered = true}

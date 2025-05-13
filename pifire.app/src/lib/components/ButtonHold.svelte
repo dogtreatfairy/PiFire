@@ -1,10 +1,10 @@
 <script>
-	import { grillControlData, settingsData, setMode, postAppData } from '$lib/stores/apiDataStore.js';
+	import { controlData, settingsData, setMode, postAppData } from '$lib/stores/socketioStore';
 	import { Modal } from '@sveltestrap/sveltestrap';
 	import { modalHold, focusSelect, enterSubmit } from '$lib/stores/modalStore.js';
 
-	$: currentMode = $grillControlData?.status_data?.mode || 'Unknown';
-	$: primarySetPoint = $grillControlData?.probe_info?.PSP || 0;
+	$: currentMode = $controlData?.status_data?.mode || 'Unknown';
+	$: primarySetPoint = $controlData?.probe_info?.PSP || 0;
 	$: units = $settingsData?.globals?.units || 'F';
 	$: maxTemp = $settingsData?.globals?.max_temp || 500;
 

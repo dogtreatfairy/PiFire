@@ -1,12 +1,13 @@
 <script>
-	import { grillControlData, setMode } from '$lib/stores/apiDataStore.js';
-	$: currentMode = $grillControlData?.status_data?.mode  || 'Unknown';
+	import { controlData, setMode } from '$lib/stores/socketioStore';
+	import { colorMode } from '@sveltestrap/sveltestrap';
+	$: currentMode = $controlData?.status_data?.mode  || 'Unknown';
 </script>
 
 <!-- Stop Button -->
 <button 
 	type="button" 
-	class="btn nav-btn-height {currentMode === 'Finish' ? 'btn-danger' : 'btn-outline-danger'}"
+	class="btn nav-btn-height {$colorMode === 'dark' ? 'btn-outline-danger border-secondary' : 'btn-danger'}"
 	id="stop_btn" 
 	on:click={() => setMode('Stop')}
 	aria-label="Stop Grill"

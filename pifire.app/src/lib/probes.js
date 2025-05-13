@@ -1,6 +1,3 @@
-import { get } from 'svelte/store';
-import { loadSettings } from '$lib/stores/apiDataStore.js';
-
 /**
  * Function to build a list of probes based on the type
  * @param {string} type - The type of probes to filter ('Primary' or 'Food')

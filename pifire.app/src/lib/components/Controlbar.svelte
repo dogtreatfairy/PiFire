@@ -1,7 +1,6 @@
 <script>
     import { onMount } from 'svelte';
-    import { grillControlData } from '$lib/stores/apiDataStore';
-    import { get } from 'svelte/store';
+    import { controlData } from '$lib/stores/socketioStore';
 	import { colorMode } from '@sveltestrap/sveltestrap';
 	import ButtonPrime from '$lib/components/ButtonPrime.svelte';
 	import ButtonStart from '$lib/components/ButtonStart.svelte';
@@ -11,8 +10,8 @@
 	import ButtonFinish from '$lib/components/ButtonFinish.svelte';
 	import ButtonManual from '$lib/components/ButtonManual.svelte';
 
-    // Reactive statement to get the current mode from the grillControlData
-	$: currentMode = $grillControlData?.status_data?.mode || 'Unknown'; // Use grillControlData for current mode
+    // Reactive statement to get the current mode from the controlData
+	$: currentMode = $controlData?.status_data?.mode || 'Unknown'; // Use controlData for current mode
 
 	onMount(() => {
 		const interval = setInterval(() => {
@@ -84,12 +83,11 @@
 
 		<!-- Manual / Monitor -->
 		<div class="btn-toolbar justify-content-center" role="toolbar" id="shutdown_group" class:d-none={currentMode !=='Manual' && currentMode !=='Monitor'}>
-			<div class="btn-group me-2 shadow" role="group">
-				<ButtonSmoke /> 
+			<ButtonStart />
+			<span class="me-2"></span>
+			<ButtonStop />
+			<div class="btn-group ms-2 shadow" role="group">
 				<ButtonHold /> 
 			</div>
-			<ButtonStop />
-			<span class="me-2"></span>
-			<ButtonManual /> 
 		</div>
 </footer>

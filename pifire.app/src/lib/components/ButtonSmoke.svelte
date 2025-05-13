@@ -1,17 +1,17 @@
 <script>
-	import { grillControlData, setMode, postAppData } from '$lib/stores/apiDataStore.js';
+	import { controlData, setMode, postAppData } from '$lib/stores/socketioStore';
 	// Ensure Bootstrap's JavaScript is loaded in your project for the dropdown functionality to work.
 
-	$: currentMode = $grillControlData?.status_data?.mode || 'Unknown';
+	$: currentMode = $controlData?.status_data?.mode || 'Unknown';
 	// currentDisplayPMode is used for showing the P-Mode in the UI.
 	// It's derived from status_data.p_mode as in your original code.
-	$: currentDisplayPMode = $grillControlData?.status_data?.p_mode || 0;
+	$: currentDisplayPMode = $controlData?.status_data?.p_mode || 0;
 
 	// Function to activate Smoke Mode
 	async function activateSmokeMode() {
 		console.log('Activating Smoke Mode...');
 		try {
-			// The setMode function from apiDataStore.js is expected to send:
+			// The setMode function from socketioStore is expected to send:
 			// postAppData('update_action', 'control', { updated: true, mode: 'Smoke' })
 			await setMode('Smoke');
 			console.log('Smoke mode activation request sent successfully.');

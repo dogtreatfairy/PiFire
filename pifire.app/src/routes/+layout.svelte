@@ -6,7 +6,7 @@
   import '../app.css';
   import { colorMode } from '@sveltestrap/sveltestrap';
   import { browser } from '$app/environment'; // Import the browser variable
-  import { initializeSocket } from '$lib/stores/apiDataStore.js';
+  import { initializeSocket } from '$lib/stores/socketioStore';
 
   // Ensure the theme is applied on initial load and initialize WebSocket connection
   onMount(() => {

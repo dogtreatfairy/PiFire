@@ -5,7 +5,7 @@ export const isConnected = writable(false);
 export const socketStatus = writable('Disconnected');
 export const serverAddress = writable('http://localhost');
 export const serverPort = writable('8000');
-export const grillControlData = writable({});
+export const controlData = writable({});
 export const settingsData = writable({});
 export const pelletsData = writable({});
 export const eventsData = writable({});
@@ -49,7 +49,7 @@ function _attachListeners(currentSocket) {
 	});
 
 	currentSocket.on('grill_control_data', (data) => {
-		grillControlData.set(data);
+		controlData.set(data);
 	});
 
 	currentSocket.on('settings_data', (fullSettings) => {
@@ -62,7 +62,7 @@ function _attachListeners(currentSocket) {
 
 	currentSocket.on('control_data', (controlData) => {
 		console.log("Received broadcasted 'control_data':", controlData);
-		grillControlData.set(controlData || {});
+		controlData.set(controlData || {});
 	});
 
 	currentSocket.on('pellets_data', (pelletsData) => {
@@ -149,7 +149,7 @@ export function switchServer(newAddress, newPort) {
 	console.log(`Switching server to ${newAddress}:${newPort || get(serverPort)}`);
 	disconnectSocket();
 
-	grillControlData.set({});
+	controlData.set({});
 	settingsData.set({});
 	pelletsData.set({});
 	eventsData.set({});
@@ -365,14 +365,14 @@ export async function requestManualData() {
 	}
 }
 
-export async function requestGrillControlData() {
+export async function requestcontrolData() {
 	try {
 		const response = await _emitWithAck('get_app_data', { action: 'grill_control_data' });
-		grillControlData.set(response || {});
+		controlData.set(response || {});
 		return response;
 	} catch (error) {
 		console.error("Failed to request grill control data:", error);
-		grillControlData.set({});
+		controlData.set({});
 		throw error;
 	}
 }

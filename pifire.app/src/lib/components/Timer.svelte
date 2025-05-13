@@ -2,7 +2,7 @@
     import { Modal } from '@sveltestrap/sveltestrap';
     import { modalTimer, enterSubmit } from '$lib/stores/modalStore';
     import { timerLaunch, timerStore } from '$lib/timer';
-    import { grillControlData } from '$lib/stores/apiDataStore';
+    import { controlData } from '$lib/stores/socketioStore';
 
     let error = '';
     let _hours ='0';
@@ -22,8 +22,8 @@
         error = '';
         _hours =  $timerStore.hours || '0';
         _minutes = $timerStore.minutes || '0';
-        _shutdown = $grillControlData?.timer_info?.timer_shutdown || false;
-        _keepWarm = $grillControlData?.timer_info?.timer_keep_warm || false;
+        _shutdown = $controlData?.timer_info?.timer_shutdown || false;
+        _keepWarm = $controlData?.timer_info?.timer_keep_warm || false;
 		_initialLoad = false;
         setTimeout(() => {
             if (hoursInputRef) {
@@ -71,7 +71,7 @@
         timerLaunch(_hours, _minutes, options);
 
         // Update the store
-        grillControlData.update((data) => ({
+        controlData.update((data) => ({
             ...data,
             timer_info: {
                 ...data?.timer_info,

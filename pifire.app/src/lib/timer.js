@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
-// Corrected import from your apiDataStore module
-import { grillControlData, postAppData } from '$lib/stores/apiDataStore.js'; // Adjust path if needed
+// Corrected import from your socketioStore module
+import { controlData, postAppData } from '$lib/stores/socketioStore'; // Adjust path if needed
 
 // --- Svelte Store (Using writable) ---
 export const timerStore = writable({
@@ -87,7 +87,7 @@ function updateLocalTimerDisplay() {
     }
 }
 
-/** Updates state based on data from grillControlData store. */
+/** Updates state based on data from controlData store. */
 function updateFromGrillData(grillData) {
     const timerInfo = grillData?.timer_info;
     let prevStatus = timerStatus;
@@ -138,7 +138,7 @@ function updateFromGrillData(grillData) {
 }
 
 // --- Control Functions (Exported) ---
-// Uses postAppData from apiDataStore.js
+// Uses postAppData from socketioStore
 // !!! Verify action ('timer_action') and type ('pause', 'start', 'stop') with your backend !!!
 
 /** Sends pause command. */
@@ -202,12 +202,12 @@ export function timerLaunch(hours, minutes, options = {}) {
 
 // --- Initialization and Cleanup ---
 
-/** Initializes the timer module: subscribes to grillControlData. */
+/** Initializes the timer module: subscribes to controlData. */
 export function initTimer() {
     console.log('Initializing timer (Store Mode)...');
     if (unsubscribeFromGrillData) return; // Prevent multiple initializations
 
-    unsubscribeFromGrillData = grillControlData.subscribe(storeValue => {
+    unsubscribeFromGrillData = controlData.subscribe(storeValue => {
         updateFromGrillData(storeValue);
     });
 }

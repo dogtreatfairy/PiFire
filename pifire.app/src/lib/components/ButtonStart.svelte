@@ -1,6 +1,6 @@
 <script>
-	import { grillControlData, setMode } from '$lib/stores/apiDataStore.js';
-	$: currentMode = $grillControlData?.status_data?.mode  || 'Unknown';
+	import { controlData, setMode } from '$lib/stores/socketioStore';
+	$: currentMode = $controlData?.status_data?.mode  || 'Unknown';
 </script>
 
 <!-- Start Button -->

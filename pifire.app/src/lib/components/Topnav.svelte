@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import { modalTimer, modalServer } from '$lib/stores/modalStore';
 	import { Modal, colorMode } from '@sveltestrap/sveltestrap';
-	import { serverAddress, switchServer, grillControlData } from '$lib/stores/apiDataStore'; // Removed grillControlData import as it's no longer directly used here for timer
+	import { serverAddress, switchServer, controlData } from '$lib/stores/socketioStore'; // Removed controlData import as it's no longer directly used here for timer
 	import { get } from 'svelte/store';
 	import { timerStore, initTimer, destroyTimer, timerPause, timerUnpause, timerStop } from '$lib/timer';
 	import { onMount, onDestroy } from 'svelte';
@@ -21,8 +21,8 @@
 	// Subscribe to timerStore
 	$: timerStatus = $timerStore.status;
 	$: timerDisplay = $timerStore.display;
-	$: timerKeepwarm = $grillControlData?.timer_info?.timer_keep_warm || false;
-	$: timerShutdown = $grillControlData?.timer_info?.timer_shutdown || false;
+	$: timerKeepwarm = $controlData?.timer_info?.timer_keep_warm || false;
+	$: timerShutdown = $controlData?.timer_info?.timer_shutdown || false;
 
 	$: if (get(modalServer)) {
 		localserverAddress = get(serverAddress);

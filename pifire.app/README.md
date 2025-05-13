@@ -195,7 +195,7 @@ Ensure that your PiFire server is running and accessible on the default port (e.
 To access specific data from the emitted events in your Svelte application, follow these steps:
 
 1. **Connect to the Socket.IO Server**:
-   - Use the `connectSocket` function from your `apiDataStore.js` to establish a connection to the server.
+   - Use the `connectSocket` function from your `socketioStore` to establish a connection to the server.
 
 2. **Listen for the Desired Event**:
    - The `grill_control_data` event contains various pieces of data, including `timer_info`.
@@ -206,12 +206,12 @@ To access specific data from the emitted events in your Svelte application, foll
 
    ```svelte
    <script>
-       import { grillControlDataStore } from '$lib/stores/apiDataStore';
+       import { controlDataStore } from '$lib/stores/socketioStore';
 
        let timerPaused;
 
-       // Subscribe to the grillControlDataStore to get updates
-       $: grillControlDataStore.subscribe((data) => {
+       // Subscribe to the controlDataStore to get updates
+       $: controlDataStore.subscribe((data) => {
            if (data && data.timer_info) {
                timerPaused = data.timer_info.timer_paused;
            }
@@ -225,4 +225,4 @@ To access specific data from the emitted events in your Svelte application, foll
 
 4. **Notes**:
    - Ensure that the `grill_control_data` event is being emitted by the server and that the `connectSocket` function is called during the initialization of your app.
-   - The `grillControlDataStore` is updated whenever new data is received from the `grill_control_data` event.
+   - The `controlDataStore` is updated whenever new data is received from the `grill_control_data` event.

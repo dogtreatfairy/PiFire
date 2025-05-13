@@ -2,11 +2,11 @@
 	import { dndzone } from 'svelte-dnd-action';
 	import { flip } from 'svelte/animate';
 	import { Spinner } from '@sveltestrap/sveltestrap';
-	import { settingsData, uiSettings, saveCardOrder } from '$lib/stores/apiDataStore.js';
+	import { settingsData, uiSettings, saveCardOrder } from '$lib/stores/socketioStore';
 	import ProbeCard from '$lib/components/ProbeCard.svelte';
 	import InfoCard from '$lib/components/InfoCard.svelte';
   
-	console.log("Component Script Initializing (using apiDataStore)...");
+	console.log("Component Script Initializing (using socketioStore)...");
   
 	let items = [];
 	let rawItems = [];
@@ -105,7 +105,7 @@
   
 	  const newCardOrder = items.map(item => item.id);
   
-	  console.log("Saving new card order via apiDataStore:", newCardOrder);
+	  console.log("Saving new card order via socketioStore:", newCardOrder);
 	  try {
 		await saveCardOrder(newCardOrder);
 		console.log("saveCardOrder call successful");

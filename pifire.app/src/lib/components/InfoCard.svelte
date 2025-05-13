@@ -1,12 +1,12 @@
 <script>
-    import { grillControlData, pelletsData, socketStatus } from '$lib/stores/apiDataStore.js';
+    import { controlData, pelletsData, socketStatus } from '$lib/stores/socketioStore';
     import { Progress, colorMode } from '@sveltestrap/sveltestrap';
     import { onMount, onDestroy } from 'svelte';
 
     // Your other variables
     let caution = 20;
     let danger = 10;
-    let cardEl;
+    let cardEl; // Card Element for Card Width
     let cardWidth = 0;
     let showLabels = true;
 
@@ -60,8 +60,8 @@
 
     // --- Reactive logic for the clock ---
     // Get relevant data from the store reactively
-    $: mode = $grillControlData?.status_data?.mode || 'Unknown';
-    $: serverStartupTimestamp = $grillControlData?.status_data?.startup_timestamp || 0;
+    $: mode = $controlData?.status_data?.mode || 'Unknown';
+    $: serverStartupTimestamp = $controlData?.status_data?.startup_timestamp || 0;
 
     // This reactive block manages the clock's behavior based on store changes
     $: {
@@ -94,13 +94,13 @@
     }
 
     // Your other reactive variables ($: auger, $: igniter, etc.) remain the same
-    $: auger = $grillControlData?.status_data?.outpins?.auger || false;
-    $: igniter = $grillControlData?.status_data?.outpins?.igniter || false;
-    $: fan = $grillControlData?.status_data?.outpins?.fan || false;
-    $: pmode = $grillControlData?.status_data?.p_mode || 0;
+    $: auger = $controlData?.status_data?.outpins?.auger || false;
+    $: igniter = $controlData?.status_data?.outpins?.igniter || false;
+    $: fan = $controlData?.status_data?.outpins?.fan || false;
+    $: pmode = $controlData?.status_data?.p_mode || 0;
 
-    $: currentMode = $grillControlData?.status_data?.mode || 'Unknown'; // Already have 'mode'
-    $: hopperLevel = $grillControlData?.status_data?.hopper_level || ($grillControlData?.hopper_level || 100) ; // Prefer status_data if available for consistency
+    $: currentMode = $controlData?.status_data?.mode || 'Unknown'; // Already have 'mode'
+    $: hopperLevel = $controlData?.status_data?.hopper_level || ($controlData?.hopper_level || 100) ; // Prefer status_data if available for consistency
     $: connectionStatus = $socketStatus;
 
     $: currentPelletId = $pelletsData?.current?.pelletid || 'Unknown';
@@ -175,19 +175,16 @@
                 <span class="fas fa-arrow-right fa-xl"></span>
             </div>
         </div>
-        <div class="w-100 rounded nav-btn-height position-relative">
-            <span
-                class="fs-5 fw-semibold position-absolute top-50 start-50 translate-middle {colorMode !== 'dark' && hopperLevel < 50 ? 'text-dark' : 'text-light'}"
-            >
-                {hopperLevel}%
-            </span>
-            <Progress
-                class="w-100 h-100"
-                value={hopperLevel}
-                striped
-                color={progressColor}
-            />
-        </div>
+		<div class="w-100 rounded nav-btn-height position-relative">
+			<Progress
+			class="w-100 h-100 fs-5 fw-semibold"
+			value={hopperLevel}
+			striped
+			color={progressColor}
+			>
+			{hopperLevel}%
+			</Progress>
+		</div>
     </div>
 </div>
 
