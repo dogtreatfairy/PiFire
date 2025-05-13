@@ -1,0 +1,226 @@
+[
+  {
+    "name": "apprise",
+    "version": "1.9.3"
+  },
+  {
+    "name": "bidict",
+    "version": "0.23.1"
+  },
+  {
+    "name": "blinker",
+    "version": "1.9.0"
+  },
+  {
+    "name": "bluepy",
+    "version": "1.3.0"
+  },
+  {
+    "name": "certifi",
+    "version": "2025.4.26"
+  },
+  {
+    "name": "charset-normalizer",
+    "version": "3.4.2"
+  },
+  {
+    "name": "ciso8601",
+    "version": "2.3.2"
+  },
+  {
+    "name": "click",
+    "version": "8.2.0"
+  },
+  {
+    "name": "colorzero",
+    "version": "2.0"
+  },
+  {
+    "name": "dnspython",
+    "version": "2.7.0"
+  },
+  {
+    "name": "eventlet",
+    "version": "0.39.1"
+  },
+  {
+    "name": "flask",
+    "version": "3.1.0"
+  },
+  {
+    "name": "flask-mobility",
+    "version": "2.0.1"
+  },
+  {
+    "name": "flask-qrcode",
+    "version": "3.2.0"
+  },
+  {
+    "name": "flask-socketio",
+    "version": "5.5.1"
+  },
+  {
+    "name": "gpiozero",
+    "version": "2.0.1"
+  },
+  {
+    "name": "greenlet",
+    "version": "3.2.2"
+  },
+  {
+    "name": "gunicorn",
+    "version": "23.0.0"
+  },
+  {
+    "name": "h11",
+    "version": "0.16.0"
+  },
+  {
+    "name": "idna",
+    "version": "3.10"
+  },
+  {
+    "name": "influxdb-client",
+    "version": "1.48.0"
+  },
+  {
+    "name": "itsdangerous",
+    "version": "2.2.0"
+  },
+  {
+    "name": "jinja2",
+    "version": "3.1.6"
+  },
+  {
+    "name": "joblib",
+    "version": "1.5.0"
+  },
+  {
+    "name": "markdown",
+    "version": "3.8"
+  },
+  {
+    "name": "markupsafe",
+    "version": "3.0.2"
+  },
+  {
+    "name": "numpy",
+    "version": "2.2.5"
+  },
+  {
+    "name": "oauthlib",
+    "version": "3.2.2"
+  },
+  {
+    "name": "packaging",
+    "version": "25.0"
+  },
+  {
+    "name": "paho-mqtt",
+    "version": "2.1.0"
+  },
+  {
+    "name": "pillow",
+    "version": "11.2.1"
+  },
+  {
+    "name": "psutil",
+    "version": "7.0.0"
+  },
+  {
+    "name": "pyjwt",
+    "version": "2.9.0"
+  },
+  {
+    "name": "python-dateutil",
+    "version": "2.9.0.post0"
+  },
+  {
+    "name": "python-engineio",
+    "version": "4.12.1"
+  },
+  {
+    "name": "python-socketio",
+    "version": "5.13.0"
+  },
+  {
+    "name": "pyyaml",
+    "version": "6.0.2"
+  },
+  {
+    "name": "qrcode",
+    "version": "8.2"
+  },
+  {
+    "name": "ratelimitingfilter",
+    "version": "1.5"
+  },
+  {
+    "name": "reactivex",
+    "version": "4.0.4"
+  },
+  {
+    "name": "redis",
+    "version": "5.3.0"
+  },
+  {
+    "name": "requests",
+    "version": "2.32.3"
+  },
+  {
+    "name": "requests-oauthlib",
+    "version": "2.0.0"
+  },
+  {
+    "name": "rpi-hardware-pwm",
+    "version": "0.2.2"
+  },
+  {
+    "name": "scikit-fuzzy",
+    "version": "0.5.0"
+  },
+  {
+    "name": "scikit-learn",
+    "version": "1.4.2"
+  },
+  {
+    "name": "scipy",
+    "version": "1.15.3"
+  },
+  {
+    "name": "setuptools",
+    "version": "80.4.0"
+  },
+  {
+    "name": "simple-websocket",
+    "version": "1.1.0"
+  },
+  {
+    "name": "six",
+    "version": "1.17.0"
+  },
+  {
+    "name": "threadpoolctl",
+    "version": "3.6.0"
+  },
+  {
+    "name": "typing-extensions",
+    "version": "4.13.2"
+  },
+  {
+    "name": "urllib3",
+    "version": "2.4.0"
+  },
+  {
+    "name": "uuid",
+    "version": "1.30"
+  },
+  {
+    "name": "werkzeug",
+    "version": "3.1.3"
+  },
+  {
+    "name": "wsproto",
+    "version": "1.2.0"
+  }
+]
