@@ -1,222 +1,205 @@
-import { writable } from 'svelte/store';
-// Corrected import from your socketioStore module
-import { controlData, postAppData } from '$lib/stores/socketioStore'; // Adjust path if needed
+import { writable, derived, get } from 'svelte/store';
+import { 
+    controlData,
+    postData,
+    startTimer as apiStartTimer,
+    pauseTimer as apiPauseTimer,
+    stopTimer as apiStopTimer,
+    setTimerShutdown as apiSetTimerShutdown,
+    setTimerKeepWarm as apiSetTimerKeepWarm
+} from '$lib/stores/socketioStore';
 
-// --- Svelte Store (Using writable) ---
-export const timerStore = writable({
-    status: 'stopped', // 'running', 'paused', 'expired', 'stopped'
-    display: '--:--:--', // Formatted string: HH:MM:SS, 'ALARM', or '--:--:--'
-	hours: 0,
-	minutes: 0
-});
+const initialTimerState = {
+    status: 'stopped',
+    display: '--:--:--',
+    hours: 0,                 
+    minutes: 0,               
+    seconds: 0,               
+    isShutdownSet: false,
+    isKeepWarmSet: false
+};
 
-// --- Internal Module State ---
-let timerStatus = 'stopped'; // Internal tracking
-let timerDisplay = '--:--:--'; // Internal tracking
+export const timerStore = writable({ ...initialTimerState });
 
-let _timerEndTime = 0;
-let _timerPausedTime = 0;
-let _timerIsActive = false;
-let _timerIsPaused = false;
-let _timerIsExpired = false;
+export const timerMode = derived(timerStore, $store => $store.status);
 
-let updateIntervalId = null; // Interval ID for display updates
-let unsubscribeFromGrillData = null; // Store the unsubscribe function
+let backendTimerInfo = {
+    timer_active: false,
+    timer_paused: false,
+    timer_expired: false,
+    timer_end_time: 0,
+    timer_paused_time: 0,
+    timer_shutdown: false,
+    timer_keep_warm: false
+};
 
-// --- Helper Functions ---
+let displayUpdateInterval = null; 
+let unsubscribeFromControlData = null;
 
-/** Calculates remaining time in milliseconds. */
 function calculateRemainingMilliseconds() {
-    if (!_timerIsActive || _timerEndTime === 0) return 0;
-    const now = Date.now();
-    const endTimeMs = _timerEndTime * 1000;
-    if (_timerIsPaused) {
-        const pausedTimeMs = _timerPausedTime * 1000;
-        return _timerPausedTime !== 0 ? Math.max(0, endTimeMs - pausedTimeMs) : 0;
-    } else {
-        return Math.max(0, endTimeMs - now);
+    if (!backendTimerInfo.timer_active || backendTimerInfo.timer_end_time === 0) {
+        return 0;
     }
+    const nowSeconds = Date.now() / 1000;
+    let remainingSeconds;
+    if (backendTimerInfo.timer_paused && backendTimerInfo.timer_paused_time > 0) {
+        remainingSeconds = backendTimerInfo.timer_end_time - backendTimerInfo.timer_paused_time;
+    } else {
+        remainingSeconds = backendTimerInfo.timer_end_time - nowSeconds;
+    }
+    return Math.max(0, remainingSeconds * 1000);
 }
 
-/** Generates the display string based on status and time. */
-function getTimerDisplayString(status, remainingMilliseconds) {
-    if (status === 'expired') return 'ALARM';
-    if (status === 'stopped') return '--:--:--';
-    if (remainingMilliseconds <= 0) return '00:00:00';
-
-    const totalSeconds = Math.ceil(remainingMilliseconds / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-	// Write hour and minutes to the store
-	timerStore.update(store => ({
-		...store,
-		hours: hours,
-		minutes: minutes
-	}))
-
-    const displayHours = String(hours).padStart(2, '0');
-    const displayMinutes = String(minutes).padStart(2, '0');
-    const displaySeconds = String(seconds).padStart(2, '0');
-    return `${displayHours}:${displayMinutes}:${displaySeconds}`;
+function formatTimerDisplay(remainingMs, currentStatus) {
+    if (currentStatus === 'expired') {
+        return { display: 'ALARM', hours: 0, minutes: 0, seconds: 0 };
+    }
+    if (currentStatus === 'stopped' || !backendTimerInfo.timer_active) {
+        return { display: '--:--:--', hours: 0, minutes: 0, seconds: 0 };
+    }
+    if (remainingMs <= 0 && currentStatus !== 'paused') {
+        return { display: '00:00:00', hours: 0, minutes: 0, seconds: 0 };
+    }
+    const totalTotalSeconds = Math.ceil(remainingMs / 1000);
+    const h = Math.floor(totalTotalSeconds / 3600);
+    const m = Math.floor((totalTotalSeconds % 3600) / 60);
+    const s = totalTotalSeconds % 60;
+    return {
+        display: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`,
+        hours: h,
+        minutes: m,
+        seconds: s
+    };
 }
 
-// --- Core Timer Logic ---
-
-/** Updates the timer display string locally (called by interval). */
-function updateLocalTimerDisplay() {
-    if (timerStatus === 'running') {
-        const remainingMs = calculateRemainingMilliseconds();
-        const newDisplayString = getTimerDisplayString('running', remainingMs);
-        timerDisplay = newDisplayString; // Update internal tracker first
-        timerStore.update(store => ({ ...store, display: newDisplayString }));
-
-        if (remainingMs <= 0) {
-            if (updateIntervalId) {
-                clearInterval(updateIntervalId);
-                updateIntervalId = null;
-            }
-        }
-    } else {
-        // Stop interval if status changed unexpectedly
-        if (updateIntervalId) {
-            clearInterval(updateIntervalId);
-            updateIntervalId = null;
-        }
+function updateTimerStoreValues() {
+    let newStatus = 'stopped';
+    if (backendTimerInfo.timer_expired) {
+        newStatus = 'expired';
+    } else if (backendTimerInfo.timer_active) {
+        newStatus = backendTimerInfo.timer_paused ? 'paused' : 'running';
     }
-}
-
-/** Updates state based on data from controlData store. */
-function updateFromGrillData(grillData) {
-    const timerInfo = grillData?.timer_info;
-    let prevStatus = timerStatus;
-
-    if (!timerInfo) {
-        _timerIsActive = false; _timerIsPaused = false; _timerEndTime = 0;
-        _timerPausedTime = 0; _timerIsExpired = false;
-    } else {
-        _timerIsActive = timerInfo.timer_active ?? false;
-        _timerIsPaused = timerInfo.timer_paused ?? false;
-        _timerEndTime = timerInfo.timer_end_time ?? 0;
-        _timerPausedTime = timerInfo.timer_paused_time ?? 0;
-        _timerIsExpired = timerInfo.timer_expired ?? false;
-    }
-
-    if (_timerIsExpired) timerStatus = 'expired';
-    else if (!_timerIsActive) timerStatus = 'stopped';
-    else if (_timerIsPaused) timerStatus = 'paused';
-    else timerStatus = 'running';
 
     const remainingMs = calculateRemainingMilliseconds();
-    timerDisplay = getTimerDisplayString(timerStatus, remainingMs);
+    const displayParts = formatTimerDisplay(remainingMs, newStatus);
 
-    // Update the Svelte store
-    timerStore.set({ status: timerStatus, display: timerDisplay });
+    timerStore.set({
+        status: newStatus,
+        display: displayParts.display,
+        hours: displayParts.hours,
+        minutes: displayParts.minutes,
+        seconds: displayParts.seconds,
+        isShutdownSet: backendTimerInfo.timer_active && backendTimerInfo.timer_shutdown,
+        isKeepWarmSet: backendTimerInfo.timer_active && backendTimerInfo.timer_keep_warm
+    });
 
-    // Manage interval
-    if (timerStatus === 'running') {
-        if (!updateIntervalId) {
-             // Update display immediately based on fresh calculation
-            updateLocalTimerDisplay();
-            updateIntervalId = setInterval(updateLocalTimerDisplay, 250);
-        }
-    } else {
-        if (updateIntervalId) {
-            clearInterval(updateIntervalId);
-            updateIntervalId = null;
-        }
-        // Ensure final display update if status changed away from running
-        if (prevStatus === 'running' && timerStatus !== 'running') {
-             setTimeout(() => {
-                 const finalRemainingMs = calculateRemainingMilliseconds();
-                 const finalDisplay = getTimerDisplayString(timerStatus, finalRemainingMs);
-                 timerStore.update(store => ({ ...store, display: finalDisplay }));
-             }, 0);
-        }
+    if (newStatus === 'running' && !displayUpdateInterval) {
+        displayUpdateInterval = setInterval(updateTimerStoreValues, 250);
+    } else if (newStatus !== 'running' && displayUpdateInterval) {
+        clearInterval(displayUpdateInterval);
+        displayUpdateInterval = null;
     }
 }
 
-// --- Control Functions (Exported) ---
-// Uses postAppData from socketioStore
-// !!! Verify action ('timer_action') and type ('pause', 'start', 'stop') with your backend !!!
+function handleBackendUpdate(latestGrillData) {
+    const newTimerInfo = latestGrillData?.timer;
 
-/** Sends pause command. */
-export function timerPause() {
-    console.log("Sending timer pause command via postAppData...");
-    postAppData('timer_action', 'pause_timer', {})
-        .then(response => console.log('Timer pause ack:', response))
-        .catch(error => console.error('Error sending timer pause:', error));
+    if (newTimerInfo && typeof newTimerInfo === 'object') {
+        backendTimerInfo = {
+            timer_active: newTimerInfo.timer_active ?? false,
+            timer_paused: newTimerInfo.timer_paused ?? false,
+            timer_expired: newTimerInfo.timer_expired ?? false,
+            timer_end_time: newTimerInfo.timer_end_time ?? 0,
+            timer_paused_time: newTimerInfo.timer_paused_time ?? 0,
+            timer_shutdown: newTimerInfo.timer_shutdown ?? false,
+            timer_keep_warm: newTimerInfo.timer_keep_warm ?? false
+        };
+    } else {
+        backendTimerInfo = { 
+            timer_active: false, timer_paused: false, timer_expired: false,
+            timer_end_time: 0, timer_paused_time: 0,
+            timer_shutdown: false, timer_keep_warm: false
+        };
+    }
+    updateTimerStoreValues();
 }
 
-/** Sends unpause/resume command. */
-export function timerUnpause() {
-    console.log("Sending timer resume (start) command via postAppData...");
-    postAppData('timer_action', 'start_timer', {})
-        .then(response => console.log('Timer resume ack:', response))
-        .catch(error => console.error('Error sending timer resume:', error));
+export async function startTimer(hours, minutes, options = {}) {
+    const h = parseInt(String(hours || 0), 10);
+    const m = parseInt(String(minutes || 0), 10);
+    const shutdownOption = options.shutdown || false;
+    const keepWarmOption = options.keepWarm || false;
+
+    if (h < 0 || m < 0 || (h === 0 && m === 0)) {
+        console.error("Timer.js: Timer duration must be positive.");
+        timerStore.update(store => ({ ...store, status: 'error', display: "Invalid Duration" }));
+        return Promise.reject(new Error("Invalid Duration"));
+    }
+
+    const durationSeconds = (h * 3600) + (m * 60);
+
+    try {
+        await apiStartTimer(durationSeconds);
+        await apiSetTimerShutdown(shutdownOption);
+        await apiSetTimerKeepWarm(keepWarmOption);
+    } catch (error) {
+        console.error('Timer.js: Error in startTimer sequence:', error);
+        timerStore.update(store => ({...store, status: 'error', display: "Start Failed"}));
+        throw error;
+    }
 }
 
-/** Sends stop command. */
-export function timerStop() {
-    console.log("Sending timer stop command via postAppData...");
-    postAppData('timer_action', 'stop_timer', {})
-        .then(response => console.log('Timer stop ack:', response))
-        .catch(error => console.error('Error sending timer stop:', error));
-    if (updateIntervalId) clearInterval(updateIntervalId); updateIntervalId = null;
-    timerStore.set({ status: 'stopped', display: '--:--:--' });
-    timerStatus = 'stopped'; timerDisplay = '--:--:--';
+export async function stopTimer() {
+    try {
+        await apiStopTimer()
+    } catch (error) {
+        console.error('Timer.js: Error sending stop timer command:', error);
+        timerStore.update(store => ({...store, status: 'error', display: "Stop Failed"}));
+        throw error;
+    }
 }
 
-/** Sends launch command. */
-export function timerLaunch(hours, minutes, options = {}) {
-    // Local variables for inputs with default values
-    const localHours = parseInt(hours || 0, 10); // Default to 0 if blank
-    const localMinutes = parseInt(minutes || 0, 10); // Default to 0 if blank
-    const localShutdown = options.timer_shutdown || false; // Default to false if blank
-    const localKeepWarm = options.timer_keep_warm || false; // Default to false if blank
+export async function pauseTimer() {
+    try {
+        await apiPauseTimer();
+    } catch (error) {
+        console.error('Timer.js: Error sending pause timer command:', error);
+        timerStore.update(store => ({...store, status: 'error', display: "Pause Failed"}));
+        throw error;
+    }
+}
 
-    // Calculate total seconds
-    const totalSeconds = (localHours * 3600) + (localMinutes * 60);
-    if (totalSeconds <= 0) {
-        console.error('Invalid timer duration: hours and minutes must result in a positive duration.');
+export async function resumeTimer() {
+    try {
+        await postData('timer', { action: 'start' });
+    } catch (error) {
+        console.error('Timer.js: Error sending resume timer command:', error);
+        timerStore.update(store => ({...store, status: 'error', display: "Resume Failed"}));
+        throw error;
+    }
+}
+
+export function initTimerModule() {
+    if (unsubscribeFromControlData) {
+        console.warn('Timer.js: Timer module already initialized.');
         return;
     }
+    unsubscribeFromControlData = controlData.subscribe(handleBackendUpdate);
+}
 
-    // Create payload with correct keys for the API
-    const payload = {
-        timer_action: {
-            hours_range: localHours,
-            minutes_range: localMinutes,
-            timer_shutdown: localShutdown,
-            timer_keep_warm: localKeepWarm
-        }
+export function destroyTimerModule() {
+    if (unsubscribeFromControlData) {
+        unsubscribeFromControlData();
+        unsubscribeFromControlData = null;
+    }
+    if (displayUpdateInterval) {
+        clearInterval(displayUpdateInterval);
+        displayUpdateInterval = null;
+    }
+    timerStore.set({ ...initialTimerState }); 
+    backendTimerInfo = { 
+        timer_active: false, timer_paused: false, timer_expired: false,
+        timer_end_time: 0, timer_paused_time: 0,
+        timer_shutdown: false, timer_keep_warm: false
     };
-
-    postAppData('timer_action', 'start_timer', payload)
-        .then(() => timerStore.update(store => ({ ...store, status: 'running' })))
-        .catch(error => {
-            console.error('Failed to start timer:', error);
-        });
-}
-
-// --- Initialization and Cleanup ---
-
-/** Initializes the timer module: subscribes to controlData. */
-export function initTimer() {
-    console.log('Initializing timer (Store Mode)...');
-    if (unsubscribeFromGrillData) return; // Prevent multiple initializations
-
-    unsubscribeFromGrillData = controlData.subscribe(storeValue => {
-        updateFromGrillData(storeValue);
-    });
-}
-
-/** Cleans up the timer interval and store subscription. */
-export function destroyTimer() {
-    console.log('Destroying timer (Store Mode)...');
-    if (updateIntervalId) clearInterval(updateIntervalId); updateIntervalId = null;
-    if (unsubscribeFromGrillData) unsubscribeFromGrillData(); unsubscribeFromGrillData = null;
-    timerStore.set({ status: 'stopped', display: '--:--:--' });
-    timerStatus = 'stopped'; timerDisplay = '--:--:--';
 }

@@ -1,16 +1,17 @@
 <script>
-	import { controlData, settingsData, setMode, postAppData } from '$lib/stores/socketioStore';
+	import { controlData, settingsData, setMode } from '$lib/stores/socketioStore';
 	import { Modal } from '@sveltestrap/sveltestrap';
 	import { modalHold, focusSelect, enterSubmit } from '$lib/stores/modalStore.js';
 
-	$: currentMode = $controlData?.status_data?.mode || 'Unknown';
-	$: primarySetPoint = $controlData?.probe_info?.PSP || 0;
+	$: currentMode = $controlData?.status?.mode || 'Unknown'; 
+	$: currentDisplayPSP = $controlData?.status?.primary_setpoint !== undefined ? $controlData?.status?.primary_setpoint : ($controlData?.probes?.PSP || 0);
+
 	$: units = $settingsData?.globals?.units || 'F';
-	$: maxTemp = $settingsData?.globals?.max_temp || 500;
+	$: maxTemp = $settingsData?.safety?.maxtemp || 550;
 
 	$: startupExitTemp = $settingsData?.startup?.startup_exit_temp || 0;
 	$: startToModeTemp = $settingsData?.startup?.start_to_mode?.primary_setpoint || 0;
-	$: startToMode = $settingsData?.startup?.start_to_mode?.after_startup || 'Unknown';
+	$: startToModeAfterStartup = $settingsData?.startup?.start_to_mode?.after_startup_mode || 'Unknown';
 	$: keepWarmTemp = $settingsData?.keep_warm?.temp || 0;
 
 	let setPointInputRef;
@@ -19,53 +20,41 @@
 	let error = '';
 
 	function _setPointInit() {
-		if (primarySetPoint > 0) {
-			_setPoint = primarySetPoint;
-		} else if (startToMode === 'Hold' && startToModeTemp > 0) {
+		if (currentMode === 'Hold' && currentDisplayPSP > 0) {
+			_setPoint = currentDisplayPSP;
+		} else if (startToModeAfterStartup === 'Hold' && startToModeTemp > 0) {
 			_setPoint = startToModeTemp;
-		} else if (startupExitTemp > 0) {
+		} else if (startupExitTemp > 0 && currentMode === 'Startup') {
 			_setPoint = startupExitTemp;
 		} else if (keepWarmTemp > 0) {
 			_setPoint = keepWarmTemp;
 		} else {
-			_setPoint = 200; // Default fallback
+			_setPoint = (units === 'F') ? 225 : 100;
 		}
 	}
 
-	function _setTarget() {
-		const setPoint = parseInt(_setPoint);
-		if (isNaN(setPoint) || setPoint < 0 || setPoint > maxTemp) {
+	async function _setTarget() { 
+		const setPointValue = parseInt(_setPoint); 
+		if (isNaN(setPointValue) || setPointValue < 0 || setPointValue > maxTemp) {
 			error = `Please enter a valid temperature between 0 and ${maxTemp} °${units}.`;
 			return;
 		}
-
-		const postdata = {
-			updated: true,
-			mode: 'Hold',
-			primary_setpoint: setPoint
-		};
-
-		console.log('Requesting Hold at:', setPoint);
-
-		postAppData('update_action', 'control', postdata)
-			.then(response => {
-				console.log('Hold mode set successfully:', response);
-				modalHold.set(false);
-				error = '';
-			})
-			.catch(err => {
-				console.error('Failed to set Hold mode:', err);
-				error = err.message || 'Failed to set Hold mode. Please try again.';
-			});
+		try {
+			const response = await setMode('Hold', {psp: setPointValue}); 
+			modalHold.set(false);
+			error = '';
+		} catch (err) {
+			console.error('Failed to set Hold mode:', err);
+			error = err.message || 'Failed to set Hold mode. Please try again.';
+		}
 	}
 
-	// Initialize input when modal opens
 	$: if ($modalHold && _initialLoad) {
 		error = '';
 		_setPointInit();
 		_initialLoad = false;
 		setTimeout(() => {
-			if (setPointInputRef && !document.activeElement) {
+			if (setPointInputRef && (typeof document === 'undefined' || !document.activeElement || document.activeElement === document.body)) {
 				setPointInputRef.focus();
 				setPointInputRef.select();
 			}
@@ -78,16 +67,17 @@
 	}
 </script>
 
-<!-- Hold Button -->
 <button
 	type="button"
 	class="btn border border-secondary nav-btn-height {currentMode === 'Hold' ? 'btn-success' : 'btn-outline-secondary'}"
 	id="hold_btn"
 	on:click={() => modalHold.set(true)}
-	aria-label="Hold Mode Modal"
+	aria-label="Set Hold Temperature"
 >
 	<i class="fas fa-crosshairs"></i>
-	<span class="ms-2 fw-semibold p-1" style="margin-bottom: 2px;" class:d-none={currentMode !== 'Hold'}>{primarySetPoint} °{units}</span>
+	{#if currentMode === 'Hold'}
+		<span class="ms-2 fw-semibold p-1" style="margin-bottom: 2px;">{currentDisplayPSP}°{units}</span>
+	{/if}
 </button>
 
 <Modal
@@ -98,8 +88,6 @@
 	isOpen={$modalHold}
 	toggle={() => {
 		modalHold.set(false);
-		_initialLoad = true;
-		error = '';
 	}}
 >
 	<div class="modal-body text-center">
@@ -110,9 +98,9 @@
 		{/if}
 		<div class="d-flex justify-content-center align-items-center mb-3">
 			<div class="me-2">
-				<label for="_setPoint" class="form-label">Temperature</label>
+				<label for="setPointInput" class="form-label">Temperature</label>
 				<input
-					id="_setPoint"
+					id="setPointInput"
 					bind:this={setPointInputRef}
 					type="number"
 					inputmode="numeric"
@@ -133,8 +121,6 @@
 			class="btn btn-outline-secondary"
 			on:click={() => {
 				modalHold.set(false);
-				_initialLoad = true;
-				error = '';
 			}}
 		>
 			Cancel

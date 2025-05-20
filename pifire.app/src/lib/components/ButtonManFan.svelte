@@ -1,15 +1,21 @@
 <script>
-	import { controlData, postAppData } from '$lib/stores/socketioStore';
+    import { controlData, postData } from '$lib/stores/socketioStore';
+    $: fanOn = $controlData?.status?.outpins?.fan || false;
 
-	$: igniterOn = $controlData?.status_data?.outpins?.igniter || false;
+    async function toggleFan() {
+        try {
+			await postData('manual', { action: 'fan', value: 'toggle'});
+		} catch (error) {
+			console.error('Failed to toggle fan:', error);
+		}
+	}
 </script>
 
-<!-- Igniter Toggle Button -->
 <button
-	type="button"
-	class="btn nav-btn-height {igniterOn ? 'btn-warning' : 'btn-outline-secondary'}"
-	aria-label="{igniterOn ? 'Turn igniter off' : 'Turn igniter on'}"
-	on:click={() => postAppData('manual', { component: 'igniter', toggle: true })}
+    type="button"
+    class="btn nav-btn-height {fanOn ? 'btn-warning' : 'btn-outline-secondary'}"
+    aria-label="{fanOn ? 'Turn fan off' : 'Turn fan on'}"
+    on:click={toggleFan}
 >
-	<i class="fas fa-fire-alt"></i> Igniter {igniterOn ? 'On' : 'Off'}
+    <i class="fas fa-fan"></i>
 </button>

@@ -3,42 +3,34 @@ import { io } from 'socket.io-client';
 
 export const isConnected = writable(false);
 export const socketStatus = writable('Disconnected');
-export const serverAddress = writable('http://localhost');
-export const serverPort = writable('8000');
-export const controlData = writable({});
+export const serverAddress = writable('http://localhost'); 
+export const serverPort = writable('8000'); 
+
+export const controlData = writable({}); 
 export const settingsData = writable({});
 export const pelletsData = writable({});
-export const eventsData = writable({});
-export const infoData = writable({});
-export const manualData = writable({});
-export const uiSettings = writable({});
+export const currentTempsData = writable({});
+export const historyData = writable([]);
+export const metricsData = writable([]);
+export const errorData = writable([]);
+export const warningData = writable([]);
+export const uiSettings = writable({}); 
 
 let socket = null;
 
-// --- Private Helper Functions ---
-
-/**
- * Attaches event listeners to the socket.
- * @param {object} currentSocket - The socket instance.
- */
 function _attachListeners(currentSocket) {
 	currentSocket.on('connect', () => {
 		const address = `${get(serverAddress)}:${get(serverPort)}`;
-		console.log(`Socket connected to server at ${address}`);
 		isConnected.set(true);
 		socketStatus.set('Connected');
-
-		// Request initial data
-		emitEvent('get_dash_data', { force: true });
-		requestSettings();
-		requestPelletsData();
+		currentSocket.emit('request_initial_data'); 
 	});
 
 	currentSocket.on('disconnect', (reason) => {
-		console.log(`Socket disconnected. Reason: ${reason}`);
 		isConnected.set(false);
 		socketStatus.set('Disconnected');
 		uiSettings.set({});
+		controlData.set({});
 	});
 
 	currentSocket.on('connect_error', (error) => {
@@ -46,51 +38,64 @@ function _attachListeners(currentSocket) {
 		isConnected.set(false);
 		socketStatus.set('Error');
 		uiSettings.set({});
+		controlData.set({});
 	});
 
-	currentSocket.on('grill_control_data', (data) => {
-		controlData.set(data);
+	currentSocket.on('dashboard_data', (data) => {
+		controlData.set(data || {}); 
 	});
 
 	currentSocket.on('settings_data', (fullSettings) => {
-		console.log("Received broadcasted 'settings_data':", fullSettings);
 		settingsData.set(fullSettings || {});
 		const dashSettings = fullSettings?.webui?.dash || {};
-		console.log("Updating uiSettings store:", dashSettings);
 		uiSettings.set(dashSettings);
 	});
 
-	currentSocket.on('control_data', (controlData) => {
-		console.log("Received broadcasted 'control_data':", controlData);
-		controlData.set(controlData || {});
+	currentSocket.on('pellet_data', (data) => {
+		pelletsData.set(data || {});
 	});
 
-	currentSocket.on('pellets_data', (pelletsData) => {
-		console.log("Received broadcasted 'pellets_data':", pelletsData);
-		pelletsData.set(pelletsData || {});
+	currentSocket.on('current_temps_data', (data) => {
+		currentTempsData.set(data || {});
+	});
+
+	currentSocket.on('history_data', (data) => {
+		historyData.set(data || []);
+	});
+
+	currentSocket.on('metrics_data', (data) => {
+		metricsData.set(data || []);
+	});
+
+	currentSocket.on('error_data', (data) => {
+		errorData.set(data || []);
+	});
+
+	currentSocket.on('warning_data', (data) => {
+		warningData.set(data || []);
+	});
+
+	currentSocket.on('post_response', (response) => {
 	});
 }
 
-/**
- * Removes event listeners for cleanup.
- * @param {object} currentSocket - The socket instance.
- */
 function _removeListeners(currentSocket) {
 	currentSocket.off('connect');
 	currentSocket.off('disconnect');
 	currentSocket.off('connect_error');
-	currentSocket.off('grill_control_data');
+	currentSocket.off('dashboard_data'); 
 	currentSocket.off('settings_data');
-	currentSocket.off('control_data');
-	currentSocket.off('pellets_data');
+	currentSocket.off('pellet_data'); 
+	currentSocket.off('current_temps_data');
+	currentSocket.off('history_data');
+	currentSocket.off('metrics_data');
+	currentSocket.off('error_data');
+	currentSocket.off('warning_data');
+	currentSocket.off('post_response');
 }
 
-/**
- * Internal function to establish the connection.
- */
 function _connectInternal() {
 	if (socket && (socket.connected || socket.connecting)) {
-		console.warn('Socket connection attempt ignored: Already connected or connecting.');
 		return;
 	}
 	if (socket) {
@@ -98,281 +103,164 @@ function _connectInternal() {
 		socket.disconnect();
 		socket = null;
 	}
-
 	const address = `${get(serverAddress)}:${get(serverPort)}`;
-	console.log(`Attempting to connect to socket server at ${address}...`);
 	socketStatus.set('Connecting');
-
 	uiSettings.set({});
-
-	socket = io(address, {
-		reconnection: true,
-	});
-
+	controlData.set({});
+	socket = io(address, { reconnection: true });
 	_attachListeners(socket);
 }
 
-// --- Public API ---
-
-/** Initializes the socket connection based on saved or default address. */
 export function initializeSocket() {
 	if (typeof window !== 'undefined') {
 		const savedAddress = localStorage.getItem('serverAddress');
-		if (savedAddress) {
-			serverAddress.set(savedAddress);
-		}
+		const savedPort = localStorage.getItem('serverPort');
+		if (savedAddress) serverAddress.set(savedAddress);
+		if (savedPort) serverPort.set(savedPort);
 		_connectInternal();
 	} else {
-		console.warn("Socket initialization skipped: Not running in a browser environment.");
+		console.warn("Socket initialization skipped: Not in browser.");
 	}
 }
 
-/** Disconnects the socket and cleans up listeners. */
 export function disconnectSocket() {
 	if (socket) {
-		console.log('Disconnecting socket...');
 		_removeListeners(socket);
 		socket.disconnect();
 		socket = null;
 		isConnected.set(false);
 		socketStatus.set('Disconnected');
 		uiSettings.set({});
+		controlData.set({});
 	}
 }
 
-/**
- * Switches the connection to a new server, clears local stores, and reconnects.
- * @param {string} newAddress - Base address (e.g., 'http://192.168.1.100').
- * @param {string} [newPort] - Optional port.
- */
-export function switchServer(newAddress, newPort) {
-	console.log(`Switching server to ${newAddress}:${newPort || get(serverPort)}`);
-	disconnectSocket();
-
-	controlData.set({});
-	settingsData.set({});
-	pelletsData.set({});
-	eventsData.set({});
-	infoData.set({});
-	manualData.set({});
-	uiSettings.set({});
-	console.log('Cleared local data stores for server switch.');
-
-	serverAddress.set(newAddress);
-	if (newPort) {
-		serverPort.set(newPort);
-	}
+export function switchServer(newAddress, newPort = get(serverPort)) {
+	disconnectSocket(); 
+	settingsData.set({}); pelletsData.set({}); controlData.set({}); 
+	currentTempsData.set({}); historyData.set([]); metricsData.set([]);
+	errorData.set([]); warningData.set([]); uiSettings.set({});
+	serverAddress.set(newAddress); serverPort.set(newPort);
 	if (typeof window !== 'undefined') {
 		localStorage.setItem('serverAddress', newAddress);
+		localStorage.setItem('serverPort', newPort);
 	}
-	setTimeout(_connectInternal, 100);
+	setTimeout(_connectInternal, 250);
 }
 
-/**
- * Generic function to emit an event to the server without waiting for ACK.
- * @param {string} eventName - Event name.
- * @param {object} [data={}] - Payload.
- */
 export function emitEvent(eventName, data = {}) {
-	if (socket && socket.connected) {
-		socket.emit(eventName, data);
-	} else {
-		console.error(`Socket not connected. Cannot emit event '${eventName}'. Status: ${get(socketStatus)}`);
-	}
+	if (socket && socket.connected) socket.emit(eventName, data);
+	else console.error(`Socket not connected. Cannot emit '${eventName}'.`);
 }
 
-/**
- * Emit an event and wait for an acknowledgement.
- * @param {string} eventName - The event name to emit.
- * @param {object} data - The data payload to send.
- * @param {number} [timeoutMs=5000] - Timeout duration in milliseconds.
- * @returns {Promise<object>} Resolves with response data or rejects on error/timeout.
- */
 function _emitWithAck(eventName, data, timeoutMs = 5000) {
 	return new Promise((resolve, reject) => {
-		if (!socket || !socket.connected) {
-			console.error(`Cannot emit ${eventName}: Socket is not connected.`);
-			return reject(new Error('Socket is not connected'));
-		}
-
+		if (!socket || !socket.connected) return reject(new Error('Socket not connected.'));
 		let timedOut = false;
-		const timer = setTimeout(() => {
-			timedOut = true;
-			console.error(`Timeout waiting for acknowledgement for event '${eventName}'.`);
-			reject(new Error(`Timeout waiting for ${eventName} response`));
-		}, timeoutMs);
-
+		const timer = setTimeout(() => { timedOut = true; reject(new Error(`Timeout: ${eventName}`)); }, timeoutMs);
 		socket.emit(eventName, data, (response) => {
 			clearTimeout(timer);
-			if (timedOut) return;
-
-			if (response && typeof response === 'object' && response.response?.result === 'error') {
-				console.error(`Server returned error for ${eventName}:`, response.response.message);
-				reject(new Error(response.response.message || `Server error for ${eventName}`));
-			} else if (response !== undefined && response !== null) {
-				resolve(response);
-			} else {
-				console.error(`Failed to retrieve data for ${eventName} (server responded empty/unexpected). Response:`, response);
-				reject(new Error(`Server responded unsuccessfully or with unexpected format for ${eventName}`));
-			}
+			if (timedOut) return; 
+			if (response && response.error) reject(new Error(response.error));
+			else resolve(response);
 		});
 	});
 }
 
-/**
- * Sends data to the server's 'post_app_data' handler.
- * @param {string} action - The action type (e.g., 'update_action', 'timer', 'admin').
- * @param {string} type - The specific type (e.g., 'settings', 'control', 'pellets').
- * @param {object} postdata - The data to send.
- * @param {number} [timeoutMs=5000] - Timeout duration in milliseconds.
- * @returns {Promise<object>} Server response.
- */
-export async function postAppData(action, type, postdata = {}, timeoutMs = 5000) {
-	if (!action || !type) {
-		console.error("postAppData requires 'action' and 'type' arguments.");
-		return Promise.reject(new Error("postAppData requires 'action' and 'type' arguments."));
-	}
-
-	const jsonPayloadString = JSON.stringify(postdata);
-	console.log(`Posting App Data - Action: ${action}, Type: ${type}, Payload:`, postdata);
-
-	return new Promise((resolve, reject) => {
-		if (!socket || !socket.connected) {
-			console.error(`Cannot postAppData ${action}/${type}: Socket is not connected.`);
-			return reject(new Error('Socket is not connected'));
-		}
-
-		let timedOut = false;
-		const timer = setTimeout(() => {
-			timedOut = true;
-			console.error(`Timeout waiting for acknowledgement for post_app_data ${action}/${type}.`);
-			reject(new Error(`Timeout waiting for post_app_data ${action}/${type} response`));
-		}, timeoutMs);
-
-		socket.emit('post_app_data', action, type, jsonPayloadString, (response) => {
-			clearTimeout(timer);
-			if (timedOut) return;
-
-			if (response && typeof response === 'object' && response.response?.result === 'error') {
-				console.error(`Server returned error for post_app_data ${action}/${type}:`, response.response.message);
-				reject(new Error(response.response.message || `Server error for post_app_data ${action}/${type}`));
-			} else if (response && typeof response === 'object' && response.response?.result === 'success') {
-				console.log(`postAppData successful for ${action}/${type}:`, response);
-				resolve(response);
-			} else {
-				console.error(`postAppData ${action}/${type} received unexpected acknowledgement format:`, response);
-				reject(new Error(`Server responded unsuccessfully or with unexpected format for post_app_data ${action}/${type}`));
-			}
-		});
-	});
+export async function postData(category, dataPayload, timeoutMs = 5000) {
+	if (!category || typeof dataPayload !== 'object') return Promise.reject(new Error("postData: category & dataPayload (object) required."));
+	const message = { category, data: dataPayload };
+	return _emitWithAck('post_data', message, timeoutMs);
 }
 
-// --- Application Specific Actions ---
-
-/**
- * Sets the control mode.
- * @param {string} mode - The mode to set (e.g., 'Prime', 'Cook').
- * @param {number|null} [primeAmount=null] - Amount for 'Prime' mode.
- * @param {string|null} [nextMode=null] - Next mode after 'Prime'.
- */
-export async function setMode(mode, primeAmount = null, nextMode = null) {
-	const payload = {
-		updated: true,
-		mode: mode
-	};
-	if (mode === 'Prime' && primeAmount !== null && nextMode) {
-		payload.prime_amount = primeAmount;
-		payload.next_mode = nextMode;
-	}
-	return postAppData('update_action', 'control', payload);
+export async function setMode(modeName, data = {}) { 
+    const payload = { mode: modeName, ...data };
+    return postData('control', payload);
 }
 
-/**
- * Saves the card order as an array.
- * @param {string[]} cardOrder - Array of card IDs.
- */
-export async function saveCardOrder(cardOrder) {
-	console.log("Saving card order:", cardOrder);
-	return postAppData('update_action', 'settings', { webui: { dash: { cardOrder } } });
+export async function setPMode(pmodeValue) {
+	if (typeof pmodeValue !== 'number' || pmodeValue < 0 || pmodeValue > 9) return Promise.reject(new Error("Invalid PMode."));
+	return postData('control', { pmode: pmodeValue });
 }
 
-// --- Functions to Request Specific Data ---
+export async function setSmokePlus(enable) {
+	return postData('control', { splus: enable });
+}
 
-export async function requestSettings() {
-	console.log("Requesting Settings Data...");
+export async function toggleLidOpen() {
+	return postData('control', { lid_open_toggle: true });
+}
+
+export async function setPWMControl(enable) {
+	return postData('control', { pwm_control: enable });
+}
+
+export async function setDutyCycle(dutyCycleValue) {
+	if (typeof dutyCycleValue !== 'number' || dutyCycleValue < 0 || dutyCycleValue > 100) return Promise.reject(new Error("Invalid Duty Cycle."));
+	return postData('control', { duty_cycle: dutyCycleValue });
+}
+
+export async function setTuningMode(enable) {
+	return postData('control', { tuning_mode: enable });
+}
+
+export async function setManual(component, value) {
+	return postData('control', { command_type: 'manual', action: component, value: value });
+}
+
+export async function startTimer(durationSeconds) {
+	return postData('timer', { action: 'start', duration: durationSeconds });
+}
+export async function pauseTimer() { return postData('timer', { action: 'pause' }); }
+export async function stopTimer() { return postData('timer', { action: 'stop' }); }
+export async function setTimerShutdown(enable) { return postData('timer', { action: 'set_shutdown', value: enable }); }
+export async function setTimerKeepWarm(enable) { return postData('timer', { action: 'set_keep_warm', value: enable }); }
+
+export async function saveCardOrder(cardOrderArray) {
+	return postData('settings', { webui: { dash: { cardOrder: cardOrderArray } } });
+}
+
+export async function requestControlData() { 
 	try {
-		const response = await _emitWithAck('get_app_data', { action: 'settings_data' });
-		console.log("Received Full Settings:", response);
-		const fullSettings = response || {};
-		settingsData.set(fullSettings);
-		const dashSettings = fullSettings?.webui?.dash || {};
-		console.log("Updating uiSettings store:", dashSettings);
-		uiSettings.set(dashSettings);
-		return fullSettings;
-	} catch (error) {
-		console.error("Failed to request settings data:", error);
-		settingsData.set({});
-		uiSettings.set({});
-		throw error;
-	}
-}
-
-export async function requestPelletsData() {
-	try {
-		const response = await _emitWithAck('get_app_data', { action: 'pellets_data' });
-		pelletsData.set(response || {});
-		return response;
-	} catch (error) {
-		console.error("Failed to request pellets data:", error);
-		pelletsData.set({});
-		throw error;
-	}
-}
-
-export async function requestEventsData() {
-	try {
-		const response = await _emitWithAck('get_app_data', { action: 'events_data' });
-		eventsData.set(response || {});
-		return response;
-	} catch (error) {
-		console.error("Failed to request events data:", error);
-		eventsData.set({});
-		throw error;
-	}
-}
-
-export async function requestInfoData() {
-	try {
-		const response = await _emitWithAck('get_app_data', { action: 'info_data' });
-		infoData.set(response || {});
-		return response;
-	} catch (error) {
-		console.error("Failed to request info data:", error);
-		infoData.set({});
-		throw error;
-	}
-}
-
-export async function requestManualData() {
-	try {
-		const response = await _emitWithAck('get_app_data', { action: 'manual_data' });
-		manualData.set(response || {});
-		return response;
-	} catch (error) {
-		console.error("Failed to request manual data:", error);
-		manualData.set({});
-		throw error;
-	}
-}
-
-export async function requestcontrolData() {
-	try {
-		const response = await _emitWithAck('get_app_data', { action: 'grill_control_data' });
+		const response = await _emitWithAck('get_data', { action: 'control' });
 		controlData.set(response || {});
 		return response;
 	} catch (error) {
-		console.error("Failed to request grill control data:", error);
-		controlData.set({});
-		throw error;
+		console.error("Failed to request main control/dashboard data:", error);
+		controlData.set({}); throw error;
+	}
+}
+
+export async function requestSettingsData() {
+	try {
+		const response = await _emitWithAck('get_data', { action: 'settings' });
+		settingsData.set(response || {});
+		uiSettings.set(response?.webui?.dash || {});
+		return response;
+	} catch (error) {
+		console.error("Failed to request settings data:", error);
+		settingsData.set({}); uiSettings.set({}); throw error;
+	}
+}
+
+export async function requestPelletsDbData() { 
+	try {
+		const response = await _emitWithAck('get_data', { action: 'pellets' });
+		pelletsData.set(response || {});
+		return response;
+	} catch (error) {
+		console.error("Failed to request pellets DB data:", error);
+		pelletsData.set({}); throw error;
+	}
+}
+
+export async function requestCurrentTemps() { 
+	try {
+		const response = await _emitWithAck('get_data', { action: 'current_temps' });
+		currentTempsData.set(response || {}); 
+		return response;
+	} catch (error) {
+		console.error("Failed to request current temps data:", error);
+		currentTempsData.set({}); throw error;
 	}
 }

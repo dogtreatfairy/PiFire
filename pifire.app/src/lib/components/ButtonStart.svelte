@@ -1,6 +1,6 @@
 <script>
 	import { controlData, setMode } from '$lib/stores/socketioStore';
-	$: currentMode = $controlData?.status_data?.mode  || 'Unknown';
+	$: currentMode = $controlData?.status?.mode || 'Unknown'; 
 </script>
 
 <!-- Start Button -->

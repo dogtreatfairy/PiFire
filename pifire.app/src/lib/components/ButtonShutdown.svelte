@@ -10,10 +10,11 @@
 	type="button" 
 	class="btn nav-btn-height { $colorMode === 'dark' ? 'btn-outline-danger border-secondary' : 'btn-danger' }"
 	id="finish_btn" 
-	on:click={() => setMode('Finish')}
+	on:click={() => setMode('Shutdown')}
 	on:mouseover={() => hovered = true}
 	on:mouseout={() => hovered = false}
-	aria-label="Finish Mode"
+	aria-label="Shutdown Mode"
 >
 	<i class="fas fa-flag-checkered"></i>
 </button>
+

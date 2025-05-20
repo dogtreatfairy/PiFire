@@ -6,16 +6,12 @@
 	import ProbeCard from '$lib/components/ProbeCard.svelte';
 	import InfoCard from '$lib/components/InfoCard.svelte';
   
-	console.log("Component Script Initializing (using socketioStore)...");
-  
 	let items = [];
 	let rawItems = [];
 	let isInitialized = false;
   
 	$: probeDataReady = !!$settingsData?.probe_settings?.probe_map?.probe_info;
-	$: console.log("Reactive: $settingsData changed, probeDataReady:", probeDataReady);
 	$: if (probeDataReady) {
-	  console.log("Reactive: Probe data is ready, building rawItems...");
 	  const probeInfo = $settingsData.probe_settings.probe_map.probe_info;
 	  const probes = probeInfo.map(probe => ({
 		id: `probe-${probe.port}`,
@@ -29,38 +25,29 @@
 	  }));
 	  const infoCard = { id: 'info-card', type: 'info' };
 	  rawItems = [...probes, infoCard];
-	  console.log("Reactive: Raw items built:", rawItems.map(i => i.id));
 	} else {
 	  if (rawItems.length > 0 || !isInitialized) {
-		console.log("Reactive: Probe data is NOT ready or removed.");
 	  }
 	  rawItems = [];
 	  items = [];
 	  if (isInitialized) {
 		isInitialized = false;
-		console.log("Reactive: Resetting initialization because probe data removed.");
 	  }
 	}
   
 	$: uiSettingsFetchComplete = $uiSettings !== null;
 	$: uiSettingsValue = $uiSettings;
-	$: console.log("Reactive: $uiSettings changed, FetchComplete:", uiSettingsFetchComplete, "Value:", uiSettingsValue);
   
 	$: {
-	  console.log(`Reactive Check: probeDataReady=${probeDataReady}, uiSettingsFetchComplete=${uiSettingsFetchComplete}, isInitialized=${isInitialized}`);
 	  if (probeDataReady && uiSettingsFetchComplete && !isInitialized) {
-		console.log(">>> Probe data AND UI settings fetch complete! Calling initializeItems()...");
 		initializeItems();
 	  } else if (!isInitialized) {
-		console.log(">>> Conditions NOT met for initialization (waiting for probe data and/or UI settings fetch).");
+		console.warn(">>> Conditions NOT met for initialization (waiting for probe data and/or UI settings fetch).");
 	  }
 	}
   
 	function initializeItems() {
-	  console.log("Function: initializeItems() called.");
 	  const cardOrder = $uiSettings?.cardOrder || [];
-	  console.log("Function: initializeItems() - Card Order from settings:", cardOrder);
-	  console.log("Function: initializeItems() - Current rawItems:", rawItems);
   
 	  if (!rawItems || rawItems.length === 0) {
 		console.warn("Function: initializeItems() - Initialization skipped: rawItems is empty.");
@@ -80,13 +67,10 @@
   
 	  orderedItems.push(...remainingItems);
   
-	  console.log("Function: initializeItems() - Initial sorted 'items' for dndzone:", orderedItems.map(i => i.id));
-  
 	  items = orderedItems;
   
 	  if (items.length > 0) {
 		isInitialized = true;
-		console.log("Function: initializeItems() - Initialization COMPLETE. Setting isInitialized=true.");
 	  } else {
 		console.warn("Function: initializeItems() - Initialization finished, but no items to display. isInitialized remains false.");
 	  }
@@ -100,20 +84,14 @@
   
 	async function handleDndFinalize(e) {
 	  items = e.detail.items;
-	  console.log("DND Finalize - Final items order:", items.map(i => i.id));
-	  console.log("Before save - Current $uiSettings.cardOrder:", $uiSettings?.cardOrder);
   
 	  const newCardOrder = items.map(item => item.id);
-  
-	  console.log("Saving new card order via socketioStore:", newCardOrder);
 	  try {
 		await saveCardOrder(newCardOrder);
-		console.log("saveCardOrder call successful");
   
 		// Update the uiSettings store
 		uiSettings.update(currentSettings => {
 		  const updatedSettings = { ...currentSettings, cardOrder: newCardOrder };
-		  console.log("After update - New $uiSettings.cardOrder:", updatedSettings.cardOrder);
 		  return updatedSettings;
 		});
 	  } catch (error) {
