@@ -14,7 +14,7 @@
 	import ButtonManAug from '$lib/components/ButtonManAug.svelte';
 	import ButtonManIgn from '$lib/components/ButtonManIgn.svelte';
 
-	$: currentMode = $controlData?.status?.mode || 'Unknown'; 
+	$: currentMode = $controlData?.mode || 'Unknown'; 
 	onMount(() => {
 		const interval = setInterval(() => {
 		}, 1000);

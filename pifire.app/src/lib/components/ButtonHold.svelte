@@ -3,8 +3,8 @@
 	import { Modal } from '@sveltestrap/sveltestrap';
 	import { modalHold, focusSelect, enterSubmit } from '$lib/stores/modalStore.js';
 
-	$: currentMode = $controlData?.status?.mode || 'Unknown'; 
-	$: currentDisplayPSP = $controlData?.status?.primary_setpoint !== undefined ? $controlData?.status?.primary_setpoint : ($controlData?.probes?.PSP || 0);
+	$: currentMode = $controlData?.mode || 'Unknown'; 
+	$: currentDisplayPSP = $controlData?.primary_setpoint !== undefined ? $controlData?.primary_setpoint : ($controlData?.probes?.PSP || 0);
 
 	$: units = $settingsData?.globals?.units || 'F';
 	$: maxTemp = $settingsData?.safety?.maxtemp || 550;

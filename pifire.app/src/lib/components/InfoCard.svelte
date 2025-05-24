@@ -17,15 +17,15 @@
 
 	// Accessing data from the $controlData store, assuming it holds the comprehensive payload
 	// where 'status' is a top-level key containing mode, outpins, etc.
-	$: currentMode = $controlData?.status?.mode || 'Unknown'; 
-	$: serverStartupTimestamp = $controlData?.status?.startup_timestamp || 0;
+	$: currentMode = $controlData?.mode || 'Unknown'; 
+	$: serverStartupTimestamp = $controlData?.startup_timestamp || 0;
 
-	$: auger = $controlData?.status?.outpins?.auger || false;
-	$: igniter = $controlData?.status?.outpins?.igniter || false;
-	$: fan = $controlData?.status?.outpins?.fan || false;
-	$: pmode = $controlData?.status?.p_mode || 0; // p_mode is inside the status block
+	$: auger = $controlData?.outpins?.auger || false;
+	$: igniter = $controlData?.outpins?.igniter || false;
+	$: fan = $controlData?.outpins?.fan || false;
+	$: pmode = $controlData?.p_mode || 0; // p_mode is inside the status block
 
-	$: hopperLevel = $controlData?.status?.hopper_level || 100; // hopper_level is inside the status block
+	$: hopperLevel = $controlData?.hopper_level || 100; // hopper_level is inside the status block
 	$: connectionStatus = $socketStatus;
 
 	$: currentPelletId = $pelletsData?.current?.pelletid || 'Unknown';

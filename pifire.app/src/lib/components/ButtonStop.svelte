@@ -1,12 +1,12 @@
 <script>
     import { controlData, setMode } from '$lib/stores/socketioStore';
     import { colorMode } from '@sveltestrap/sveltestrap';
-    $: currentMode = $controlData?.status?.mode || 'Unknown'; 
+    $: currentMode = $controlData?.mode || 'Unknown'; 
 
     async function stopGrillWithRetry() {
         await setMode('Stop');
         setTimeout(() => {
-            if ($controlData?.status?.mode !== 'Stop') {
+            if ($controlData?.mode !== 'Stop') {
                 setMode('Stop');
             }
         }, 1000); // Retry after 1 second if still not in Stop mode

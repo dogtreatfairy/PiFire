@@ -93,20 +93,20 @@ def _build_main_dashboard_payload():
 		'recipe_paused': current_hw_status.get('recipe_paused', False),
 		'hopper_level': pelletdb.get('current',{}).get('hopper_level', 0),
 		# Include manual_output_states in the dashboard payload if UI needs to reflect desired manual states
-		'manual_output_states': control.get('manual_output_states', {}), 
-		'ui_hash': hash(json.dumps(settings.get('probe_settings', {}).get('probe_map', {}).get('probe_info', [])))
-	}
-	
-	dashboard_payload = {
-		'status': status_info_block,        
-		'probes': current_temps,            
-		'notify_data': control.get('notify_data', []), 
-		'timer': timer_info_block,            
+		'manual_output_states': control.get('manual_output_states', {}),
 		'pwm_control': control.get('pwm_control', False), 
 		'tuning_mode': control.get('tuning_mode', False),
 		'next_mode': control.get('next_mode', 'Stop'),
 		'current_control_mode': control.get('mode', 'Stop'), 
-		'current_duty_cycle': control.get('duty_cycle', 100)
+		'current_duty_cycle': control.get('duty_cycle', 100),
+		'ui_hash': hash(json.dumps(settings.get('probe_settings', {}).get('probe_map', {}).get('probe_info', [])))
+	}
+	
+	dashboard_payload = {
+		**status_info_block,        
+		'probes': current_temps,            
+		'notify_data': control.get('notify_data', []), 
+		'timer': timer_info_block,
 	}
 	return dashboard_payload
 
