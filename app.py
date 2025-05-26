@@ -31,7 +31,7 @@ from file_mgmt.common import fixup_assets, read_json_file_data, update_json_file
 from file_mgmt.cookfile import read_cookfile, upgrade_cookfile, prepare_chartdata
 from file_mgmt.media import add_asset, set_thumbnail, unpack_thumb
 from file_mgmt.recipes import read_recipefile, create_recipefile
-from common.common import *
+from common import *
 from common.socketio_handler import socketio
 import json
 import os
