@@ -1,49 +1,48 @@
 '''
 ==============================================================================
-PiFire Web UI (Flask App) Process
+ PiFire Web UI (Flask App) Process
 ==============================================================================
 
 Description: This script will start at boot, and start up the web user
-interface.
-
-This script runs as a separate process from the control program
-implementation which handles interfacing and running I2C devices & GPIOs.
+  interface.
+ 
+   This script runs as a separate process from the control program
+  implementation which handles interfacing and running I2C devices & GPIOs.
 
 ==============================================================================
 '''
 
 '''
 ==============================================================================
-Imported Modules
+ Imported Modules
 ==============================================================================
 '''
 
-from flask import Flask, request, abort, render_template, make_response, send_file, jsonify, redirect, render_template_string, url_for
+from flask import Flask, request, abort, render_template, make_response, send_file, jsonify, redirect, render_template_string
 from flask_mobility import Mobility
-from flask_socketio import SocketIO, emit
 from flask_qrcode import QRcode
-from flask_cors import CORS
 from io import BytesIO
 from werkzeug.utils import secure_filename
-from collections.abc import Mapping
-import threading
 import zipfile
 import pathlib
-from threading import Thread
 from datetime import datetime
 from updater import *  # Library for doing project updates from GitHub
 from file_mgmt.common import fixup_assets, read_json_file_data, update_json_file_data, remove_assets
 from file_mgmt.cookfile import read_cookfile, upgrade_cookfile, prepare_chartdata
 from file_mgmt.media import add_asset, set_thumbnail, unpack_thumb
 from file_mgmt.recipes import read_recipefile, create_recipefile
+from common.socketio_handler import socketio # Moved SocketIO to a separate file in common
 import json
-import copy
+import os
+
 
 '''
 ==============================================================================
-Constants & Globals 
+ Constants & Globals 
 ==============================================================================
 '''
+
+settings = read_settings(init=True)
 
 BACKUP_PATH = './backups/'  # Path to backups of settings.json, pelletdb.json
 UPLOAD_FOLDER = BACKUP_PATH  # Point uploads to the backup path
@@ -54,21 +53,16 @@ ALLOWED_EXTENSIONS = {'json', 'pifire', 'pfrecipe', 'jpg', 'jpeg', 'png', 'gif',
 server_status = 'available'
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio.init_app(app, cors_allowed_origins="*")
 QRcode(app)
 Mobility(app)
-CORS(app)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['HISTORY_FOLDER'] = HISTORY_FOLDER
 app.config['RECIPE_FOLDER'] = RECIPE_FOLDER
 
-@app.context_processor
-def inject_settings():
-	return dict(settings=settings)
-
 '''
 ==============================================================================
-App Routes
+ App Routes
 ==============================================================================
 '''
 @app.route('/')
@@ -90,15 +84,45 @@ def dash():
 	current = settings['dashboard']['current']
 	dash_template = settings['dashboard']['dashboards'][current].get('html_name', 'dash_default.html')
 	dash_data = settings['dashboard']['dashboards'].get(current, {})
+	probe_status = read_probe_status(settings['probe_settings']['probe_map']['probe_info'])
+	
+	''' Check if control process is up and running. '''
+	process_command(action='sys', arglist=['check_alive'], origin='dash')  # Request supported commands 
+	data = _get_system_command_output(requested='check_alive')
+	if data['result'] != 'OK':
+		errors.append('The control process did not respond to a request and may be stopped.  Try reloading the page or restarting the system.  Check logs for details.')
 
 	return render_template(dash_template,
 						   settings=settings,
 						   control=control,
 						   dash_data=dash_data,
+						   probe_status=probe_status,
 						   errors=errors,
 						   warnings=warnings,
 						   page_theme=settings['globals']['page_theme'],
 						   grill_name=settings['globals']['grill_name'])
+
+@app.route('/dashconfig', methods=['POST','GET'])
+def dash_config():
+	global settings
+	current = settings['dashboard']['current']
+	dash_data = settings['dashboard']['dashboards'].get(current, {})
+	meta_data_filename = dash_data.get('metadata', None)
+	dash_metadata = read_generic_json(f'./dashboard/{meta_data_filename}')
+
+	if request.method == 'GET':
+		render_string = "{% from '_macro_generic_config.html' import render_dash_config_card %}{{ render_dash_config_card(dash_metadata, dash_data) }}"
+		return render_template_string(render_string, dash_metadata=dash_metadata, dash_data=dash_data)
+	elif request.method == 'POST':
+		dash_config_request = request.form
+		for key, value in dash_config_request.items():
+			if 'dashConfig_' in key:
+				dash_data['config'][key.replace('dashConfig_','')] = value
+		settings['dashboard']['dashboards'][current]['config'] = dash_data['config']
+		write_settings(settings)
+		return redirect('/dash')
+	
+	return 'Bad Request'
 
 @app.route('/hopperlevel')
 def hopper_level():
@@ -289,7 +313,7 @@ def history_update(action=None):
 			'time_labels' : time_labels,
 			'probe_mapper' : probe_mapper, 
 			'chart_data' : chart_data
-		}	
+		}		
 		'''
 		return jsonify(json_response)
 
@@ -857,19 +881,19 @@ def tuner_page(action=None):
 				write_control(control, origin='app')
 			
 			tunerManualHighTemp = requestjson.get('tunerManualHighTemp', 0.1)
-			tunerManualHighTemp = 0 if tunerManualHighTemp == '' else int(tunerManualHighTemp)
+			tunerManualHighTemp = 0 if tunerManualHighTemp == '' else float(tunerManualHighTemp)
 			tunerManualHighTr = requestjson.get('tunerManualHighTr', 0.1)
-			tunerManualHighTr = 0 if tunerManualHighTr == '' else int(tunerManualHighTr)
+			tunerManualHighTr = 0 if tunerManualHighTr == '' else int(float(tunerManualHighTr))
 
 			tunerManualMediumTemp = requestjson.get('tunerManualMediumTemp', 0.1)
-			tunerManualMediumTemp = 0 if tunerManualMediumTemp == '' else int(tunerManualMediumTemp)
+			tunerManualMediumTemp = 0 if tunerManualMediumTemp == '' else float(tunerManualMediumTemp)
 			tunerManualMediumTr = requestjson.get('tunerManualMediumTr', 0.1)
-			tunerManualMediumTr = 0 if tunerManualMediumTr == '' else int(tunerManualMediumTr)
+			tunerManualMediumTr = 0 if tunerManualMediumTr == '' else int(float(tunerManualMediumTr))
 
 			tunerManualLowTemp = requestjson.get('tunerManualLowTemp', 0.1)
-			tunerManualLowTemp = 0 if tunerManualLowTemp == '' else int(tunerManualLowTemp)
+			tunerManualLowTemp = 0 if tunerManualLowTemp == '' else float(tunerManualLowTemp)
 			tunerManualLowTr = requestjson.get('tunerManualLowTr', 0.1)
-			tunerManualLowTr = 0 if tunerManualLowTr == '' else int(tunerManualLowTr)
+			tunerManualLowTr = 0 if tunerManualLowTr == '' else int(float(tunerManualLowTr))
 
 			a, b, c = _calc_shh_coefficients(tunerManualLowTemp, tunerManualMediumTemp,
 											tunerManualHighTemp, tunerManualLowTr,
@@ -938,11 +962,21 @@ def tuner_page(action=None):
 
 			data = read_autotune()
 			if len(data) > 10:
+				# If more than 10 datapoints, then calculate high / low / medium
 				temp_list = []
 				tr_list = []
 				for datapoint in data:
-					temp_list.append(datapoint['ref_T'])
-					tr_list.append(datapoint['probe_Tr'])
+					'''
+					Check if the ref_T value is already in the list and overwrite if so.
+					This assumes that the last temperature is the most recent and is likely 
+					the most accurate resistance value to take.
+					'''
+					if datapoint['ref_T'] in temp_list:
+						index = temp_list.index(datapoint['ref_T'])
+						tr_list[index] = datapoint['probe_Tr']
+					else:
+						temp_list.append(datapoint['ref_T'])
+						tr_list.append(datapoint['probe_Tr'])
 
 				# Determine High Temp / Tr
 				status_data['high_temp'] = max(temp_list)
@@ -1409,10 +1443,10 @@ def recipes_data(filename=None):
 			recipe_data, status = read_recipefile(filepath)
 			if requestform['add'] == 'ingredients':
 				new_ingredient = {
-					"name" : "",
-					"quantity" : "",
-					"assets" : []
-				}
+        			"name" : "",
+        			"quantity" : "",
+        			"assets" : []
+    			}
 				recipe_data['recipe']['ingredients'].append(new_ingredient)
 				update_json_file_data(recipe_data['recipe'], filepath, 'recipe')
 				render_string = "{% from '_macro_recipes.html' import render_recipe_edit_ingredients %}{{ render_recipe_edit_ingredients(recipe_data) }}"
@@ -1420,9 +1454,9 @@ def recipes_data(filename=None):
 			elif requestform['add'] == 'instructions': 
 				new_instruction = {
 					"text" : "",
-					"ingredients" : [],
-					"assets" : [],
-					"step" : 0
+      				"ingredients" : [],
+      				"assets" : [],
+      				"step" : 0
 				}
 				recipe_data['recipe']['instructions'].append(new_instruction)
 				update_json_file_data(recipe_data['recipe'], filepath, 'recipe')
@@ -1434,16 +1468,16 @@ def recipes_data(filename=None):
 				for count in range(0, recipe_data['metadata']['food_probes']):
 					food_list.append(0)
 				new_step = {
-					"hold_temp": 0,
-					"message": "",
-					"mode": "Smoke",
-					"notify": False,
-					"pause": False,
-					"timer": 0,
-					"trigger_temps": {
-						"primary": 0,
-						"food": food_list,
-					}
+      				"hold_temp": 0,
+      				"message": "",
+      				"mode": "Smoke",
+      				"notify": False,
+      				"pause": False,
+      				"timer": 0,
+      				"trigger_temps": {
+        				"primary": 0,
+        				"food": food_list,
+      				}
 				}
 				recipe_data['recipe']['steps'].insert(step_index, new_step)
 				update_json_file_data(recipe_data['recipe'], filepath, 'recipe')
@@ -1570,30 +1604,70 @@ def settings_page(action=None):
 		'text' : ''
 	}
 
-	if request.method == 'POST' and action == 'probes':
+	if request.method == 'POST' and action == 'probe_select':
 		response = request.form
 
-		for item in response.items():
-			if 'profile_select_' in item[0]:
-				probe_label = item[0].replace('profile_select_', '')
-				for index, probe in enumerate(settings['probe_settings']['probe_map']['probe_info']):
-					if probe['label'] == probe_label:
-						settings['probe_settings']['probe_map']['probe_info'][index]['profile'] = settings['probe_settings']['probe_profiles'][item[1]]
-			if 'probe_name_' in item[0]:
-				probe_label = item[0].replace('probe_name_', '')
-				for index, probe in enumerate(settings['probe_settings']['probe_map']['probe_info']):
-					if probe['label'] == probe_label:
-						settings['probe_settings']['probe_map']['probe_info'][index]['name'] = item[1]
-						settings['history_page']['probe_config'][probe_label]['name'] = item[1]
+		if response['selected'] == '':
+			selected = settings['probe_settings']['probe_map']['probe_info'][0]['label']
+			probe_info = settings['probe_settings']['probe_map']['probe_info']
+		else:
+			selected = response['selected']
+			probe_info = settings['probe_settings']['probe_map']['probe_info']
 
-		event['type'] = 'updated'
-		event['text'] = 'Successfully updated probe settings.'
+		render_string = "{% from '/settings/_macro_probes.html' import render_probe_select %}{{ render_probe_select(selected, probe_info, settings) }}"
+		return render_template_string(render_string, selected=selected, probe_info=probe_info, settings=settings)
 
-		control['probe_profile_update'] = True
+	if request.method == 'POST' and action == 'probe_config':
+		response = request.form
+		probe_info = None
 
-		# Take all settings and write them
-		write_settings(settings)
-		write_control(control, origin='app')
+		if request.form['selected'] == '':
+			selected = settings['probe_settings']['probe_map']['probe_info'][0]['label']
+			probe_info = settings['probe_settings']['probe_map']['probe_info'][0]
+		else:
+			selected = request.form['selected']
+			for probe in settings['probe_settings']['probe_map']['probe_info']:
+				if probe['label'] == selected:
+					probe_info = probe
+					break 
+
+		if probe_info == None:
+			probe_info = settings['probe_settings']['probe_map']['probe_info'][0]
+
+		render_string = "{% from '/settings/_macro_probes.html' import render_probe_config %}{{ render_probe_config(probe_info, settings) }}"
+		return render_template_string(render_string, probe_info=probe_info, settings=settings)
+
+	if request.method == 'POST' and action == 'probe_config_save':
+		probe_config = request.json
+		label = probe_config.get('label', '')
+		probe_edited = {}
+
+		for index, probe in enumerate(settings['probe_settings']['probe_map']['probe_info']):
+			if probe['label'] == label:
+				probe_edited['label'] = probe['label']
+				probe_edited['name'] = probe_config.get('name', settings['probe_settings']['probe_map']['probe_info'][index]['name'])
+				probe_edited['type'] = probe_config.get('type', settings['probe_settings']['probe_map']['probe_info'][index]['type'])
+				probe_edited['port'] = probe_config.get('port', settings['probe_settings']['probe_map']['probe_info'][index]['port'])
+				probe_edited['device'] = probe_config.get('device', settings['probe_settings']['probe_map']['probe_info'][index]['device'])
+				probe_edited['enabled'] = True if probe_config.get('enabled', False) == 'true' else False
+				profile_id = probe_config.get('profile_id', settings['probe_settings']['probe_map']['probe_info'][index]['profile']['id'])
+				if profile_id != probe['profile']['id']:
+					probe_edited['profile'] = settings['probe_settings']['probe_profiles'].get(profile_id, settings['probe_settings']['probe_map']['probe_info'][index]['profile'])
+				else:
+					probe_edited['profile'] = settings['probe_settings']['probe_map']['probe_info'][index]['profile']
+				break
+
+		if probe_edited:
+			settings['probe_settings']['probe_map']['probe_info'][index] = probe_edited
+			settings['history_page']['probe_config'][label]['name'] = probe_edited['name']
+			control['probe_profile_update'] = True
+			# Take all settings and write them
+			write_settings(settings)
+			write_control(control, origin='app')
+
+			return jsonify({'result' : 'success'})
+		else:
+			return jsonify({'result' : 'label_not_found'})
 
 	if request.method == 'POST' and action == 'notify':
 		response = request.form
@@ -1762,7 +1836,6 @@ def settings_page(action=None):
 					'name' : response['Name'], 
 					'id' : UniqueID
 				}
-				print(f'Response: {response}')
 				if response.get('apply_profile', False):
 					probe_selected = response['apply_profile']
 					for index, probe in enumerate(settings['probe_settings']['probe_map']['probe_info']):
@@ -1861,7 +1934,9 @@ def settings_page(action=None):
 								settings['controller']['config'][selected][option_name] = float(value)
 							else: 
 								settings['controller']['config'][selected][option_name] = value
-
+			control['controller_update'] = True
+			print(f'Controller Settings: {settings["controller"]["config"]}')
+ 
 		event['type'] = 'updated'
 		event['text'] = 'Successfully updated cycle settings.'
 
@@ -1913,10 +1988,6 @@ def settings_page(action=None):
 			settings['startup']['smartstart']['exit_temp'] = int(response['smartstart_exit_temp'])
 		if _is_not_blank(response, 'startup_exit_temp'):
 			settings['startup']['startup_exit_temp'] = int(response['startup_exit_temp'])
-		if _is_checked(response, 'prime_ignition'):
-			settings['globals']['prime_ignition'] = True
-		else:
-			settings['globals']['prime_ignition'] = False
 		if _is_not_blank(response, 'prime_on_startup'):
 			prime_amount = int(response['prime_on_startup'])
 			if prime_amount < 0 or prime_amount > 200:
@@ -2027,6 +2098,12 @@ def settings_page(action=None):
 			settings['safety']['startup_check'] = True
 		else:
 			settings['safety']['startup_check'] = False
+		if _is_checked(response, 'allow_manual_changes'):
+			settings['safety']['allow_manual_changes'] = True
+		else:
+			settings['safety']['allow_manual_changes'] = False
+		if _is_not_blank(response, 'manual_override_time'):
+			settings['safety']['manual_override_time'] = int(response['manual_override_time'])
 
 		event['type'] = 'updated'
 		event['text'] = 'Successfully updated safety settings.'
@@ -2040,46 +2117,6 @@ def settings_page(action=None):
 			settings['globals']['grill_name'] = response['grill_name']
 			event['type'] = 'updated'
 			event['text'] = 'Successfully updated grill name.'
-
-		write_settings(settings)
-	
-	if request.method == 'POST' and action == 'misc':
-		response = request.form
-
-		if 'grill_name' in response:
-			settings['globals']['grill_name'] = response['grill_name']		
-		if _is_not_blank(response, 'dashboardSelect'):
-			settings['dashboard']['current'] = response['dashboardSelect']
-		if _is_checked(response, 'darkmode'):
-			settings['globals']['page_theme'] = 'dark'
-		else:
-			settings['globals']['page_theme'] = 'light'
-		if _is_checked(response, 'global_control_panel'):
-			settings['globals']['global_control_panel'] = True
-		else:
-			settings['globals']['global_control_panel'] = False
-		if 'units' in response:
-			if response['units'] == 'C' and settings['globals']['units'] == 'F':
-				settings = convert_settings_units('C', settings)
-				write_settings(settings)
-				control = {}
-				control['updated'] = True
-				control['units_change'] = True
-				write_control(control, origin='app')
-			elif response['units'] == 'F' and settings['globals']['units'] == 'C':
-				settings = convert_settings_units('F', settings)
-				write_settings(settings)
-				control = {}
-				control['updated'] = True
-				control['units_change'] = True
-				write_control(control, origin='app')
-		if 'boot_to_monitor' in response:
-			settings['globals']['boot_to_monitor'] = True 
-		else:
-			settings['globals']['boot_to_monitor'] = False 
-
-		event['type'] = 'updated'
-		event['text'] = 'Successfully updated settings.'
 
 		write_settings(settings)
 
@@ -2102,6 +2139,11 @@ def settings_page(action=None):
 			control['distance_update'] = True
 		if _is_not_blank(response, 'auger_rate'):
 			settings['globals']['augerrate'] = float(response['auger_rate'])
+
+		if _is_checked(response, 'prime_ignition'):
+			settings['globals']['prime_ignition'] = True
+		else:
+			settings['globals']['prime_ignition'] = False
 
 		event['type'] = 'updated'
 		event['text'] = 'Successfully updated pellet settings.'
@@ -2217,9 +2259,9 @@ def admin_page(action=None):
 	if request.method == 'POST' and action == 'setting':
 		response = request.form
 
-		if 'debugtoggle' in response:
+		if 'debugenabled' in response:
 			control['settings_update'] = True
-			if response['debugtoggle'] == 'disabled':
+			if response['debugenabled'] == 'disabled':
 				write_log('Debug Mode Disabled.')
 				settings['globals']['debug_mode'] = False
 				write_settings(settings)
@@ -2270,6 +2312,26 @@ def admin_page(action=None):
 		if 'download_logs' in response:
 			zip_file = _zip_files_logs('logs')
 			return send_file(zip_file, as_attachment=True, max_age=0)
+		
+		if 'delete_logs' in response:
+			# Delete *.log files in logs/
+			try:
+				os.system('rm logs/*.log')
+				success.append('Log files deleted.')
+			except:
+				errors.append('There was an error restoring pellet database.  Restore file wasn\'t specified or found')
+
+		if 'download_settings' in response: 
+			return send_file('settings.json', as_attachment=True, max_age=0)
+
+		if 'download_control' in response:
+			filename = '/tmp/control_general.json'
+			write_generic_json(control, filename)
+			return send_file(filename, as_attachment=True, max_age=0)
+		
+		if 'download_pip_list' in response:
+			filename = 'pip_list.json'
+			return send_file(filename, as_attachment=True, max_age=0)
 		
 		if 'backupsettings' in response:
 			backup_file = backup_settings()
@@ -2377,7 +2439,6 @@ def admin_page(action=None):
 		if control['system']['cpu_throttled'] or control['system']['cpu_under_voltage']: 
 			event = "CPU Throttled / Undervoltage event has occurred.  Check your power supply for proper voltage."
 			errors.append(event)
-			print(event)
 
 	if 'check_cpu_temp' in supported_cmds:
 		process_command(action='sys', arglist=['check_cpu_temp'], origin='admin')  # Request supported commands 
@@ -2393,69 +2454,25 @@ def admin_page(action=None):
 
 	url = request.url_root
 
+	pip_list = read_generic_json('pip_list.json')
+	if pip_list == {}:
+		event = 'Pip list is empty. Run \'updater.py -p\' to generate pip list.'
+		errors.append(event)
+		pip_list = []
+
 	return render_template('admin.html', settings=settings, uptime=uptime, cpuinfo=cpu_info,
 						   ifconfig=ifconfig, debug_mode=debug_mode, qr_content=url,
+						   pip_list=pip_list,
 						   control=control,
 						   page_theme=settings['globals']['page_theme'],
-						   grill_name=settings['globals']['grill_name'], 
+						   grill_name=settings['globals']['grill_name'],
 						   files=files, errors=errors, warnings=warnings, success=success)
 
-@app.route('/manual/<action>', methods=['POST','GET'])
 @app.route('/manual', methods=['POST','GET'])
 def manual_page(action=None):
 
 	global settings
 	control = read_control()
-
-	if request.method == 'POST':
-		response = request.form
-
-		if 'setmode' in response:
-			if response['setmode'] == 'manual':
-				control['updated'] = True
-				control['mode'] = 'Manual'
-			else:
-				control['updated'] = True
-				control['mode'] = 'Stop'
-
-		if 'change_output_fan' in response:
-			if response['change_output_fan'] == 'on':
-				control['manual']['change'] = True
-				control['manual']['fan'] = True
-			elif response['change_output_fan'] == 'off':
-				control['manual']['change'] = True
-				control['manual']['fan'] = False
-				control['manual']['pwm'] = 100
-		elif 'change_output_auger' in response:
-			if response['change_output_auger'] == 'on':
-				control['manual']['change'] = True
-				control['manual']['auger'] = True
-			elif response['change_output_auger'] == 'off':
-				control['manual']['change'] = True
-				control['manual']['auger'] = False
-		elif 'change_output_igniter' in response:
-			if response['change_output_igniter'] == 'on':
-				control['manual']['change'] = True
-				control['manual']['igniter'] = True
-			elif response['change_output_igniter'] == 'off':
-				control['manual']['change'] = True
-				control['manual']['igniter'] = False
-		elif 'change_output_power' in response:
-			if response['change_output_power'] == 'on':
-				control['manual']['change'] = True
-				control['manual']['power'] = True
-			elif response['change_output_power'] == 'off':
-				control['manual']['change'] = True
-				control['manual']['power'] = False
-		elif 'duty_cycle_range' in response:
-			speed = int(response['duty_cycle_range'])
-			control['manual']['change'] = True
-			control['manual']['pwm'] = speed
-
-		write_control(control, origin='app')
-
-		time.sleep(1)
-		control = read_control()
 
 	return render_template('manual.html', settings=settings, control=control,
 						   	page_theme=settings['globals']['page_theme'],
@@ -2494,9 +2511,10 @@ def api_page(action=None, arg0=None, arg1=None, arg2=None, arg3=None):
 			return jsonify({'control':control}), 201
 		elif action == 'current':
 			''' Only fetch data from RedisDB or locally available, to improve performance '''
-			current_temps = read_current()
-			control = read_control()
+			current_temps = read_current()  # Get current temperatures
+			control = read_control()  # Get status of control
 			display = read_status()  # Get status of display items
+			probe_status = read_probe_status(settings['probe_settings']['probe_map']['probe_info'])
 
 			''' Create string of probes that can be hashed to ensure UI integrity '''
 			probe_string = ''
@@ -2526,6 +2544,7 @@ def api_page(action=None, arg0=None, arg1=None, arg2=None, arg3=None):
 			status['outpins'] = display['outpins']
 			status['startup_timestamp'] = display['startup_timestamp']
 			status['ui_hash'] = create_ui_hash()
+			status['probe_status'] = probe_status
 			return jsonify({'current':current_temps, 'notify_data':notify_data, 'status':status}), 201
 		elif action == 'hopper':
 			pelletdb = read_pellet_db()
@@ -2575,10 +2594,7 @@ def wizard(action=None):
 	wizardData = read_wizard()
 	errors = []
 
-	if settings['globals']['venv']:
-		python_exec = 'bin/python'
-	else:
-		python_exec = 'python'
+	python_exec = settings['globals'].get('python_exec', 'python')
 
 	if request.method == 'GET':
 		if action=='installstatus':
@@ -2590,6 +2606,7 @@ def wizard(action=None):
 			settings['globals']['first_time_setup'] = False
 			write_settings(settings)
 			return redirect('/')
+
 		if action=='finish':
 			if control['mode'] == 'Stop':
 				wizardInstallInfo = prepare_wizard_data(r)
@@ -2604,15 +2621,45 @@ def wizard(action=None):
 			section = r['section']
 			if section in ['grillplatform', 'display', 'distance']:
 				moduleData = wizardData['modules'][section][module]
-				moduleSettings = get_settings_dependencies_values(settings, moduleData)
+				moduleSettings = {}
+				moduleSettings['settings'] = get_settings_dependencies_values(settings, moduleData)
+				moduleSettings['config'] = {} if section != 'display' else settings['display']['config'][module]
 				render_string = "{% from '_macro_wizard_card.html' import render_wizard_card %}{{ render_wizard_card(moduleData, moduleSection, moduleSettings) }}"
 				return render_template_string(render_string, moduleData=moduleData, moduleSection=section, moduleSettings=moduleSettings)
 			else:
 				return '<strong color="red">No Data</strong>'
-	
+
+		if action=='bt_scan':
+			itemID=r['itemID']
+			bt_data = []
+			error = None
+
+			try: 
+				supported_cmds = _get_supported_cmds()
+
+				if 'scan_bluetooth' in supported_cmds:
+					process_command(action='sys', arglist=['scan_bluetooth'], origin='admin')  # Request supported commands 
+					data = _get_system_command_output(requested='scan_bluetooth', timeout=6)
+					#print('[DEBUG] BT Scan Data:', data)
+					if data['result'] != 'OK':
+						error = data['message']
+					else:
+						bt_data = parse_bt_device_info(data['data']['bt_devices'])
+						if bt_data == []:
+							error = 'No bluetooth devices found.'
+				else:
+					error = 'No support for bluetooth scan command.'
+
+			except Exception as e: 
+				error = f'Something bad happened: {e}'
+				#print(f'[DEBUG] {error}')
+
+			render_string = "{% from '_macro_probes_config.html' import render_bt_scan_table %}{{ render_bt_scan_table(itemID, bt_data, error) }}"
+			return render_template_string(render_string, itemID=itemID, bt_data=bt_data, error=error)
+
 	''' Create Temporary Probe Device/Port Structure for Setup, Use Existing unless First Time Setup '''
 	if settings['globals']['first_time_setup']: 
-		wizardInstallInfo = wizardInstallInfoDefaults(wizardData)
+		wizardInstallInfo = wizardInstallInfoDefaults(wizardData, settings)
 	else:
 		wizardInstallInfo = wizardInstallInfoExisting(wizardData, settings)
 
@@ -2624,6 +2671,19 @@ def wizard(action=None):
 	return render_template('wizard.html', settings=settings, page_theme=settings['globals']['page_theme'],
 						   grill_name=settings['globals']['grill_name'], wizardData=wizardData, wizardInstallInfo=wizardInstallInfo, control=control, errors=errors)
 
+def parse_bt_device_info(bt_devices):
+	global settings 
+	# Check if this hardware id is already in use
+	for index, peripheral in enumerate(bt_devices):
+		for device in settings['probe_settings']['probe_map']['probe_devices']:
+			#print(f'[DEBUG] Comparing {device["name"]} ({device["config"].get('hardware_id', None)}) to {name} ({hw_id})')
+			if device['config'].get('hardware_id', None) == peripheral['hw_id']:
+				bt_devices[index]['info'] += f'This hardware ID is already in use by {device["device"]}'
+				return bt_devices
+	return bt_devices
+
+	return {'name':name, 'hw_id':hw_id, 'info':info}
+
 def get_settings_dependencies_values(settings, moduleData):
 	moduleSettings = {}
 	for setting, data in moduleData['settings_dependencies'].items():
@@ -2632,47 +2692,55 @@ def get_settings_dependencies_values(settings, moduleData):
 		for setting_name in setting_location:
 			setting_value = setting_value[setting_name]
 		moduleSettings[setting] = setting_value 
-	print(moduleSettings)
 	return moduleSettings 
 
-def wizardInstallInfoDefaults(wizardData):
+def wizardInstallInfoDefaults(wizardData, settings):
 	
 	wizardInstallInfo = {
 		'modules' : {
 			'grillplatform' : {
-				'module_selected' : [],
-				'settings' : {}
+				'profile_selected' : [],  # Reference the profile in wizardData > wizard_manifest.json
+				'settings' : {},
+				'config' : {}
 			}, 
 			'display' : {
-				'module_selected' : [],
-				'settings' : {}
+				'profile_selected' : [],
+				'settings' : {},
+				'config' : {}
 			}, 
 			'distance' : {
-				'module_selected' : [],
-				'settings' : {}
+				'profile_selected' : [],
+				'settings' : {},
+				'config' : {}
 			}, 
 			'probes' : {
-				'module_selected' : [],
+				'profile_selected' : [],
 				'settings' : {
 					'units' : 'F'
-				}
+				},
+				'config' : {}
 			}
 		},
-		'probe_map' : wizardData['boards']['PiFirev2x']['probe_map']
+		'probe_map' : {}
 	}
 	''' Populate Modules Info with Defaults from Wizard Data including Settings '''
 	for component in ['grillplatform', 'display', 'distance']:
 		for module in wizardData['modules'][component]:
 			if wizardData['modules'][component][module]['default']:
 				''' Populate Module Filename'''
-				wizardInstallInfo['modules'][component]['module_selected'].append(wizardData['modules'][component][module]['filename'])
+				wizardInstallInfo['modules'][component]['profile_selected'].append(module) #TODO: Change wizard.py to reference the module filename instead, or in grill_platform use platform>system_type
 				for setting in wizardData['modules'][component][module]['settings_dependencies']: 
 					''' Populate all settings with default value '''
 					wizardInstallInfo['modules'][component]['settings'][setting] = list(wizardData['modules'][component][module]['settings_dependencies'][setting]['options'].keys())[0]
+				if module == 'display':
+					wizardInstallInfo['modules'][component]['config'] = settings['display']['config'][module]
+
+	''' Populate the default probe device / probe map from the default PCB Board '''
+	wizardInstallInfo['probe_map'] = wizardData['boards'][wizardInstallInfo['modules']['grillplatform']['profile_selected'][0]]['probe_map']
 
 	''' Populate Probes Module List with all configured probe devices '''
 	for device in wizardInstallInfo['probe_map']['probe_devices']:
-		wizardInstallInfo['modules']['probes']['module_selected'].append(device['module'])
+		wizardInstallInfo['modules']['probes']['profile_selected'].append(device['module'])
 
 	return wizardInstallInfo
 
@@ -2680,40 +2748,54 @@ def wizardInstallInfoExisting(wizardData, settings):
 	wizardInstallInfo = {
 		'modules' : {
 			'grillplatform' : {
-				'module_selected' : [settings['modules']['grillplat']],
-				'settings' : {}
+				'profile_selected' : [settings['platform']['current']],
+				'settings' : {},
+				'config' : {}
 			}, 
 			'display' : {
-				'module_selected' : [settings['modules']['display']],
-				'settings' : {}
+				'profile_selected' : [settings['modules']['display']],
+				'settings' : {},
+				'config' : {}
 			}, 
 			'distance' : {
-				'module_selected' : [settings['modules']['dist']],
-				'settings' : {}
+				'profile_selected' : [settings['modules']['dist']],
+				'settings' : {},
+				'config' : {}
 			}, 
 			'probes' : {
-				'module_selected' : [],
+				'profile_selected' : [],
 				'settings' : {
 					'units' : settings['globals']['units']
-				}
+				},
+				'config' : {}
 			}
 		}, 
 		'probe_map' : settings['probe_settings']['probe_map']
 	} 
 	''' Populate Probes Module List with all configured probe devices '''
 	for device in wizardInstallInfo['probe_map']['probe_devices']:
-		wizardInstallInfo['modules']['probes']['module_selected'].append(device['module'])
+		wizardInstallInfo['modules']['probes']['profile_selected'].append(device['module'])
 	
 	''' Populate Modules Info with current Settings '''
 	for module in ['grillplatform', 'display', 'distance']:
-		selected = wizardInstallInfo['modules'][module]['module_selected'][0]
+		selected = wizardInstallInfo['modules'][module]['profile_selected'][0]
+		''' Error condition if the item in settings doesn't match the wizard manifest '''
+		if selected not in wizardData['modules'][module].keys():
+			if module == 'grillplatform':
+				selected = 'custom'
+				settings['platform']['current'] = selected
+			else:
+				selected = 'none'
+			wizardInstallInfo['modules'][module]['profile_selected'] = selected
+
 		for setting in wizardData['modules'][module][selected]['settings_dependencies']:
 			settingsLocation = wizardData['modules'][module][selected]['settings_dependencies'][setting]['settings']
 			settingsValue = settings.copy() 
 			for index in range(0, len(settingsLocation)):
 				settingsValue = settingsValue[settingsLocation[index]]
 			wizardInstallInfo['modules'][module]['settings'][setting] = str(settingsValue)
-
+		if module == 'display':
+			wizardInstallInfo['modules'][module]['config'] = settings['display']['config'][settings['modules']['display']]
 	return wizardInstallInfo
 
 def prepare_wizard_data(form_data):
@@ -2723,27 +2805,31 @@ def prepare_wizard_data(form_data):
 
 	wizardInstallInfo['modules'] = {
 		'grillplatform' : {
-			'module_selected' : [form_data['grillplatformSelect']],
-			'settings' : {}
+			'profile_selected' : [form_data['grillplatformSelect']],
+			'settings' : {},
+			'config' : {}
 		}, 
 		'display' : {
-			'module_selected' : [form_data['displaySelect']],
-			'settings' : {}
+			'profile_selected' : [form_data['displaySelect']],
+			'settings' : {},
+			'config' : {}
 		}, 
 		'distance' : {
-			'module_selected' : [form_data['distanceSelect']],
-			'settings' : {}
+			'profile_selected' : [form_data['distanceSelect']],
+			'settings' : {},
+			'config' : {}
 		}, 
 		'probes' : {
-			'module_selected' : [],
+			'profile_selected' : [],
 			'settings' : {
 				'units' : form_data['probes_units']
-			}
+			},
+			'config' : {}
 		}
 	}
 
 	for device in wizardInstallInfo['probe_map']['probe_devices']:
-		wizardInstallInfo['modules']['probes']['module_selected'].append(device['module'])
+		wizardInstallInfo['modules']['probes']['profile_selected'].append(device['module'])
 
 	for module in ['grillplatform', 'display', 'distance']:
 		module_ = module + '_'
@@ -2753,6 +2839,9 @@ def prepare_wizard_data(form_data):
 			settingName = module_ + setting
 			if(settingName in form_data):
 				wizardInstallInfo['modules'][module]['settings'][setting] = form_data[settingName]
+		for config, value in form_data.items():
+			if config.startswith(module_ + 'config_'):
+				wizardInstallInfo['modules'][module]['config'][config.replace(module_ + 'config_', '')] = value
 
 	return(wizardInstallInfo)
 
@@ -3119,10 +3208,7 @@ def update_page(action=None):
 		'text' : ''
 	}
 
-	if settings['globals']['venv']:
-		python_exec = 'bin/python'
-	else:
-		python_exec = 'python'
+	python_exec = settings['globals'].get('python_exec', 'python')
 
 	if request.method == 'GET':
 		if action is None:
@@ -3149,7 +3235,7 @@ def update_page(action=None):
 
 		if 'update_remote_branches' in r:
 			if is_real_hardware():
-				os.system(f'{python_exec} %s %s &' % ('updater.py', '-r'))	 # Update branches from remote 
+				os.system(f'{python_exec} updater.py -r &')	 # Update branches from remote 
 				time.sleep(5)  # Artificial delay to avoid race condition
 			return redirect('/update')
 
@@ -3172,7 +3258,7 @@ def update_page(action=None):
 			control = read_control()
 			if control['mode'] == 'Stop':
 				set_updater_install_status(0, 'Starting Update...', '')
-				os.system(f'{python_exec} updater.py -u {update_data["branch_target"]} &') # Kickoff Update
+				os.system(f'{python_exec} updater.py -u {update_data["branch_target"]} -p &') # Kickoff Update
 				return render_template('updater-status.html', page_theme=settings['globals']['page_theme'],
 									grill_name=settings['globals']['grill_name'])
 			else:
@@ -3228,7 +3314,7 @@ def metrics_page(action=None):
 
 '''
 ==============================================================================
-Supporting Functions
+ Supporting Functions
 ==============================================================================
 '''
 
@@ -3488,10 +3574,11 @@ def _calc_shh_coefficients(t1, t2, t3, r1, r2, r3, units='F'):
 		# Step 6: A = Y1 - (B + L1^2*C) * L1
 		a = y1 - ((b + (math.pow(l1, 2) * c)) * l1)
 	except:
+		event = 'ERROR: Failed to calculate Steinhart-Hart coefficients.'
+		write_log(event)
 		a = 0
 		b = 0
 		c = 0
-
 	return(a, b, c)
 
 def _temp_to_tr(temp, a, b, c, units='F'):
@@ -3583,7 +3670,7 @@ def _zip_files_logs(dir_name):
 	file_name = f'/tmp/PiFire_Logs_{time_str}.zip'
 	directory = pathlib.Path(f'{dir_name}')
 	with zipfile.ZipFile(file_name, "w", zipfile.ZIP_DEFLATED) as archive:
-		for file_path in directory.rglob("*"):
+		for file_path in directory.rglob("*.log"):
 			archive.write(file_path, arcname=file_path.relative_to(directory))
 	return file_name
 
@@ -3610,688 +3697,6 @@ def _get_system_command_output(requested='supported_commands', timeout=1):
 		'message' : 'The requested command output could not be found.',
 		'data' : {'Response_Was' : 'To_Fast'}
 	}
-
-'''
-==============================================================================
-SocketIO Section
-==============================================================================
-'''
-# --- Global Variables (as provided by user) ---
-background_task_lock = threading.Lock()
-thread = None
-clients = 0
-force_refresh = False
-
-settings_file_path = 'settings.json' # Path to your main settings file
-
-@socketio.on("connect")
-def connect():
-	global clients
-	global thread
-	global background_task_lock
-
-	sid = request.sid
-	print(f"Client connected: {sid}")
-	clients += 1
-	print(f"Total clients: {clients}")
-
-	with background_task_lock:
-		if thread is None:
-			print(f"Background task is None. Starting new task (triggered by connect from {sid}).")
-			thread = socketio.start_background_task(emit_dash_data)
-
-@socketio.on("disconnect")
-def disconnect():
-	global clients
-	sid = request.sid
-	if clients > 0:
-		clients -= 1
-	print(f"Client disconnected: {sid}")
-	print(f"Total clients: {clients}")
-
-@socketio.on('get_dash_data')
-def get_dash_data(data={}):
-	global thread
-	global force_refresh
-	global background_task_lock
-
-	force = data.get('force', False)
-	sid = request.sid
-	print(f"Received 'get_dash_data' from {sid} with force={force}")
-
-	force_refresh = force
-
-	with background_task_lock:
-		if thread is None:
-			print(f"Background task is None. Starting new task (triggered by get_dash_data from {sid}).")
-			thread = socketio.start_background_task(emit_dash_data)
-
-def emit_dash_data():
-	global clients
-	global force_refresh
-	global thread
-	global background_task_lock
-
-	print("Background task 'emit_dash_data' started.")
-	previous_data = None
-
-	try:
-		while (clients > 0):
-			try:
-				settings = read_settings()  # Add this read
-				control = read_control()
-				status = read_status()
-				pelletdb = read_pellet_db()
-				probe_info = read_current()
-				
-				timer_notify_index = -1  # Default index if no timer found
-
-				# Find the timer notification object safely
-				for index, notify_obj in enumerate(control.get('notify_data', [])):
-					if isinstance(notify_obj, dict) and notify_obj.get('type') == 'timer':
-						timer_notify_index = index
-						break
-
-				# Default timer info if index remains -1
-				default_timer_notify = {'shutdown': False, 'keep_warm': False}
-				timer_notify_data = control.get('notify_data', [])[timer_notify_index] if timer_notify_index != -1 else default_timer_notify
-
-				timer_active_check = control.get('timer', {}).get('end', 0) - time.time() > 0
-				timer_paused_check = bool(control.get('timer', {}).get('paused', 0))
-
-				if timer_active_check or timer_paused_check:
-					timer_info = {
-						'timer_paused': timer_paused_check,
-						'timer_start_time': math.trunc(control.get('timer', {}).get('start', 0)),
-						'timer_end_time': math.trunc(control.get('timer', {}).get('end', 0)),
-						'timer_paused_time': math.trunc(control.get('timer', {}).get('paused', 0)),
-						'timer_active': True,
-						'timer_expired': bool(control.get('timer', {}).get('expired', False)),
-						'timer_shutdown': bool(timer_notify_data.get('shutdown', False)),
-						'timer_keep_warm': bool(timer_notify_data.get('keep_warm', False))
-					}
-				else:
-					timer_info = {
-						'timer_paused': False,
-						'timer_start_time': 0,
-						'timer_end_time': 0,
-						'timer_paused_time': 0,
-						'timer_active': False,
-						'timer_expired': bool(control.get('timer', {}).get('expired', False)),
-						'timer_shutdown': bool(timer_notify_data.get('shutdown', False)),
-						'timer_keep_warm': bool(timer_notify_data.get('keep_warm', False))
-					}
-
-				status_data = {
-					'mode': control.get('mode', 'Stop'),  # From control
-					'display_mode': status.get('mode', 'Stop'),  # From status
-					'status': control.get('status', ''),  # From control
-					's_plus': control.get('s_plus', False),  # From control
-					'units': settings.get('globals', {}).get('units', 'F'),  # From settings
-					'name': settings.get('globals', {}).get('grill_name', ''),  # From settings
-					'start_time': status.get('start_time', 0),  # From status
-					'start_duration': status.get('start_duration', 0),  # From status
-					'shutdown_duration': status.get('shutdown_duration', 0),  # From status
-					'prime_duration': status.get('prime_duration', 0),  # From status
-					'prime_amount': status.get('prime_amount', 0),  # From status
-					'lid_open_detected': status.get('lid_open_detected', False),  # From status
-					'lid_open_endtime': status.get('lid_open_endtime', 0),  # From status
-					'p_mode': status.get('p_mode', 0),  # From status
-					'outpins': status.get('outpins', {}),  # From status
-					'startup_timestamp': status.get('startup_timestamp', 0),  # From status
-					'recipe': status.get('recipe', False),  # Added from status object
-					'recipe_paused': status.get('recipe_paused', False),  # Added from status object
-					'hopper_level': pelletdb.get('current',{}).get('hopper_level', 0),  # Added from pelletdb for consistency
-				}
-				
-				current_data = {
-					'status_data': status_data,  # Use the newly constructed payload
-					'probe_info': probe_info,
-					'notify_data': control.get('notify_data', []),
-					'timer_info': timer_info,
-					'pwm_control': control.get('pwm_control',{})
-				}
-
-				if force_refresh:
-					print("Force refresh requested, emitting data to all clients.")
-					socketio.emit('grill_control_data', current_data)
-					force_refresh = False
-					previous_data = current_data
-				elif previous_data != current_data:
-					print("Data changed, emitting data to all clients.")
-					socketio.emit('grill_control_data', current_data)
-					previous_data = current_data
-
-				socketio.sleep(2)
-
-			except Exception as e:
-				print(f"ERROR in emit_dash_data inner loop: {e}")
-				import traceback
-				traceback.print_exc()  # Print full traceback for debugging
-				socketio.sleep(5)  # Avoid busy-loop on error
-
-	finally:
-		print("Background task 'emit_dash_data' exiting loop.")
-		with background_task_lock:
-			print("Setting global thread variable back to None.")
-			thread = None
-
-# ==================================================
-#  Handler for get_app_data (Handles multiple actions)
-# ==================================================
-@socketio.on('get_app_data')
-def get_app_data(data):
-	sid = request.sid
-	action = data.get('action')
-
-	print(f"Client {sid} requested 'get_app_data' with data: {data}")
-	print(f"Extracted action={action}")
-
-	if action == 'settings_data':
-		try:
-			# Read the *entire* settings file, which now includes UI settings under webui.dash
-			settings = read_settings()
-			return settings  # Return the whole object
-		except Exception as e:
-			print(f"ERROR reading settings: {e}")
-			return {'response': {'result':'error', 'message':f'Error: Server error reading settings: {e}'}}
-	elif action == 'pellets_data':
-		try:
-			return read_pellet_db()
-		except Exception as e:
-			print(f"ERROR reading pellet DB: {e}")
-			return {'response': {'result':'error', 'message':f'Error: Server error reading pellet DB: {e}'}}
-	elif action == 'status_data':
-		try:
-			status_data = read_status()
-			return status_data
-		except Exception as e:
-			print(f"ERROR reading status data: {e}")
-			return {'response': {'result':'error', 'message':f'Error: Server error reading status data: {e}'}}
-	elif action == 'grill_control_data':
-		try:
-			# Reusing logic from emit_dash_data to construct the response
-			settings = read_settings()  # Add this read
-			control = read_control()
-			status = read_status()
-			pelletdb = read_pellet_db()
-			probe_info = read_current()
-
-			timer_notify_index = -1
-			for index, notify_obj in enumerate(control.get('notify_data', [])):
-				if isinstance(notify_obj, dict) and notify_obj.get('type') == 'timer':
-					timer_notify_index = index
-					break
-			default_timer_notify = {'shutdown': False, 'keep_warm': False}
-			timer_notify_data = control.get('notify_data', [])[timer_notify_index] if timer_notify_index != -1 else default_timer_notify
-			timer_active_check = control.get('timer', {}).get('end', 0) - time.time() > 0
-			timer_paused_check = bool(control.get('timer', {}).get('paused', 0))
-			if timer_active_check or timer_paused_check:
-				timer_info = {
-					'timer_paused': timer_paused_check,
-					'timer_start_time': math.trunc(control.get('timer', {}).get('start', 0)),
-					'timer_end_time': math.trunc(control.get('timer', {}).get('end', 0)),
-					'timer_paused_time': math.trunc(control.get('timer', {}).get('paused', 0)),
-					'timer_active': True,
-					'timer_expired': bool(control.get('timer', {}).get('expired', False)),
-					'timer_shutdown': bool(timer_notify_data.get('shutdown', False)),
-					'timer_keep_warm': bool(timer_notify_data.get('keep_warm', False))
-				}
-			else:
-				timer_info = {
-					'timer_paused': False,
-					'timer_start_time': 0,
-					'timer_end_time': 0,
-					'timer_paused_time': 0,
-					'timer_active': False,
-					'timer_expired': bool(control.get('timer', {}).get('expired', False)),
-					'timer_shutdown': bool(timer_notify_data.get('shutdown', False)),
-					'timer_keep_warm': bool(timer_notify_data.get('keep_warm', False))
-				}
-		
-			status_data = {
-				'mode': control.get('mode', 'Stop'),  # From control
-				'display_mode': status.get('mode', 'Stop'),  # From status
-				'status': control.get('status', ''),  # From control
-				's_plus': control.get('s_plus', False),  # From control
-				'units': settings.get('globals', {}).get('units', 'F'),  # From settings
-				'name': settings.get('globals', {}).get('grill_name', ''),  # From settings
-				'start_time': status.get('start_time', 0),  # From status
-				'start_duration': status.get('start_duration', 0),  # From status
-				'shutdown_duration': status.get('shutdown_duration', 0),  # From status
-				'prime_duration': status.get('prime_duration', 0),  # From status
-				'prime_amount': status.get('prime_amount', 0),  # From status
-				'lid_open_detected': status.get('lid_open_detected', False),  # From status
-				'lid_open_endtime': status.get('lid_open_endtime', 0),  # From status
-				'p_mode': status.get('p_mode', 0),  # From status
-				'outpins': status.get('outpins', {}),  # From status
-				'startup_timestamp': status.get('startup_timestamp', 0),  # From status
-				'recipe': status.get('recipe', False),  # Added from status object
-				'recipe_paused': status.get('recipe_paused', False),  # Added from status object
-				'hopper_level': pelletdb.get('current',{}).get('hopper_level', 0),  # Added from pelletdb for consistency
-			}
-			
-			current_data = {
-				'status_data': status_data,  # Use the newly constructed payload
-				'probe_info': probe_info,
-				'notify_data': control.get('notify_data', []),
-				'timer_info': timer_info,
-				'pwm_control': control.get('pwm_control',{})
-			}
-			return current_data
-		except Exception as e:
-			print(f"ERROR reading grill control data: {e}")
-			return {'response': {'result':'error', 'message':f'Error: Server error reading grill control data: {e}'}}
-	elif action == 'events_data':
-		try:
-			event_list, num_events = read_events()
-			events_trim = []
-			for x in range(min(num_events, 60)):
-				events_trim.append(event_list[x])
-			return { 'events_list' : events_trim }
-		except Exception as e:
-			print(f"ERROR reading events: {e}")
-			return {'response': {'result':'error', 'message':f'Error: Server error reading events: {e}'}}
-	elif action == 'info_data':
-		try:
-			settings = read_settings()  # Load fresh settings
-			return {
-				'uptime' : os.popen('uptime').readline(),
-				'cpuinfo' : os.popen('cat /proc/cpuinfo').readlines(),
-				'ifconfig' : os.popen('ifconfig').readlines(),
-				'temp' : _check_cpu_temp(),  # Ensure this function exists
-				'outpins' : settings.get('outpins',{}),
-				'inpins' : settings.get('inpins',{}),
-				'dev_pins' : settings.get('dev_pins',{}),
-				'server_version' : settings.get('versions',{}).get('server','N/A'),
-				'server_build' : settings.get('versions',{}).get('build','N/A')
-			}
-		except Exception as e:
-			print(f"ERROR gathering info_data: {e}")
-			return {'response': {'result':'error', 'message':f'Error: Server error gathering info data: {e}'}}
-	elif action == 'manual_data':
-		try:
-			control = read_control()
-			return {
-				'manual' : control.get('manual', False),
-				'mode' : control.get('mode', 'Stop')
-			}
-		except Exception as e:
-			print(f"ERROR reading control for manual data: {e}")
-			return {'response': {'result':'error', 'message':f'Error: Server error reading control data: {e}'}}
-	elif action == 'control_data':
-		try:
-			control_data = read_control()  # Assuming read_control() fetches the control data
-			return {'response': {'result': 'success', 'data': control_data}}
-		except Exception as e:
-			print(f"Error handling 'control_data': {e}")
-			return {'response': {'result': 'error', 'message': str(e)}}
-	else:
-		print(f"ERROR: Invalid or missing action '{action}' in get_app_data request from {sid}")
-		return {'response': {'result':'error', 'message':f"Error: Received request with invalid/missing action ('{action}')"}}
-
-# ==================================================
-#  Handler for post_app_data (Handles multiple actions/types)
-# ==================================================
-def deep_merge(source, destination):
-	for key, value in source.items():
-		if isinstance(value, dict) and key in destination and isinstance(destination[key], dict):
-			deep_merge(value, destination[key])
-		else:
-			destination[key] = value
-	return destination
-
-@socketio.on('post_app_data')
-def post_app_data(action=None, type=None, json_data=None):
-	"""
-	Handle post_app_data event for settings, control, pellets, timer, and admin actions.
-	Expects action, type, and json_data (for update_action).
-	"""
-	sid = request.sid
-	print(f"Client {sid} requested 'post_app_data' action={action} type={type}")
-
-	request_data = {}
-	if json_data is not None:
-		try:
-			request_data = json.loads(json_data)
-		except json.JSONDecodeError as e:
-			print(f"ERROR: Invalid JSON received from {sid}: {e}")
-			return {'response': {'result': 'error', 'message': f'Error: Invalid JSON format - {e}'}}
-	else:
-		if action not in ['timer', 'admin']: # Some actions like timer/admin might not require json_data
-			print(f"Warning: post_app_data from {sid} received no json_data for action={action}, type={type}.")
-			# Depending on the action/type, this might be an error or expected.
-			# For 'update_action', it is generally an error if no data is provided to update.
-			if action == 'update_action':
-				return {'response': {'result': 'error', 'message': 'No data provided for update_action'}}
-
-	# --- Action Handling ---
-	if action == 'update_action':
-		if type in ['settings', 'control', 'pellets']:
-			try:
-				data_dict = None
-				broadcast_event = None
-				write_func = None
-
-				# Select read/write functions and broadcast event based on type
-				if type == 'settings':
-					data_dict = read_settings()
-					broadcast_event = 'settings_data'
-					write_func = write_settings
-				elif type == 'control':
-					data_dict = read_control()
-					broadcast_event = 'control_data'
-					write_func = write_control
-				elif type == 'pellets':
-					data_dict = read_pellet_db()
-					broadcast_event = 'pellets_data'
-					write_func = write_pellet_db
-
-				if not isinstance(data_dict, dict):
-					print(f"ERROR: read function for {type} did not return a dictionary. Got: {type(data_dict)}")
-					return {'response': {'result': 'error', 'message': f'Error: Failed to load {type} data'}}
-
-				# Create a deep copy for change detection
-				original_data = copy.deepcopy(data_dict)
-
-				# Merge the incoming data
-				if request_data:
-					print(f"Deep merging {type} updates from {sid}: {request_data}")
-					deep_merge(request_data, data_dict)
-				else:
-					# This case should ideally be handled by the initial json_data check for update_action
-					print(f"No data to merge for {type} update by {sid} (request_data is empty).")
-					return {'response': {'result': 'success', 'message': 'No changes applied as no data was provided in request_data'}}
-
-				# Check if data changed
-				if original_data != data_dict:
-					print(f"DEBUG: Data for '{type}' has changed. Attempting write by {sid}.")
-					print(f"DEBUG: Data before write for '{type}': {data_dict}")
-					success = False
-					if type == 'control':
-						# Call write_control with 'origin' parameter, consistent with other calls in this file
-						print(f"DEBUG: Calling write_control with origin='app-socketio' for SID {sid}")
-						success = write_func(data_dict, origin='app-socketio')
-					else:
-						# For settings and pellets, call without 'origin' as per their other usages in this file
-						print(f"DEBUG: Calling {write_func.__name__} without explicit origin for SID {sid}")
-						success = write_func(data_dict)
-
-					if success:
-						print(f"{type.capitalize()} updated successfully by {sid}")
-						socketio.emit(broadcast_event, data_dict, room=request.namespace, skip_sid=sid)
-						return {'response': {'result': 'success', 'message': f'{type.capitalize()} updated'}}
-					else:
-						print(f"ERROR writing updated {type} by {sid} using {write_func.__name__}. The write function returned a non-true value.")
-						if type == 'control':
-							print(f"DEBUG: write_control was called with data: {data_dict} and origin='app-socketio'")
-						else:
-							print(f"DEBUG: {write_func.__name__} was called with data: {data_dict}")
-						return {'response': {'result': 'error', 'message': f'Error: Failed to write {type} on server'}}
-				else:
-					print(f"No {type} changes detected after merge for update by {sid}. Original: {original_data}, New: {data_dict}")
-					return {'response': {'result': 'success', 'message': 'No changes applied as data was identical'}}
-
-			except Exception as e:
-				print(f"ERROR updating {type} by {sid}: {e}")
-				traceback.print_exc()
-				return {'response': {'result': 'error', 'message': f'Error updating {type}: {str(e)}'}}
-		else:
-			print(f"ERROR: Invalid type '{type}' for update_action from {sid}")
-			return {'response': {'result': 'error', 'message': 'Invalid type for update_action'}}
-	elif action == 'admin_action':
-		print(f"Admin action '{type}' requested by {sid}")
-		if type == 'clear_history':
-			try:
-				write_log(f'Clearing History Log (requested by {sid}).')
-				read_history(0, flushhistory=True)
-				return {'response': {'result':'success'}}
-			except Exception as e:
-				print(f"ERROR clearing history: {e}")
-				return {'response': {'result':'error', 'message': f'Error clearing history: {str(e)}'}}
-		elif type == 'clear_events':
-			try:
-				write_log(f'Clearing Events Log (requested by {sid}).')
-				if os.path.exists('/tmp/events.log'):
-					os.remove('/tmp/events.log')
-				else:
-					print("Event log file /tmp/events.log not found, nothing to remove.")
-				return {'response': {'result':'success'}}
-			except Exception as e:
-				print(f"ERROR clearing events: {e}")
-				return {'response': {'result':'error', 'message': f'Error clearing events: {str(e)}'}}
-		elif type == 'reboot':
-			try:
-				write_log(f"Admin: Reboot (requested by {sid})")
-				os.system("sleep 3 && sudo reboot &")
-				return {'response': {'result':'success'}}
-			except Exception as e:
-				print(f"ERROR executing reboot: {e}")
-				return {'response': {'result':'error', 'message':f'Error executing reboot: {str(e)}'}}
-		elif type == 'shutdown':
-			try:
-				write_log(f"Admin: Shutdown (requested by {sid})")
-				os.system("sleep 3 && sudo shutdown -h now &")
-				return {'response': {'result':'success'}}
-			except Exception as e:
-				print(f"ERROR executing shutdown: {e}")
-				return {'response': {'result':'error', 'message':f'Error executing shutdown: {str(e)}'}}
-		elif type == 'restart':
-			try:
-				write_log(f"Admin: Restart Server (requested by {sid})")
-				restart_scripts()  # Ensure this function exists and works
-				return {'response': {'result':'success'}}
-			except Exception as e:
-				print(f"ERROR executing restart: {e}")
-				return {'response': {'result':'error', 'message':f'Error executing restart: {str(e)}'}}
-		else:
-			return {'response': {'result':'error', 'message':'Error: Received request without valid type for admin_action'}}
-	elif action == 'units_action':
-		print(f"Units action '{type}' requested by {sid}")
-		try:
-			settings = read_settings()  # Load fresh settings
-			if type == 'f_units' and settings.get('globals', {}).get('units') == 'C':
-				settings = convert_settings_units('F', settings)
-				write_settings(settings)
-				control = read_control()
-				control['updated'] = True
-				control['units_change'] = True
-				write_control(control, origin='app-socketio')
-				write_log("Changed units to Fahrenheit")
-				return {'response': {'result':'success'}}
-			elif type == 'c_units' and settings.get('globals', {}).get('units') == 'F':
-				settings = convert_settings_units('C', settings)
-				write_settings(settings)
-				control = read_control()
-				control['updated'] = True
-				control['units_change'] = True
-				write_control(control, origin='app-socketio')
-				write_log("Changed units to Celsius")
-				return {'response': {'result':'success'}}
-			else:
-				current_units = settings.get('globals', {}).get('units', 'N/A')
-				print(f"Units change requested ({type}) but current units are {current_units}. No change needed or invalid request.")
-				return {'response': {'result':'success', 'message': 'Units already set or invalid request'}}
-		except Exception as e:
-			print(f"ERROR changing units: {e}")
-			traceback.print_exc()
-			return {'response': {'result':'error', 'message':f'Error changing units: {str(e)}'}}
-	elif action == 'remove_action':
-		print(f"Remove action '{type}' requested by {sid}")
-		try:
-			if type == 'onesignal_device':
-				device_id = request_data.get('onesignal_device', {}).get('onesignal_player_id')
-				if device_id:
-					settings = read_settings()  # Load fresh settings
-					if device_id in settings.get('onesignal', {}).get('devices', {}):
-						settings['onesignal']['devices'].pop(device_id)
-						write_settings(settings)
-						print(f"Removed onesignal device {device_id}")
-						return {'response': {'result':'success'}}
-					else:
-						return {'response': {'result':'error', 'message':'Error: Device not found in settings'}}
-				else:
-					return {'response': {'result':'error', 'message':'Error: Device not specified in request'}}
-			else:
-				return {'response': {'result':'error', 'message':'Error: Remove type not found'}}
-		except Exception as e:
-			print(f"ERROR removing item ({type}): {e}")
-			traceback.print_exc()
-			return {'response': {'result':'error', 'message':f'Error removing item: {str(e)}'}}
-	elif action == 'pellets_action':
-		print(f"Pellets action '{type}' requested by {sid}")
-		try:
-			pelletdb = read_pellet_db()
-			if type == 'load_profile':
-				profile = request_data.get('pellets_action', {}).get('profile')
-				if profile:
-					pelletdb['current']['pelletid'] = profile
-					now_dt = datetime.datetime.now()
-					now = now_dt.strftime("%Y-%m-%d %H:%M:%S")
-					pelletdb['current']['date_loaded'] = now
-					pelletdb['current']['est_usage'] = 0  # Reset usage on load
-					pelletdb.setdefault('log', {})[now] = profile
-					control = read_control()
-					control['hopper_check'] = True  # Trigger check
-					write_control(control, origin='app-socketio')
-					write_pellet_db(pelletdb)
-					print(f"Loaded pellet profile {profile}")
-					return {'response': {'result':'success'}}
-				else:
-					return {'response': {'result':'error', 'message':'Error: Profile not included in request'}}
-			elif type == 'add_profile':
-				brand = request_data.get('pellets_action', {}).get('brand_name')
-				wood = request_data.get('pellets_action', {}).get('wood_type')
-				rating = request_data.get('pellets_action', {}).get('rating')
-				comments = request_data.get('pellets_action', {}).get('comments')
-				add_and_load = request_data.get('pellets_action', {}).get('add_and_load', False)
-
-				if not all([brand, wood, rating is not None, comments is not None]):
-					return {'response': {'result':'error', 'message':'Error: Missing fields for add_profile'}}
-
-				profile_id = ''.join(filter(str.isalnum, str(datetime.datetime.now())))
-				pelletdb.setdefault('archive', {})[profile_id] = { 'id' : profile_id, 'brand' : brand, 'wood' : wood, 'rating' : rating, 'comments' : comments }
-
-				if add_and_load:
-					pelletdb['current']['pelletid'] = profile_id
-					now_dt = datetime.datetime.now()
-					now = now_dt.strftime("%Y-%m-%d %H:%M:%S")
-					pelletdb['current']['date_loaded'] = now
-					pelletdb['current']['est_usage'] = 0  # Reset usage
-					pelletdb.setdefault('log', {})[now] = profile_id
-					control = read_control()
-					control['hopper_check'] = True  # Trigger check
-					write_control(control, origin='app-socketio')
-
-				write_pellet_db(pelletdb)
-				print(f"Added pellet profile {profile_id}. Loaded={add_and_load}")
-				return {'response': {'result':'success'}}
-			else:
-				return {'response': {'result':'error', 'message':'Error: Received request without valid type for pellets_action'}}
-		except Exception as e:
-			print(f"ERROR during pellets_action ({type}): {e}")
-			traceback.print_exc()
-			return {'response': {'result':'error', 'message':f'Error during pellets action: {str(e)}'}}
-	elif action == 'timer_action':
-		print(f"Timer action '{type}' requested by {sid}")
-		try:
-			control = read_control()
-			timer_notify_index = -1
-			# Ensure notify_data exists and is a list
-			if 'notify_data' not in control or not isinstance(control['notify_data'], list):
-				control['notify_data'] = [] # Initialize if not present or wrong type
-
-			for index, notify_obj in enumerate(control.get('notify_data', [])):
-				if isinstance(notify_obj, dict) and notify_obj.get('type') == 'timer':
-					timer_notify_index = index
-					break
-			
-			# If timer config doesn't exist in notify_data, create it
-			if timer_notify_index == -1 and type != 'stop_timer': # Don't create if trying to stop a non-existent timer
-				control['notify_data'].append({
-					'type': 'timer',
-					'req': False,
-					'shutdown': False,
-					'keep_warm': False,
-					'name': 'Timer Notification' # Default name
-				})
-				timer_notify_index = len(control['notify_data']) - 1
-				print(f"DEBUG: Created new timer notification config at index {timer_notify_index}")
-
-
-			if type == 'start_timer':
-				if timer_notify_index == -1: # Should have been created above, but as a safeguard
-					print(f"ERROR: Timer notification config still not found for {sid} after attempting creation.")
-					return {'response': {'result':'error', 'message':'Error: Timer notification config could not be initialized'}}
-
-				control['notify_data'][timer_notify_index]['req'] = True
-				if control.get('timer',{}).get('paused', 0) == 0:  # Start new timer
-					now = time.time()
-					control.setdefault('timer', {})['start'] = now
-					hours = request_data.get('timer_action', {}).get('hours_range', 0)
-					minutes = request_data.get('timer_action', {}).get('minutes_range', 0)
-					timer_shutdown = request_data.get('timer_action', {}).get('timer_shutdown', False)
-					timer_keep_warm = request_data.get('timer_action', {}).get('timer_keep_warm', False)
-
-					if hours is None or minutes is None: # Should be caught by client, but good to check
-						return {'response': {'result':'error', 'message':'Error: Timer duration not specified'}}
-
-					seconds = int(hours) * 3600 + int(minutes) * 60
-					if seconds <= 0:
-						return {'response': {'result':'error', 'message':'Error: Invalid timer duration'}}
-
-					control['timer']['end'] = now + seconds
-					control['timer']['paused'] = 0  # Ensure not paused
-					control['timer']['expired'] = False  # Ensure not expired
-					control['notify_data'][timer_notify_index]['shutdown'] = timer_shutdown
-					control['notify_data'][timer_notify_index]['keep_warm'] = timer_keep_warm
-					end_time_str = datetime.datetime.fromtimestamp(control['timer']['end']).strftime('%Y-%m-%d %H:%M:%S')
-					write_log(f'Timer started by {sid}. Ends at: {end_time_str}')
-				else:  # Resuming from pause
-					now = time.time()
-					time_left_when_paused = control['timer']['end'] - control['timer']['paused']
-					control['timer']['end'] = now + time_left_when_paused
-					control['timer']['paused'] = 0  # Unpause
-					end_time_str = datetime.datetime.fromtimestamp(control['timer']['end']).strftime('%Y-%m-%d %H:%M:%S')
-					write_log(f'Timer unpaused by {sid}. Ends at: {end_time_str}')
-
-				write_control(control, origin='app-socketio')
-				return {'response': {'result':'success'}}
-			elif type == 'pause_timer':
-				if timer_notify_index == -1:
-					return {'response': {'result':'error', 'message':'Error: Timer not configured to be paused.'}}
-				if control.get('timer',{}).get('end', 0) > time.time() and control.get('timer',{}).get('paused', 0) == 0:
-					control['notify_data'][timer_notify_index]['req'] = False
-					now = time.time()
-					control['timer']['paused'] = now
-					write_log(f'Timer paused by {sid}.')
-					write_control(control, origin='app-socketio')
-					return {'response': {'result':'success'}}
-				else:
-					return {'response': {'result':'error', 'message':'Error: Timer not active or already paused'}}
-			elif type == 'stop_timer':
-				if timer_notify_index != -1: # Only modify if timer config exists
-					control['notify_data'][timer_notify_index]['req'] = False
-					control['notify_data'][timer_notify_index]['shutdown'] = False
-					control['notify_data'][timer_notify_index]['keep_warm'] = False
-				
-				control.setdefault('timer', {})['start'] = 0
-				control['timer']['end'] = 0
-				control['timer']['paused'] = 0
-				control['timer']['expired'] = False  # Reset expired flag
-				write_log(f'Timer stopped by {sid}.')
-				write_control(control, origin='app-socketio')
-				return {'response': {'result':'success'}}
-			else:
-				return {'response': {'result':'error', 'message':'Error: Received request without valid type for timer_action'}}
-		except Exception as e:
-			print(f"ERROR during timer_action ({type}) by {sid}: {e}")
-			traceback.print_exc()
-			return {'response': {'result':'error', 'message':f'Error during timer action: {str(e)}'}}
-	else:
-		print(f"Error: Received request from {sid} without valid action. Action: '{action}', Type: '{type}'")
-		return {'response': {'result':'error', 'message':'Error: Received request without valid action'}}
-
 '''
 ==============================================================================
 Main Program Start
