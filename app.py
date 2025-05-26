@@ -27,7 +27,7 @@ import zipfile
 import pathlib
 from datetime import datetime
 from updater import *  # Library for doing project updates from GitHub
-from file_mgmt.common import fixup_assets, read_json_file_data, update_json_file_data, remove_assets
+from file_mgmt.common import fixup_assets, read_json_file_data, update_json_file_data, remove_assets, read_probe_status
 from file_mgmt.cookfile import read_cookfile, upgrade_cookfile, prepare_chartdata
 from file_mgmt.media import add_asset, set_thumbnail, unpack_thumb
 from file_mgmt.recipes import read_recipefile, create_recipefile
