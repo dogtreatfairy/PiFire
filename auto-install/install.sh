@@ -239,6 +239,7 @@ cd /usr/local/bin/pifire/auto-install/supervisor
 # Add the current username to the configuration files 
 echo "user=" $USER | tee -a control.conf > /dev/null
 echo "user=" $USER | tee -a webapp.conf > /dev/null
+echo "user=" $USER | tee -a pifireapp.conf > /dev/null
 
 $SUDO cp *.conf /etc/supervisor/conf.d/
 

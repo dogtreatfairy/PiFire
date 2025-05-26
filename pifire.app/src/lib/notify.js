@@ -27,7 +27,7 @@ export function browserNotification(title, body) {
         if (Notification.permission === "granted") {
             new Notification(title, {
                 body,
-                icon: "/static/img/logo_nt_1.svg", // Path to the PiFire logo
+                icon: "/img/logo_nt_1.svg", // Path to the PiFire logo
                 requireInteraction: true // Makes the notification persistent
             });
         } else if (Notification.permission !== "denied") {
