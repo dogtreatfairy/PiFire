@@ -26,7 +26,7 @@ from werkzeug.utils import secure_filename
 import zipfile
 import pathlib
 from datetime import datetime
-from updater import *  # Library for doing project updates from GitHub
+from updater import *
 from file_mgmt.common import fixup_assets, read_json_file_data, update_json_file_data, remove_assets
 from file_mgmt.cookfile import read_cookfile, upgrade_cookfile, prepare_chartdata
 from file_mgmt.media import add_asset, set_thumbnail, unpack_thumb
