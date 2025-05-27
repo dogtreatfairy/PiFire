@@ -295,7 +295,6 @@ else
     echo "Info: Node.js application directory '$NPM_APP_DIR' not found. Skipping npm steps."
 fi
 
-
 # --- Python Virtual Environment and Dependencies ---
 clear
 echo "*************************************************************************"
@@ -303,56 +302,60 @@ echo "** Setting up Python Virtual Environment & Installing Modules"
 echo "*************************************************************************"
 cd "$PIFIRE_INSTALL_DIR" || exit_with_error "Failed to cd to $PIFIRE_INSTALL_DIR for VENV setup."
 
-echo "Creating/Recreating Python virtual environment (.venv) using 'uv'..."
-# $SUDO uv venv --system-site-packages .venv || exit_with_error "Failed to create Python virtual environment using 'uv'."
-# Giving ownership to EFFECTIVE_USER_NAME before creating venv to avoid sudo for uv venv
-$SUDO chown -R "$EFFECTIVE_USER_NAME:$EFFECTIVE_USER_NAME" "$PIFIRE_INSTALL_DIR"
-echo "Running uv venv as $EFFECTIVE_USER_NAME"
-# Run uv as the effective user to avoid permission issues inside venv later
-$SUDO -u "$EFFECTIVE_USER_NAME" uv venv --python python3 --system-site-packages .venv
-if [ ! -d ".venv/bin" ]; then
+echo "Setting ownership of $PIFIRE_INSTALL_DIR to $EFFECTIVE_USER_NAME prior to venv creation..."
+$SUDO chown -R "$EFFECTIVE_USER_NAME:$EFFECTIVE_USER_NAME" "$PIFIRE_INSTALL_DIR" || exit_with_error "Failed to chown $PIFIRE_INSTALL_DIR to $EFFECTIVE_USER_NAME."
+
+echo "Creating/Recreating Python virtual environment (.venv) using 'uv' as user '$EFFECTIVE_USER_NAME'..."
+if ! $SUDO -u "$EFFECTIVE_USER_NAME" uv venv --python python3 --system-site-packages .venv; then
+    exit_with_error "Failed to create Python virtual environment using 'uv'."
+fi
+
+if [ ! -d "$PIFIRE_INSTALL_DIR/.venv/bin" ]; then
     exit_with_error "Python virtual environment '.venv/bin' not found after 'uv venv' command. Creation failed."
 fi
-echo "Virtual environment created."
+echo "Virtual environment created at $PIFIRE_INSTALL_DIR/.venv"
 
-# Activate venv for subsequent pip installs if needed, or use .venv/bin/pip
-VENV_PYTHON="$PIFIRE_INSTALL_DIR/.venv/bin/python"
-VENV_PIP="$PIFIRE_INSTALL_DIR/.venv/bin/pip" # uv can also be used with `uv pip install`
-VENV_UV_PIP="$SUDO -u \"$EFFECTIVE_USER_NAME\" $PIFIRE_INSTALL_DIR/.venv/bin/uv pip"
-
+SYSTEM_UV_AS_USER_CMD_PREFIX="$SUDO -u \"$EFFECTIVE_USER_NAME\" uv"
 
 # Install pip packages from package.json (if any)
 PIP_PACKAGES_JSON_CMD=$(jq -r '.pip[]? | select(.!=null and .!="") | @sh' "$FULL_PACKAGE_JSON_PATH" | xargs echo)
 if [ -n "$PIP_PACKAGES_JSON_CMD" ]; then
     echo "Installing pip packages from package.json via uv: $PIP_PACKAGES_JSON_CMD"
-    # shellcheck disable=SC2086
-    if ! eval "$VENV_UV_PIP install $PIP_PACKAGES_JSON_CMD"; then
+    # shellcheck disable=SC2086 # We want word splitting for $PIP_PACKAGES_JSON_CMD
+    if ! $SYSTEM_UV_AS_USER_CMD_PREFIX pip install $PIP_PACKAGES_JSON_CMD; then
          exit_with_error "Failed to install pip packages from package.json using uv."
     fi
+    echo "Pip packages from package.json installed."
 else
     echo "No pip packages specified in package.json under '.pip' key."
 fi
 
-# Install eventlet based on Python version
-PYTHON_VER_CHECK_CMD="$VENV_PYTHON -c \"import sys; sys.exit(0 if sys.version_info[:2] >= (3,11) else 1)\""
-if eval "$PYTHON_VER_CHECK_CMD"; then # Python 3.11+
-    echo "Python version is 3.11 or greater. Installing latest eventlet via uv."
-    if ! eval "$VENV_UV_PIP install eventlet"; then exit_with_error "Failed to install latest eventlet using uv."; fi
+# Install eventlet based on Python version (checking venv's python)
+VENV_PYTHON_PATH="$PIFIRE_INSTALL_DIR/.venv/bin/python"
+PYTHON_VER_CHECK_CMD="$VENV_PYTHON_PATH -c \"import sys; sys.exit(0 if sys.version_info[:2] >= (3,11) else 1)\""
+
+echo "Checking Python version in venv ($VENV_PYTHON_PATH)..."
+if $SUDO -u "$EFFECTIVE_USER_NAME" $PYTHON_VER_CHECK_CMD; then # Python 3.11+
+    echo "Python version in venv is 3.11 or greater. Installing latest eventlet via uv."
+    if ! $SYSTEM_UV_AS_USER_CMD_PREFIX pip install eventlet; then exit_with_error "Failed to install latest eventlet using uv."; fi
 else # Python < 3.11
-    echo "Python version is less than 3.11. Installing eventlet==0.30.2 via uv."
-    if ! eval "$VENV_UV_PIP install 'eventlet==0.30.2'"; then exit_with_error "Failed to install eventlet==0.30.2 using uv."; fi
+    echo "Python version in venv is less than 3.11. Installing eventlet==0.30.2 via uv."
+    if ! $SYSTEM_UV_AS_USER_CMD_PREFIX pip install 'eventlet==0.30.2'; then exit_with_error "Failed to install eventlet==0.30.2 using uv."; fi
 fi
+echo "eventlet installed."
 
 # Install packages from requirements.txt
 REQUIREMENTS_TXT_PATH="$PIFIRE_INSTALL_DIR/auto-install/requirements.txt"
 if [ -f "$REQUIREMENTS_TXT_PATH" ]; then
     echo "Installing Python packages from $REQUIREMENTS_TXT_PATH via uv..."
-    if ! eval "$VENV_UV_PIP install -r \"$REQUIREMENTS_TXT_PATH\""; then
+    if ! $SYSTEM_UV_AS_USER_CMD_PREFIX pip install -r "$REQUIREMENTS_TXT_PATH"; then
         exit_with_error "Failed to install Python packages from '$REQUIREMENTS_TXT_PATH' using uv."
     fi
+    echo "Packages from requirements.txt installed."
 else
     echo "Warning: 'auto-install/requirements.txt' not found. Skipping."
-fi
+
+echo "Setting up 'pifire' group and final permissions..."
 
 # --- Permissions, Group, and Bluepy ---
 echo "Setting up 'pifire' group and permissions..."
