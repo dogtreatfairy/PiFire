@@ -15,7 +15,8 @@
     "libopenblas-dev",
     "liblapack-dev",
     "libopenjp2-7",
-    "libglib2.0-dev"
+    "libglib2.0-dev",
+	"npm"
   ],
   "pip": [
     "flask==3.1.0",

@@ -127,6 +127,10 @@ $SUDO apt install -y $APT_PACKAGES
 PIP_PACKAGES=$(jq -r '.pip[]' /usr/local/bin/pifire/auto-install/package.json)
 uv pip install $PIP_PACKAGES
 
+cd /usr/local/bin/pifire/pifire.app
+npm install
+npm run build
+
 # Setup Python VENV & Install Python dependencies
 clear
 echo "*************************************************************************"
