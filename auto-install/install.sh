@@ -75,28 +75,39 @@ case "$USER_CHOICE" in
         ;;
 esac
 
-# List all branches on the server
-BRANCHES=$(git ls-remote --heads https://github.com/$GITHUB_USER/pifire.git | awk -F'/' '{print $NF}' | sort)
+# Fetch branches from the selected user's PiFire repository
+BRANCHES=$(git ls-remote --heads https://github.com/$GITHUB_USER/pifire.git 2>/dev/null)
+if [ -z "$BRANCHES" ]; then
+    echo "No branches found or repository does not exist."
+    exit 1
+fi
 
-# Prepare the list with numbering
-BRANCH_LIST="1. main (nh-dev-id)\n"
-COUNT=2
-for BRANCH in $BRANCHES; do
-    if [ "$BRANCH" != "main" ]; then
-        BRANCH_LIST+="$COUNT. $BRANCH\n"
-        COUNT=$((COUNT + 1))
-    fi
+# Extract branch names into an array
+mapfile -t BRANCH_ARRAY < <(echo "$BRANCHES" | awk -F'/' '{print $NF}' | sort -u)
+
+# Check if there are any branches
+if [ ${#BRANCH_ARRAY[@]} -eq 0 ]; then
+    echo "No branches found in the repository."
+    exit 1
+fi
+
+# Construct menu items for whiptail
+MENU_ITEMS=()
+for i in "${!BRANCH_ARRAY[@]}"; do
+    MENU_ITEMS+=("$((i+1))" "${BRANCH_ARRAY[i]}")
 done
 
-# Display the list and ask the user to choose
-CHOICE=$(echo -e "$BRANCH_LIST" | whiptail --title "Choose a Branch" --menu "Select the branch to install:" 20 78 10 --notags 3>&1 1>&2 2>&3)
+# Display the menu and capture the user's choice
+CHOICE=$(whiptail --title "Choose a Branch" --menu "Select the branch to install:" 20 78 ${#BRANCH_ARRAY[@]} "${MENU_ITEMS[@]}" 3>&1 1>&2 2>&3)
 
-# Determine the branch to clone
-if [ "$CHOICE" = "1" ]; then
-    SELECTED_BRANCH="main"
-else
-    SELECTED_BRANCH=$(echo -e "$BRANCH_LIST" | awk -v choice="$CHOICE" 'NR==choice {print $2}')
+# Check if the user canceled the selection
+if [ $? -ne 0 ]; then
+    echo "Branch selection canceled."
+    exit 1
 fi
+
+# Set the selected branch based on the user's choice
+SELECTED_BRANCH="${BRANCH_ARRAY[$((CHOICE-1))]}"
 
 clear
 echo "*************************************************************************"
