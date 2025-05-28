@@ -196,64 +196,35 @@ cd /usr/local/bin
 $SUDO groupadd pifire 
 $SUDO usermod -a -G pifire $USER 
 $SUDO usermod -a -G pifire root 
-# Change ownership to group=pifire for all files/directories in pifire 
 $SUDO chown -R $USER:pifire pifire 
-# Change ability for pifire group to read/write/execute 
 $SUDO chmod -R 777 /usr/local/bin
 
 echo " - Installing UV"
 curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/usr/local/bin" sh
 
 echo " - Setting up VENV"
-# Setup VENV
 cd /usr/local/bin/pifire
 uv venv --system-site-packages
 
-# Function to find a Python 3 interpreter
-find_python3() {
-    if command -v python3 >/dev/null 2>&1; then
-        echo "python3"
-    elif command -v python >/dev/null 2>&1; then
-        # Check if 'python' is Python 3
-        if python --version 2>&1 | grep -q "Python 3"; then
-            echo "python"
-        else
-            echo ""
-        fi
-    else
-        echo ""
-    fi
-}
-
-# Set PYTHON_CMD to the detected Python 3 command
-PYTHON_CMD=$(find_python3)
-
-# Exit if no Python 3 interpreter is found
-if [ -z "$PYTHON_CMD" ]; then
-    echo "Error: No Python 3 interpreter found. Please install Python 3."
-    exit 1
-fi
-
-echo "Using Python command: $PYTHON_CMD"
-
 echo " - Installing module dependencies... "
-# Install module dependencies 
-if ! $PYTHON_CMD -c "import sys; assert sys.version_info[:2] >= (3,11)" > /dev/null; then
-    echo "System is running a python version lower than 3.11, installing eventlet==0.30.2";
-    uv $PYTHON_CMD -m pip install "eventlet==0.30.2"
+VENV_PYTHON="/usr/local/bin/pifire/.venv/bin/python"
+
+if ! $VENV_PYTHON -c "import sys; assert sys.version_info[:2] >= (3,11)" > /dev/null; then
+    echo "Virtual environment is using Python version lower than 3.11, installing eventlet==0.30.2"
+    uv pip install "eventlet==0.30.2"
 else
-    echo "System is running a python version 3.11 or greater, installing latest eventlet"
-    uv $PYTHON_CMD -m pip install eventlet
+    echo "Virtual environment is using Python version 3.11 or greater, installing latest eventlet"
+    uv pip install eventlet
 fi
 
 # Install pip packages from package.json
 PIP_PACKAGES=$(jq -r '.pip[]' /usr/local/bin/pifire/auto-install/package.json)
-uv $PYTHON_CMD -m pip install $PIP_PACKAGES
+uv pip install $PIP_PACKAGES
 
 # Install pip packages from requirements.txt
-uv $PYTHON_CMD -m pip install -r /usr/local/bin/pifire/auto-install/requirements.txt
+uv pip install -r /usr/local/bin/pifire/auto-install/requirements.txt
 
-# Find all bluepy-helper executables in various possible locations
+# Find all bluepy-helper executables
 BLUEPY_HELPERS=$(find /usr/local/bin/pifire/.venv/lib/ -path "*/bluepy/bluepy-helper" 2>/dev/null)
 
 if [ -z "$BLUEPY_HELPERS" ]; then
@@ -265,16 +236,10 @@ fi
 for helper in $BLUEPY_HELPERS; do
     echo "Setting capabilities for $helper"
     $SUDO setcap "cap_net_raw,cap_net_admin+eip" "$helper"
-    
-    # Verify the capabilities were set
     getcap "$helper"
 done
 
 echo "All bluepy-helper executables have been configured"
-
-# Get PIP List into JSON file
-echo " - Getting PIP List into JSON file"
-.venv/bin/python updater.py -p
 
 ### Setup nginx to proxy to gunicorn
 clear
