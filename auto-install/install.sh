@@ -1,517 +1,269 @@
 #!/usr/bin/env bash
 
-# PiFire Automatic Installation Script
-# Target: Raspberry Pi OS Lite (Bullseye or later)
+# Automatic Installation Script
+# Many thanks to the PiVPN project (pivpn.io) for much of the inspiration for this script
+# Run from https://raw.githubusercontent.com/dogtreatfairy/pifire/pifire-app/auto-install/install.sh
+#
+# Install with this command (from your Pi):
+#
+# curl https://raw.githubusercontent.com/dogtreatfairy/pifire/pifire-app/auto-install/install.sh | bash
+#
+# NOTE: Pre-Requisites to run Raspi-Config first.  See README.md.
 
-# --- Configuration & Globals ---
-PIFIRE_REPO_NAME="pifire" # Standard repository name
-PIFIRE_INSTALL_DIR="/usr/local/bin/pifire"
-PACKAGE_JSON_PATH_REL="auto-install/package.json" # Relative to PIFIRE_INSTALL_DIR
-
-# --- Utility Functions ---
-# Function for graceful exit with a whiptail message
-exit_with_error() {
-    # $1: Error message
-    # $2: Optional title (defaults to "Error")
-    local msg="$1"
-    local title="${2:-Error}"
-    whiptail --title "$title" --msgbox "$msg" ${r:-20} ${c:-70}
-    exit 1
-}
-
-# Function to check if a command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
-
-# --- Initial Setup ---
-# Determine screen size for whiptail dialogs
-screen_size=$(stty size 2>/dev/null || echo 24 80)
-rows=$(echo "$screen_size" | awk '{print $1}')
-columns=$(echo "$screen_size" | awk '{print $2}')
-r=$(( rows / 2 )); c=$(( columns / 2 ))
-r=$(( r < 20 ? 20 : r )); c=$(( c < 70 ? 70 : c )) # Min dialog size
-
-# Root/Sudo check
-if [[ $EUID -eq 0 ]]; then
-    SUDO=""
-    SUDOE=""
-    EFFECTIVE_USER_NAME="root"
+# Must be root to install
+if [[ $EUID -eq 0 ]];then
+    echo "You are root."
 else
-    if ! command_exists sudo; then
-        echo "ERROR: sudo command not found. Please install sudo or run this script as root."
+    echo "SUDO will be used for the install."
+    # Check if it is actually installed
+    # If it isn't, exit because the install cannot complete
+    if [[ $(dpkg-query -s sudo) ]];then
+        export SUDO="sudo"
+        export SUDOE="sudo -E"
+    else
+        echo "Please install sudo."
         exit 1
     fi
-    SUDO="sudo"
-    SUDOE="sudo -E"
-    if ! $SUDO -v; then # Validate sudo timestamp or prompt for password
-        exit_with_error "Sudo privileges are required and could not be obtained. Please ensure you can run sudo commands."
-    fi
-    EFFECTIVE_USER_NAME="${SUDO_USER:-$(whoami)}"
 fi
-echo "Running as or with privileges of: $EFFECTIVE_USER_NAME"
 
-# --- Install Essential Prerequisites for Script Operation ---
-ESSENTIAL_PACKAGES_APT=("newt" "git" "curl" "jq") # newt for whiptail
-PACKAGES_TO_INSTALL_APT=()
-for pkg in "${ESSENTIAL_PACKAGES_APT[@]}"; do
-    if ! command_exists "$pkg"; then
-        # Special case for newt providing whiptail
-        if [[ "$pkg" == "newt" ]] && command_exists whiptail; then
-            continue
-        fi
-        PACKAGES_TO_INSTALL_APT+=("$pkg")
+# Find the rows and columns. Will default to 80x24 if it can not be detected.
+screen_size=$(stty size 2>/dev/null || echo 24 80)
+rows=$(echo $screen_size | awk '{print $1}')
+columns=$(echo $screen_size | awk '{print $2}')
+
+# Divide by two so the dialogs take up half of the screen.
+r=$(( rows / 2 ))
+c=$(( columns / 2 ))
+# If the screen is small, modify defaults
+r=$(( r < 20 ? 20 : r ))
+c=$(( c < 70 ? 70 : c ))
+
+# Display the welcome dialog
+whiptail --msgbox --backtitle "Welcome" --title "PiFire Automated Installer" "This installer will transform your Single Board Computer into a connected Smoker Controller.  NOTE: This installer is intended to be run on a fresh install of Raspberry Pi OS Lite 32-Bit Bullseye or later." ${r} ${c}
+
+# Ask the user to select a GitHub user
+USER_LIST="1. nebhead\n2. dogtreatfairy\n3. other"
+USER_CHOICE=$(echo -e "$USER_LIST" | whiptail --title "Choose a GitHub User" --menu "Select the GitHub user to clone from:" 20 78 10 --notags 3>&1 1>&2 2>&3)
+
+# Determine the GitHub user
+if [ "$USER_CHOICE" = "1" ]; then
+    GITHUB_USER="nebhead"
+elif [ "$USER_CHOICE" = "2" ]; then
+    GITHUB_USER="dogtreatfairy"
+else
+    GITHUB_USER=$(whiptail --inputbox "Enter the GitHub username to clone from:" 8 78 --title "Custom GitHub User" 3>&1 1>&2 2>&3)
+fi
+
+# List all branches on the server
+BRANCHES=$(git ls-remote --heads https://github.com/$GITHUB_USER/pifire.git | awk -F'/' '{print $NF}' | sort)
+
+# Prepare the list with numbering
+BRANCH_LIST="1. main (nh-dev-id)\n"
+COUNT=2
+for BRANCH in $BRANCHES; do
+    if [ "$BRANCH" != "main" ]; then
+        BRANCH_LIST+="$COUNT. $BRANCH\n"
+        COUNT=$((COUNT + 1))
     fi
 done
 
-INSTALL_UV_VIA_CURL=false
-if ! command_exists uv; then
-    INSTALL_UV_VIA_CURL=true
+# Display the list and ask the user to choose
+CHOICE=$(echo -e "$BRANCH_LIST" | whiptail --title "Choose a Branch" --menu "Select the branch to install:" 20 78 10 --notags 3>&1 1>&2 2>&3)
+
+# Determine the branch to clone
+if [ "$CHOICE" = "1" ]; then
+    SELECTED_BRANCH="main"
+else
+    SELECTED_BRANCH=$(echo -e "$BRANCH_LIST" | awk -v choice="$CHOICE" 'NR==choice {print $2}')
 fi
 
-if [ ${#PACKAGES_TO_INSTALL_APT[@]} -gt 0 ] || $INSTALL_UV_VIA_CURL; then
-    MSG_APT=""
-    if [ ${#PACKAGES_TO_INSTALL_APT[@]} -gt 0 ]; then
-        MSG_APT="Essential APT packages: ${PACKAGES_TO_INSTALL_APT[*]}"
-    fi
-    MSG_UV=""
-    if $INSTALL_UV_VIA_CURL; then
-        MSG_UV="Python packager 'uv'."
-    fi
+clear
+echo "*************************************************************************"
+echo "**                                                                     **"
+echo "**      Cloning PiFire from GitHub...                                  **"
+echo "**                                                                     **"
+echo "*************************************************************************"
+cd /usr/local/bin
 
-    whiptail --title "Prerequisite Installation" --msgbox "The following tools are required for the installer to proceed and will be installed now:\n\n$MSG_APT\n$MSG_UV" ${r} ${c}
+# Clone the selected branch
+echo "Cloning branch: $SELECTED_BRANCH from user: $GITHUB_USER"
+$SUDO git clone --depth 1 --branch "$SELECTED_BRANCH" https://github.com/$GITHUB_USER/pifire.git
 
-    if [ ${#PACKAGES_TO_INSTALL_APT[@]} -gt 0 ]; then
-        echo "Updating package lists..."
-        $SUDO apt-get update || exit_with_error "Failed to update APT package lists. Check internet connection and sources."
-        echo "Installing: ${PACKAGES_TO_INSTALL_APT[*]}..."
-        $SUDO apt-get install -y "${PACKAGES_TO_INSTALL_APT[@]}" || exit_with_error "Failed to install essential APT packages: ${PACKAGES_TO_INSTALL_APT[*]}.\nPlease try installing them manually and re-run the script."
-    fi
+# Starting actual steps for installation
+clear
+echo "*************************************************************************"
+echo "**                                                                     **"
+echo "**      Setting /tmp to RAM based storage in /etc/fstab                **"
+echo "**                                                                     **"
+echo "*************************************************************************"
+echo "tmpfs /tmp  tmpfs defaults,noatime 0 0" | sudo tee -a /etc/fstab > /dev/null
+clear
+echo "*************************************************************************"
+echo "**                                                                     **"
+echo "**      Running Apt Update... (This could take several minutes)        **"
+echo "**                                                                     **"
+echo "*************************************************************************"
+$SUDO apt update
+clear
+echo "*************************************************************************"
+echo "**                                                                     **"
+echo "**      Running Apt Upgrade... (This could take several minutes)       **"
+echo "**                                                                     **"
+echo "*************************************************************************"
+$SUDO apt upgrade -y
 
-    if $INSTALL_UV_VIA_CURL; then
-        echo "Installing uv (Python package manager)..."
-        # Use $SUDOE to pass environment if needed, though UV_INSTALL_DIR is explicit
-        if ! (curl -LsSf https://astral.sh/uv/install.sh | $SUDOE env UV_INSTALL_DIR="/usr/local/bin" sh); then
-             exit_with_error "Failed to download and install 'uv'. Check internet connection or install manually."
-        fi
-        if ! command_exists uv; then
-            exit_with_error "'uv' command still not found after attempted installation. Check PATH or installation logs."
-        fi
-        echo "'uv' installed successfully to /usr/local/bin."
-    fi
-    whiptail --title "Prerequisites Installed" --infobox "Essential tools have been installed." 8 78
+# Install APT dependencies
+clear
+echo "*************************************************************************"
+echo "**                                                                     **"
+echo "**      Installing Dependencies... (This could take several minutes)   **"
+echo "**                                                                     **"
+echo "*************************************************************************"
+# Read apt packages from package.json and install them
+APT_PACKAGES=$(jq -r '.apt[]' /usr/local/bin/pifire/auto-install/package.json)
+$SUDO apt install -y $APT_PACKAGES
+
+cd /usr/local/bin/pifire/pifire.app
+$SUDO npm install --unsafe-perm
+
+# Read pip packages from package.json and install them
+PIP_PACKAGES=$(jq -r '.pip[]' /usr/local/bin/pifire/auto-install/package.json)
+uv pip install $PIP_PACKAGES
+
+# Setup Python VENV & Install Python dependencies
+echo "*************************************************************************"
+echo "**                                                                     **"
+echo "**      Setting up Python VENV and Installing Modules...               **"
+echo "**            (This could take several minutes)                        **"
+echo "**                                                                     **"
+echo "*************************************************************************"
+echo ""
+echo " - Setting Up PiFire Group"
+cd /usr/local/bin
+$SUDO groupadd pifire 
+$SUDO usermod -a -G pifire $USER 
+$SUDO usermod -a -G pifire root 
+# Change ownership to group=pifire for all files/directories in pifire 
+$SUDO chown -R $USER:pifire pifire 
+# Change ability for pifire group to read/write/execute 
+$SUDO chmod -R 777 /usr/local/bin
+
+echo " - Installing UV"
+curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/usr/local/bin" sh
+
+echo " - Setting up VENV"
+# Setup VENV
+cd /usr/local/bin/pifire
+uv venv --system-site-packages
+
+# Determine the appropriate Python command based on the OS
+if [[ $(uname -a) == *"raspberrypi"* ]]; then
+    PYTHON_CMD="python"
+else
+    PYTHON_CMD="python3"
 fi
 
-# --- Welcome Message ---
-whiptail --title "PiFire Automated Installer" --msgbox "Welcome! This script will guide you through installing PiFire on your Single Board Computer.\n\nIt is intended for a fresh Raspberry Pi OS Lite (32-bit, Bullseye or later) installation." ${r} ${c}
-
-# --- GitHub User Selection ---
-GITHUB_USER=""
-USER_MENU_ITEMS=(
-    "1" "dogtreatfairy (Recommended)"
-    "2" "nebhead"
-    "3" "Other - Specify a GitHub username"
-)
-USER_CHOICE_TAG=$(whiptail --title "Select GitHub User" --menu "Choose the GitHub user whose '$PIFIRE_REPO_NAME' repository you want to use:" ${r} ${c} 3 "${USER_MENU_ITEMS[@]}" 3>&1 1>&2 2>&3)
-EXIT_STATUS=$?
-
-if [ $EXIT_STATUS -ne 0 ]; then exit_with_error "GitHub User selection cancelled. Exiting."; fi
-
-case "$USER_CHOICE_TAG" in
-    "1") GITHUB_USER="dogtreatfairy" ;;
-    "2") GITHUB_USER="nebhead" ;;
-    "3")
-        INPUT_USER=$(whiptail --title "Custom GitHub User" --inputbox "Enter the GitHub username for the '$PIFIRE_REPO_NAME' repository:" 8 78 3>&1 1>&2 2>&3)
-        EXIT_STATUS=$?
-        if [ $EXIT_STATUS -ne 0 ]; then exit_with_error "Custom GitHub User input cancelled. Exiting."; fi
-        if [ -z "$INPUT_USER" ]; then exit_with_error "No GitHub username entered. Exiting."; fi
-        GITHUB_USER="$INPUT_USER"
-        ;;
-    *) exit_with_error "Invalid selection for GitHub User. Exiting." ;;
-esac
-whiptail --title "User Confirmed" --infobox "Will use GitHub user: $GITHUB_USER" 8 78
-
-# --- Fetch and Select Branch ---
-SELECTED_BRANCH=""
-REPO_URL="https://github.com/$GITHUB_USER/$PIFIRE_REPO_NAME.git"
-
-whiptail --title "Fetching Branches" --infobox "Attempting to fetch branches from:\n$REPO_URL" 10 ${c}
-# The 2>&1 redirects stderr to stdout so we capture error messages from git
-BRANCHES_OUTPUT=$(git ls-remote --heads "$REPO_URL" 2>&1)
-GIT_LS_REMOTE_STATUS=$?
-
-if [ $GIT_LS_REMOTE_STATUS -ne 0 ]; then
-    exit_with_error "Failed to fetch branches from '$REPO_URL'.\n\nError details:\n$BRANCHES_OUTPUT\n\nPlease check the username ('$GITHUB_USER'), repository name ('$PIFIRE_REPO_NAME'), repository visibility, and your internet connection."
+echo " - Installing module dependencies... "
+# Install module dependencies 
+if ! $PYTHON_CMD -c "import sys; assert sys.version_info[:2] >= (3,11)" > /dev/null; then
+    echo "System is running a python version lower than 3.11, installing eventlet==0.30.2";
+    uv $PYTHON_CMD -m pip install "eventlet==0.30.2"
+else
+    echo "System is running a python version 3.11 or greater, installing latest eventlet"
+    uv $PYTHON_CMD -m pip install eventlet
 fi
 
-# Parse branch names from the output. Handles refs/heads/branch_name format.
-# Sorts them and removes any empty lines.
-mapfile -t PARSED_BRANCH_NAMES < <(echo "$BRANCHES_OUTPUT" | awk -F'/' '{print $NF}' | sort -u | grep -vE '^\s*$')
+# Install pip packages from package.json
+PIP_PACKAGES=$(jq -r '.pip[]' /usr/local/bin/pifire/auto-install/package.json)
+uv $PYTHON_CMD -m pip install $PIP_PACKAGES
 
-if [ ${#PARSED_BRANCH_NAMES[@]} -eq 0 ]; then
-    exit_with_error "No branches found for repository '$REPO_URL' after parsing.\n\nRaw 'git ls-remote' output was:\n$BRANCHES_OUTPUT\n\nThis could mean the repository is empty, has no branches, or there was an issue parsing."
+# Install pip packages from requirements.txt
+uv $PYTHON_CMD -m pip install -r /usr/local/bin/pifire/auto-install/requirements.txt
+
+# Find all bluepy-helper executables in various possible locations
+BLUEPY_HELPERS=$(find /usr/local/bin/pifire/.venv/lib/ -path "*/bluepy/bluepy-helper" 2>/dev/null)
+
+if [ -z "$BLUEPY_HELPERS" ]; then
+    echo "No bluepy-helper found in the standard Python library locations"
+    exit 1
 fi
 
-BRANCH_MENU_ITEMS=()
-declare -A TAG_TO_BRANCH_NAME_MAP # Associative array to map menu tag to actual branch name
-
-for i in "${!PARSED_BRANCH_NAMES[@]}"; do
-    BRANCH_NAME="${PARSED_BRANCH_NAMES[i]}"
-    MENU_TAG=$((i + 1)) # Human-readable 1-based index for menu
-    BRANCH_MENU_ITEMS+=("$MENU_TAG" "$BRANCH_NAME")
-    TAG_TO_BRANCH_NAME_MAP["$MENU_TAG"]="$BRANCH_NAME"
+# Apply capabilities to each found bluepy-helper
+for helper in $BLUEPY_HELPERS; do
+    echo "Setting capabilities for $helper"
+    $SUDO setcap "cap_net_raw,cap_net_admin+eip" "$helper"
+    
+    # Verify the capabilities were set
+    getcap "$helper"
 done
 
-if [ ${#BRANCH_MENU_ITEMS[@]} -eq 0 ]; then # Should be caught by PARSED_BRANCH_NAMES check, but good to be sure
-    exit_with_error "Failed to construct branch selection menu. No branch items were prepared."
-fi
+echo "All bluepy-helper executables have been configured"
 
-BRANCH_CHOICE_TAG=$(whiptail --title "Select Branch" --menu "Select the branch to install from '$GITHUB_USER/$PIFIRE_REPO_NAME':" ${r} ${c} ${#PARSED_BRANCH_NAMES[@]} "${BRANCH_MENU_ITEMS[@]}" 3>&1 1>&2 2>&3)
-EXIT_STATUS=$?
+# Get PIP List into JSON file
+echo " - Getting PIP List into JSON file"
+.venv/bin/python updater.py -p
 
-if [ $EXIT_STATUS -ne 0 ]; then exit_with_error "Branch selection cancelled. Exiting."; fi
-
-SELECTED_BRANCH="${TAG_TO_BRANCH_NAME_MAP[$BRANCH_CHOICE_TAG]}"
-
-if [ -z "$SELECTED_BRANCH" ]; then
-    exit_with_error "Could not determine selected branch from tag '$BRANCH_CHOICE_TAG'. This is an unexpected error."
-fi
-whiptail --title "Branch Confirmed" --infobox "Will install branch: $SELECTED_BRANCH" 8 78
-
-# --- Clone Repository ---
+### Setup nginx to proxy to gunicorn
 clear
 echo "*************************************************************************"
-echo "** Cloning '$PIFIRE_REPO_NAME' from GitHub..."
-echo "** User: $GITHUB_USER"
-echo "** Branch: $SELECTED_BRANCH"
-echo "** URL: $REPO_URL"
-echo "** Target Directory: $PIFIRE_INSTALL_DIR"
+echo "**                                                                     **"
+echo "**      Configuring nginx...                                           **"
+echo "**                                                                     **"
 echo "*************************************************************************"
+# Move into install directory
+cd /usr/local/bin/pifire/auto-install/nginx
 
-if [ ! -d "$(dirname "$PIFIRE_INSTALL_DIR")" ]; then
-    $SUDO mkdir -p "$(dirname "$PIFIRE_INSTALL_DIR")" || exit_with_error "Failed to create parent directory for $PIFIRE_INSTALL_DIR."
-fi
+# Delete default configuration
+$SUDO rm /etc/nginx/sites-enabled/default
 
-if [ -d "$PIFIRE_INSTALL_DIR" ]; then
-    if whiptail --title "Existing Installation" --yesno "An existing PiFire installation was found at:\n$PIFIRE_INSTALL_DIR\n\nDo you want to remove it and proceed with a fresh clone?" ${r} ${c}; then
-        echo "Removing existing directory: $PIFIRE_INSTALL_DIR"
-        $SUDO rm -rf "$PIFIRE_INSTALL_DIR" || exit_with_error "Failed to remove existing directory '$PIFIRE_INSTALL_DIR'. Check permissions or remove manually."
-    else
-        exit_with_error "Installation aborted by user due to existing directory."
-    fi
-fi
+# Copy configuration file to nginx
+$SUDO cp pifire.nginx /etc/nginx/sites-available/pifire
 
-echo "Cloning..."
-# Use $SUDO for the clone if PIFIRE_INSTALL_DIR is in a privileged location like /usr/local/bin
-if ! $SUDO git clone --depth 1 --branch "$SELECTED_BRANCH" "$REPO_URL" "$PIFIRE_INSTALL_DIR"; then
-    exit_with_error "Failed to clone repository.\nBranch: '$SELECTED_BRANCH'\nURL: '$REPO_URL'\nPlease check logs for details."
-fi
-echo "Repository cloned successfully to $PIFIRE_INSTALL_DIR."
+# Create link in sites-enabled
+$SUDO ln -s /etc/nginx/sites-available/pifire /etc/nginx/sites-enabled
 
-# --- Post-Clone Setup ---
-# Now that the repo is cloned, we can access files like package.json from it.
-FULL_PACKAGE_JSON_PATH="$PIFIRE_INSTALL_DIR/$PACKAGE_JSON_PATH_REL"
-if [ ! -f "$FULL_PACKAGE_JSON_PATH" ]; then
-    exit_with_error "Cloned repository, but package.json not found at expected location: $FULL_PACKAGE_JSON_PATH"
-fi
+# Copy server_error.html to /usr/share/nginx/html
+$SUDO cp server_error.html /usr/share/nginx/html
 
+# Restart nginx
+$SUDO service nginx restart
+
+### Setup Supervisor to Start Apps on Boot / Restart on Failures
 clear
 echo "*************************************************************************"
-echo "** Setting /tmp to RAM based storage in /etc/fstab"
+echo "**                                                                     **"
+echo "**      Configuring Supervisord...                                     **"
+echo "**                                                                     **"
 echo "*************************************************************************"
-if ! grep -q "tmpfs /tmp" /etc/fstab; then
-    # Check if the line already exists to prevent duplicates
-    if $SUDO sed -i'.bak' '/tmpfs \/tmp/d' /etc/fstab; then # remove existing /tmp entries if any
-         echo "Removed existing /tmp mount from /etc/fstab to avoid conflict."
-    fi
-    echo "tmpfs /tmp  tmpfs defaults,noatime,nosuid,nodev,size=512m 0 0" | $SUDO tee -a /etc/fstab > /dev/null
-    echo "/tmp configured in /etc/fstab for RAM disk. A reboot or 'sudo mount -a' is required for this to take effect."
+
+# Copy configuration files (control.conf, webapp.conf) to supervisor config directory
+cd /usr/local/bin/pifire/auto-install/supervisor
+# Add the current username to the configuration files 
+echo "user=" $USER | tee -a control.conf > /dev/null
+echo "user=" $USER | tee -a webapp.conf > /dev/null
+echo "user=" $USER | tee -a pifireapp.conf > /dev/null
+
+$SUDO cp *.conf /etc/supervisor/conf.d/
+
+SVISOR=$(whiptail --title "Would you like to enable the supervisor WebUI?" --radiolist "This allows you to check the status of the supervised processes via a web browser, and also allows those processes to be restarted directly from this interface. (Recommended)" 20 78 2 "ENABLE_SVISOR" "Enable the WebUI" ON "DISABLE_SVISOR" "Disable the WebUI" OFF 3>&1 1>&2 2>&3)
+
+if [[ $SVISOR = "ENABLE_SVISOR" ]];then
+   echo " " | sudo tee -a /etc/supervisor/supervisord.conf > /dev/null
+   echo "[inet_http_server]" | sudo tee -a /etc/supervisor/supervisord.conf > /dev/null
+   echo "port = 9001" | sudo tee -a /etc/supervisor/supervisord.conf > /dev/null
+   USERNAME=$(whiptail --inputbox "Choose a username [default: user]" 8 78 user --title "Choose Username" 3>&1 1>&2 2>&3)
+   echo "username = " $USERNAME | sudo tee -a /etc/supervisor/supervisord.conf > /dev/null
+   PASSWORD=$(whiptail --passwordbox "Enter your password" 8 78 --title "Choose Password" 3>&1 1>&2 2>&3)
+   echo "password = " $PASSWORD | sudo tee -a /etc/supervisor/supervisord.conf > /dev/null
+   whiptail --msgbox --backtitle "Supervisor WebUI Setup" --title "Setup Completed" "You now should be able to access the Supervisor WebUI at http://your.ip.address.here:9001 with the username and password you have chosen." ${r} ${c}
 else
-    echo "/tmp already appears to be configured in /etc/fstab."
+   echo "No WebUI Setup."
 fi
 
+# If supervisor isn't already running, startup Supervisor
+$SUDO service supervisor start
+
+# Rebooting
+whiptail --msgbox --backtitle "Install Complete / Reboot Required" --title "Installation Completed - Rebooting" "Congratulations, the installation is complete.  At this time, we will perform a reboot and your application should be ready.  On first boot, the wizard will guide you through the remaining setup steps.  You should be able to access your application by opening a browser on your PC or other device and using the IP address (or http://[hostname].local) for this device.  Enjoy!" ${r} ${c}
 clear
-echo "*************************************************************************"
-echo "** Running Apt Update (again, to ensure fresh lists before main install)"
-echo "*************************************************************************"
-$SUDO apt-get update || echo "Warning: apt-get update failed. Continuing, but package installation might be affected."
-
-clear
-echo "*************************************************************************"
-echo "** Running Apt System Upgrade (Recommended)"
-echo "*************************************************************************"
-if whiptail --title "System Upgrade" --yesno "It's recommended to upgrade all system packages before proceeding.\nThis can take some time.\n\nDo you want to run 'sudo apt-get upgrade -y' now?" ${r} ${c}; then
-    echo "Performing system upgrade (apt-get upgrade -y)..."
-    $SUDO apt-get upgrade -y || echo "Warning: apt-get upgrade had issues. Check logs. Continuing installation."
-else
-    echo "Skipping full system upgrade."
-fi
-
-clear
-echo "*************************************************************************"
-echo "** Installing Application APT Dependencies from package.json"
-echo "*************************************************************************"
-# jq -r '.apt[]? | select(.!=null and .!="") | @sh' handles missing .apt key or empty strings
-APT_PACKAGES_CMD=$(jq -r '.apt[]? | select(.!=null and .!="") | @sh' "$FULL_PACKAGE_JSON_PATH" | xargs echo)
-
-if [ -n "$APT_PACKAGES_CMD" ]; then
-    echo "Found APT packages in package.json: $APT_PACKAGES_CMD"
-    # shellcheck disable=SC2086 # We want word splitting here after xargs
-    $SUDO apt-get install -y $APT_PACKAGES_CMD || exit_with_error "Failed to install one or more APT packages listed in package.json: $APT_PACKAGES_CMD"
-    echo "Application APT dependencies installed."
-else
-    echo "No application-specific APT packages found in '$FULL_PACKAGE_JSON_PATH' or '.apt' key is missing/empty."
-fi
-
-# --- Node.js Application Build (pifire.app) ---
-NPM_APP_DIR="$PIFIRE_INSTALL_DIR/pifire.app"
-if [ -d "$NPM_APP_DIR" ]; then
-    if [ -f "$NPM_APP_DIR/package.json" ]; then
-        clear
-        echo "*************************************************************************"
-        echo "** Building Node.js application (pifire.app)"
-        echo "*************************************************************************"
-        cd "$NPM_APP_DIR" || exit_with_error "Could not change directory to $NPM_APP_DIR"
-        echo "Running 'npm install' in $(pwd)... (This may take a while)"
-        # Use $SUDO if npm needs to write to global locations or if files are root-owned
-        # If npm is managed by nvm for the user, sudo might not be desired or could cause issues.
-        # Assuming for now that system-wide node/npm or sudo is appropriate for this install script context.
-        if $SUDO npm install; then
-            echo "npm install completed."
-            echo "Running 'npm run build' in $(pwd)..."
-            if $SUDO npm run build; then
-                echo "npm run build completed."
-            else
-                exit_with_error "'npm run build' failed in $NPM_APP_DIR. Check logs."
-            fi
-        else
-            exit_with_error "'npm install' failed in $NPM_APP_DIR. Check logs. Ensure Node.js and npm are installed and accessible."
-        fi
-        cd "$PIFIRE_INSTALL_DIR" # Return to base install directory
-    else
-        echo "Warning: $NPM_APP_DIR/package.json not found. Skipping npm install/build for pifire.app."
-    fi
-else
-    echo "Info: Node.js application directory '$NPM_APP_DIR' not found. Skipping npm steps."
-fi
-
-# --- Python Virtual Environment and Dependencies ---
-clear
-echo "*************************************************************************"
-echo "** Setting up Python Virtual Environment & Installing Modules"
-echo "*************************************************************************"
-cd "$PIFIRE_INSTALL_DIR" || exit_with_error "Failed to cd to $PIFIRE_INSTALL_DIR for VENV setup."
-
-echo "Setting ownership of $PIFIRE_INSTALL_DIR to $EFFECTIVE_USER_NAME prior to venv creation..."
-$SUDO chown -R "$EFFECTIVE_USER_NAME:$EFFECTIVE_USER_NAME" "$PIFIRE_INSTALL_DIR" || exit_with_error "Failed to chown $PIFIRE_INSTALL_DIR to $EFFECTIVE_USER_NAME."
-
-echo "Creating/Recreating Python virtual environment (.venv) using 'uv' as user '$EFFECTIVE_USER_NAME'..."
-if ! $SUDO -u "$EFFECTIVE_USER_NAME" uv venv --python python3 --system-site-packages .venv; then
-    exit_with_error "Failed to create Python virtual environment using 'uv'."
-fi
-
-if [ ! -d "$PIFIRE_INSTALL_DIR/.venv/bin" ]; then
-    exit_with_error "Python virtual environment '.venv/bin' not found after 'uv venv' command. Creation failed."
-fi
-echo "Virtual environment created at $PIFIRE_INSTALL_DIR/.venv"
-
-SYSTEM_UV_AS_USER_CMD_PREFIX="$SUDO -u \"$EFFECTIVE_USER_NAME\" uv"
-
-# Install pip packages from package.json (if any)
-PIP_PACKAGES_JSON_CMD=$(jq -r '.pip[]? | select(.!=null and .!="") | @sh' "$FULL_PACKAGE_JSON_PATH" | xargs echo)
-if [ -n "$PIP_PACKAGES_JSON_CMD" ]; then
-    echo "Installing pip packages from package.json via uv: $PIP_PACKAGES_JSON_CMD"
-    # shellcheck disable=SC2086 # We want word splitting for $PIP_PACKAGES_JSON_CMD
-    if ! $SYSTEM_UV_AS_USER_CMD_PREFIX pip install $PIP_PACKAGES_JSON_CMD; then
-         exit_with_error "Failed to install pip packages from package.json using uv."
-    fi
-    echo "Pip packages from package.json installed."
-else
-    echo "No pip packages specified in package.json under '.pip' key."
-fi
-
-# Install eventlet based on Python version (checking venv's python)
-VENV_PYTHON_PATH="$PIFIRE_INSTALL_DIR/.venv/bin/python"
-PYTHON_VER_CHECK_CMD="$VENV_PYTHON_PATH -c \"import sys; sys.exit(0 if sys.version_info[:2] >= (3,11) else 1)\""
-
-echo "Checking Python version in venv ($VENV_PYTHON_PATH)..."
-if $SUDO -u "$EFFECTIVE_USER_NAME" $PYTHON_VER_CHECK_CMD; then # Python 3.11+
-    echo "Python version in venv is 3.11 or greater. Installing latest eventlet via uv."
-    if ! $SYSTEM_UV_AS_USER_CMD_PREFIX pip install eventlet; then exit_with_error "Failed to install latest eventlet using uv."; fi
-else # Python < 3.11
-    echo "Python version in venv is less than 3.11. Installing eventlet==0.30.2 via uv."
-    if ! $SYSTEM_UV_AS_USER_CMD_PREFIX pip install 'eventlet==0.30.2'; then exit_with_error "Failed to install eventlet==0.30.2 using uv."; fi
-fi
-echo "eventlet installed."
-
-# Install packages from requirements.txt
-REQUIREMENTS_TXT_PATH="$PIFIRE_INSTALL_DIR/auto-install/requirements.txt"
-if [ -f "$REQUIREMENTS_TXT_PATH" ]; then
-    echo "Installing Python packages from $REQUIREMENTS_TXT_PATH via uv..."
-    if ! $SYSTEM_UV_AS_USER_CMD_PREFIX pip install -r "$REQUIREMENTS_TXT_PATH"; then
-        exit_with_error "Failed to install Python packages from '$REQUIREMENTS_TXT_PATH' using uv."
-    fi
-    echo "Packages from requirements.txt installed."
-else
-    echo "Warning: 'auto-install/requirements.txt' not found. Skipping."
-
-echo "Setting up 'pifire' group and final permissions..."
-
-# --- Permissions, Group, and Bluepy ---
-echo "Setting up 'pifire' group and permissions..."
-if ! getent group pifire > /dev/null; then
-    $SUDO groupadd pifire || echo "Warning: Failed to add group 'pifire'. It might already exist."
-fi
-$SUDO usermod -a -G pifire "$EFFECTIVE_USER_NAME" || echo "Warning: Failed to add user '$EFFECTIVE_USER_NAME' to 'pifire' group."
-# $SUDO usermod -a -G pifire root # Adding root to pifire group is unusual, consider if necessary
-
-# Final ownership and permissions for the install directory
-$SUDO chown -R "$EFFECTIVE_USER_NAME:pifire" "$PIFIRE_INSTALL_DIR"
-$SUDO chmod -R g+w "$PIFIRE_INSTALL_DIR" # Group write access
-$SUDO find "$PIFIRE_INSTALL_DIR" -type d -exec chmod g+s {} \; # Setgid bit for directories
-
-# bluepy-helper capabilities
-# Find bluepy-helper within the created venv
-# Need to run find as root if .venv is root-owned initially, or ensure EFFECTIVE_USER_NAME has read access
-BLUEPY_HELPERS=$($SUDO find "$PIFIRE_INSTALL_DIR/.venv/lib/" -name "bluepy-helper" -type f 2>/dev/null)
-if [ -n "$BLUEPY_HELPERS" ]; then
-    for helper_path in $BLUEPY_HELPERS; do
-        echo "Setting capabilities for $helper_path"
-        $SUDO setcap 'cap_net_raw,cap_net_admin+eip' "$helper_path"
-        $SUDO getcap "$helper_path" # Verify
-    done
-else
-    echo "Warning: bluepy-helper not found in the virtual environment. Bluetooth features might not work."
-fi
-
-# updater.py -p
-UPDATER_PY_PATH="$PIFIRE_INSTALL_DIR/updater.py"
-if [ -f "$UPDATER_PY_PATH" ]; then
-    echo "Running updater.py -p to generate PIP list..."
-    # Run as the effective user within the venv
-    if ! $SUDO -u "$EFFECTIVE_USER_NAME" "$VENV_PYTHON" "$UPDATER_PY_PATH" -p; then
-        echo "Warning: 'updater.py -p' command failed."
-    fi
-else
-    echo "Warning: '$UPDATER_PY_PATH' not found. Skipping PIP list generation."
-fi
-
-# --- Nginx Setup ---
-NGINX_CONFIG_DIR="$PIFIRE_INSTALL_DIR/auto-install/nginx"
-if [ -d "$NGINX_CONFIG_DIR" ]; then
-    clear
-    echo "*************************************************************************"
-    echo "** Configuring nginx..."
-    echo "*************************************************************************"
-    cd "$NGINX_CONFIG_DIR" || exit_with_error "Failed to cd to $NGINX_CONFIG_DIR"
-
-    if [ -f "/etc/nginx/sites-enabled/default" ] || [ -L "/etc/nginx/sites-enabled/default" ]; then
-        $SUDO rm -f /etc/nginx/sites-enabled/default
-        echo "Removed default nginx site configuration."
-    fi
-
-    $SUDO cp pifire.nginx /etc/nginx/sites-available/pifire || exit_with_error "Failed to copy pifire nginx config."
-    if [ ! -L "/etc/nginx/sites-enabled/pifire" ]; then # Check if symlink exists
-         $SUDO ln -sf /etc/nginx/sites-available/pifire /etc/nginx/sites-enabled/pifire || exit_with_error "Failed to create symlink for pifire nginx site."
-    fi
-    $SUDO cp server_error.html /usr/share/nginx/html/ || exit_with_error "Failed to copy server_error.html."
-
-    echo "Testing nginx configuration..."
-    if $SUDO nginx -t; then
-        echo "Nginx configuration test successful. Restarting nginx..."
-        $SUDO systemctl restart nginx || exit_with_error "Failed to restart nginx service."
-    else
-        exit_with_error "Nginx configuration test failed. Please check 'sudo nginx -t' output and resolve issues."
-    fi
-else
-    echo "Warning: Nginx configuration directory '$NGINX_CONFIG_DIR' not found. Skipping nginx setup."
-fi
-
-# --- Supervisor Setup ---
-SUPERVISOR_CONFIG_DIR="$PIFIRE_INSTALL_DIR/auto-install/supervisor"
-if [ -d "$SUPERVISOR_CONFIG_DIR" ]; then
-    clear
-    echo "*************************************************************************"
-    echo "** Configuring Supervisord..."
-    echo "*************************************************************************"
-    cd "$SUPERVISOR_CONFIG_DIR" || exit_with_error "Failed to cd to $SUPERVISOR_CONFIG_DIR"
-
-    for conf_template in control.conf webapp.conf pifireapp.conf; do
-        if [ -f "$conf_template" ]; then
-            # Create a temporary file for sed modifications
-            TEMP_CONF=$(mktemp)
-            cp "$conf_template" "$TEMP_CONF"
-            # Replace placeholder or ensure user line is correct
-            # Remove existing user line if any, then add the correct one
-            sed -i '/^user=/d' "$TEMP_CONF" # Delete existing user lines
-            echo "user=$EFFECTIVE_USER_NAME" >> "$TEMP_CONF" # Add the correct user
-
-            # Also replace path placeholders if any, e.g. /usr/local/bin/pifire
-            # Assuming PIFIRE_INSTALL_DIR needs to be escaped for sed if it contains slashes
-            ESCAPED_INSTALL_DIR=$(echo "$PIFIRE_INSTALL_DIR" | sed 's/\//\\\//g')
-            sed -i "s/%%PIFIRE_INSTALL_DIR%%/$ESCAPED_INSTALL_DIR/g" "$TEMP_CONF"
-            sed -i "s/%%VENV_PYTHON%%/$(echo $VENV_PYTHON | sed 's/\//\\\//g')/g" "$TEMP_CONF"
-
-
-            $SUDO cp "$TEMP_CONF" "/etc/supervisor/conf.d/$(basename "$conf_template")" || exit_with_error "Failed to copy $conf_template to /etc/supervisor/conf.d/"
-            rm "$TEMP_CONF"
-            echo "Copied and configured $(basename "$conf_template") for supervisor."
-        else
-            echo "Warning: Supervisor config template '$conf_template' not found."
-        fi
-    done
-
-    # Supervisor WebUI (Optional)
-    if whiptail --title "Supervisor WebUI" --yesno "Do you want to enable the Supervisor WebUI?\n(Access on port 9001, requires username/password setup)" ${r} ${c}; then
-        if ! grep -q "\[inet_http_server\]" /etc/supervisor/supervisord.conf; then
-            SVISOR_USER=$(whiptail --inputbox "Choose a username for Supervisor WebUI [default: pifireuser]" 8 78 "pifireuser" --title "Supervisor WebUI Username" 3>&1 1>&2 2>&3)
-            EXIT_STATUS=$?
-            if [ $EXIT_STATUS -eq 0 ] && [ -n "$SVISOR_USER" ]; then
-                SVISOR_PASS=$(whiptail --passwordbox "Enter password for Supervisor WebUI user '$SVISOR_USER':" 8 78 --title "Supervisor WebUI Password" 3>&1 1>&2 2>&3)
-                EXIT_STATUS=$?
-                if [ $EXIT_STATUS -eq 0 ] && [ -n "$SVISOR_PASS" ]; then
-                    echo ""  | $SUDO tee -a /etc/supervisor/supervisord.conf > /dev/null
-                    echo "[inet_http_server]" | $SUDO tee -a /etc/supervisor/supervisord.conf > /dev/null
-                    echo "port = 0.0.0.0:9001" | $SUDO tee -a /etc/supervisor/supervisord.conf > /dev/null
-                    echo "username = $SVISOR_USER" | $SUDO tee -a /etc/supervisor/supervisord.conf > /dev/null
-                    echo "password = $SVISOR_PASS" | $SUDO tee -a /etc/supervisor/supervisord.conf > /dev/null
-                    whiptail --title "Supervisor WebUI" --msgbox "Supervisor WebUI enabled on port 9001.\nUsername: $SVISOR_USER" ${r} ${c}
-                else
-                    whiptail --title "Supervisor WebUI" --msgbox "Password not provided. Supervisor WebUI setup aborted." ${r} ${c}
-                fi
-            else
-                 whiptail --title "Supervisor WebUI" --msgbox "Username not provided or cancelled. Supervisor WebUI setup aborted." ${r} ${c}
-            fi
-        else
-            whiptail --title "Supervisor WebUI" --msgbox "Supervisor WebUI [inet_http_server] section already exists in supervisord.conf. Skipping manual setup." ${r} ${c}
-        fi
-    else
-        echo "Supervisor WebUI setup skipped by user."
-    fi
-
-    echo "Reloading supervisor configuration..."
-    $SUDO supervisorctl reread || echo "Warning: 'supervisorctl reread' failed. Supervisor might not be running or no changes detected."
-    $SUDO supervisorctl update || echo "Warning: 'supervisorctl update' failed. Ensure supervisor service is active."
-    if ! $SUDO systemctl is-active --quiet supervisor; then
-        echo "Supervisor service is not active. Attempting to start..."
-        $SUDO systemctl start supervisor || exit_with_error "Failed to start supervisor service."
-        $SUDO systemctl enable supervisor || echo "Warning: Failed to enable supervisor service to start on boot."
-    else
-        echo "Supervisor service is active. Restarting to apply changes..."
-        $SUDO systemctl restart supervisor || exit_with_error "Failed to restart supervisor service."
-    fi
-else
-    echo "Warning: Supervisor configuration directory '$SUPERVISOR_CONFIG_DIR' not found. Skipping supervisor setup."
-fi
-
-# --- Final Instructions & Reboot ---
-clear
-if whiptail --title "Installation Complete" --yesno "PiFire installation is complete!\n\nSome changes (like /tmp on RAM and service startups) may require or benefit from a system reboot.\n\nIt is recommended to reboot now.\n\nAfter reboot, you should be able to access PiFire via its IP address in a web browser. The first launch might involve a setup wizard.\n\nDo you want to reboot the system now?" $(($r + 5)) $(($c + 10)); then
-    echo "Rebooting system..."
-    $SUDO reboot
-else
-    echo "Installation complete. Please reboot your system manually when convenient."
-    echo "Access PiFire at http://<your_pi_ip_address>"
-fi
-
-exit 0
+$SUDO reboot
