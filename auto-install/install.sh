@@ -42,17 +42,38 @@ c=$(( c < 70 ? 70 : c ))
 whiptail --msgbox --backtitle "Welcome" --title "PiFire Automated Installer" "This installer will transform your Single Board Computer into a connected Smoker Controller.  NOTE: This installer is intended to be run on a fresh install of Raspberry Pi OS Lite 32-Bit Bullseye or later." ${r} ${c}
 
 # Ask the user to select a GitHub user
-USER_LIST="1. nebhead\n2. dogtreatfairy\n3. other"
-USER_CHOICE=$(echo -e "$USER_LIST" | whiptail --title "Choose a GitHub User" --menu "Select the GitHub user to clone from:" 20 78 10 --notags 3>&1 1>&2 2>&3)
+USER_CHOICE=$(whiptail --title "Choose a GitHub User" --menu "Select the GitHub user to clone from:" 20 78 3 \
+    "1" "nebhead" \
+    "2" "dogtreatfairy" \
+    "3" "other" \
+    3>&1 1>&2 2>&3)
 
-# Determine the GitHub user
-if [ "$USER_CHOICE" = "1" ]; then
-    GITHUB_USER="nebhead"
-elif [ "$USER_CHOICE" = "2" ]; then
-    GITHUB_USER="dogtreatfairy"
-else
-    GITHUB_USER=$(whiptail --inputbox "Enter the GitHub username to clone from:" 8 78 --title "Custom GitHub User" 3>&1 1>&2 2>&3)
+# Check if the user canceled the selection
+if [ $? -ne 0 ]; then
+    echo "User selection canceled."
+    exit 1
 fi
+
+# Determine the GitHub user based on the choice
+case "$USER_CHOICE" in
+    "1")
+        GITHUB_USER="nebhead"
+        ;;
+    "2")
+        GITHUB_USER="dogtreatfairy"
+        ;;
+    "3")
+        GITHUB_USER=$(whiptail --inputbox "Enter the GitHub username to clone from:" 8 78 --title "Custom GitHub User" 3>&1 1>&2 2>&3)
+        if [ $? -ne 0 ] || [ -z "$GITHUB_USER" ]; then
+            echo "No username provided or input canceled."
+            exit 1
+        fi
+        ;;
+    *)
+        echo "Invalid selection."
+        exit 1
+        ;;
+esac
 
 # List all branches on the server
 BRANCHES=$(git ls-remote --heads https://github.com/$GITHUB_USER/pifire.git | awk -F'/' '{print $NF}' | sort)
