@@ -76,20 +76,27 @@ case "$USER_CHOICE" in
 esac
 
 # Fetch branches from the selected user's PiFire repository
-BRANCHES=$(git ls-remote --heads https://github.com/$GITHUB_USER/pifire.git 2>/dev/null)
+BRANCHES=$(git ls-remote --heads https://github.com/$GITHUB_USER/pifire.git 2>&1)
+if echo "$BRANCHES" | grep -q "fatal:"; then
+    echo "Error fetching branches: $BRANCHES"
+    exit 1
+fi
 if [ -z "$BRANCHES" ]; then
     echo "No branches found or repository does not exist."
     exit 1
 fi
 
-# Extract branch names into an array
-mapfile -t BRANCH_ARRAY < <(echo "$BRANCHES" | awk -F'/' '{print $NF}' | sort -u)
+# Extract branch names into an array, ensuring only valid refs/heads/ entries
+mapfile -t BRANCH_ARRAY < <(echo "$BRANCHES" | grep "refs/heads/" | awk -F'/' '{print $NF}' | sort -u)
 
 # Check if there are any branches
 if [ ${#BRANCH_ARRAY[@]} -eq 0 ]; then
     echo "No branches found in the repository."
     exit 1
 fi
+
+# Debugging: Show fetched branches
+echo "Fetched branches: ${BRANCH_ARRAY[@]}"
 
 # Construct menu items for whiptail
 MENU_ITEMS=()
@@ -98,16 +105,30 @@ for i in "${!BRANCH_ARRAY[@]}"; do
 done
 
 # Display the menu and capture the user's choice
-CHOICE=$(whiptail --title "Choose a Branch" --menu "Select the branch to install:" 20 78 ${#BRANCH_ARRAY[@]} "${MENU_ITEMS[@]}" 3>&1 1>&2 2>&3)
+CHOICE=$(whiptail --title "Choose a Branch" --menu "Select the branch to install:" 20 78 10 "${MENU_ITEMS[@]}" 3>&1 1>&2 2>&3)
 
-# Check if the user canceled the selection
+# Check if the user canceled or if whiptail failed
 if [ $? -ne 0 ]; then
-    echo "Branch selection canceled."
+    echo "Branch selection canceled or failed."
     exit 1
 fi
 
-# Set the selected branch based on the user's choice
+# Validate CHOICE and set the selected branch
+if [ -z "$CHOICE" ] || ! [[ "$CHOICE" =~ ^[0-9]+$ ]] || [ "$CHOICE" -lt 1 ] || [ "$CHOICE" -gt ${#BRANCH_ARRAY[@]} ]; then
+    echo "Invalid branch selection: $CHOICE"
+    exit 1
+fi
+
 SELECTED_BRANCH="${BRANCH_ARRAY[$((CHOICE-1))]}"
+
+# Ensure a branch was selected
+if [ -z "$SELECTED_BRANCH" ]; then
+    echo "No branch selected."
+    exit 1
+fi
+
+# Debugging: Confirm selection
+echo "Selected branch: $SELECTED_BRANCH"
 
 clear
 echo "*************************************************************************"
