@@ -209,12 +209,32 @@ echo " - Setting up VENV"
 cd /usr/local/bin/pifire
 uv venv --system-site-packages
 
-# Determine the appropriate Python command based on the OS
-if [[ $(uname -a) == *"raspberrypi"* ]]; then
-    PYTHON_CMD="python"
-else
-    PYTHON_CMD="python3"
+# Function to find a Python 3 interpreter
+find_python3() {
+    if command -v python3 >/dev/null 2>&1; then
+        echo "python3"
+    elif command -v python >/dev/null 2>&1; then
+        # Check if 'python' is Python 3
+        if python --version 2>&1 | grep -q "Python 3"; then
+            echo "python"
+        else
+            echo ""
+        fi
+    else
+        echo ""
+    fi
+}
+
+# Set PYTHON_CMD to the detected Python 3 command
+PYTHON_CMD=$(find_python3)
+
+# Exit if no Python 3 interpreter is found
+if [ -z "$PYTHON_CMD" ]; then
+    echo "Error: No Python 3 interpreter found. Please install Python 3."
+    exit 1
 fi
+
+echo "Using Python command: $PYTHON_CMD"
 
 echo " - Installing module dependencies... "
 # Install module dependencies 
